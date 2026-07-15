@@ -27,6 +27,7 @@ class SettingsController
         return new JsonResponse([
             'configured' => $this->settingsManager->isConfigured(),
             'defaultLibraryId' => $this->settingsManager->getDefaultLibraryId(),
+            'defaultPlayer' => $this->settingsManager->getDefaultPlayer(),
         ]);
     }
 
@@ -37,9 +38,15 @@ class SettingsController
             return new JsonResponse(['message' => 'Invalid payload.'], 400);
         }
 
+        $defaultPlayer = $payload['defaultPlayer'] ?? null;
+        if (!\is_string($defaultPlayer) || !\in_array($defaultPlayer, ['hosted', 'native'], true)) {
+            $defaultPlayer = null;
+        }
+
         $this->settingsManager->save(
             \is_string($payload['token'] ?? null) ? $payload['token'] : null,
             \is_string($payload['defaultLibraryId'] ?? null) ? $payload['defaultLibraryId'] : null,
+            $defaultPlayer,
         );
 
         return $this->get();

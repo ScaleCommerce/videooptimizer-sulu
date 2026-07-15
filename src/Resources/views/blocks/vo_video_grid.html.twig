@@ -4,7 +4,7 @@
         {% if block.intro %}<p class="vo-grid__intro">{{ block.intro }}</p>{% endif %}
         {% set playerOpts = video_optimizer_player_options(block) %}
         {% set presentation = block.presentation|default('lightbox') %}
-        {% set player = block.player|default('hosted') %}
+        {% set player = video_optimizer_player(block) %}
         <div class="vo-grid__items">
             {% for item in block.items %}
                 {% if item.video and item.video.uuid %}

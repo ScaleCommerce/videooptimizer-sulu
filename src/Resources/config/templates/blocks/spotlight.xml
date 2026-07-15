@@ -31,8 +31,9 @@
         <property name="player" type="single_select">
             <meta><title lang="en">Player</title><title lang="de">Player</title></meta>
             <params>
-                <param name="default_value" value="hosted"/>
+                <param name="default_value" value="inherit"/>
                 <param name="values" type="collection">
+                    <param name="inherit"><meta><title lang="en">Global default</title><title lang="de">Globaler Standard</title></meta></param>
                     <param name="hosted"><meta><title lang="en">Hosted player (iframe)</title><title lang="de">Gehosteter Player (iframe)</title></meta></param>
                     <param name="native"><meta><title lang="en">Native player</title><title lang="de">Nativer Player</title></meta></param>
                 </param>

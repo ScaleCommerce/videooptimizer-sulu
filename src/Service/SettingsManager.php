@@ -47,10 +47,20 @@ class SettingsManager
     }
 
     /**
-     * Persists a new token (if provided) and the default library.
+     * The organization-wide default player. Falls back to 'hosted' when nothing is configured yet.
+     */
+    public function getDefaultPlayer(): string
+    {
+        $defaultPlayer = $this->getSettings()->getDefaultPlayer();
+
+        return null !== $defaultPlayer && '' !== $defaultPlayer ? $defaultPlayer : 'hosted';
+    }
+
+    /**
+     * Persists a new token (if provided), the default library, and the default player.
      * An empty/null token leaves the existing token untouched.
      */
-    public function save(?string $plainToken, ?string $defaultLibraryId): void
+    public function save(?string $plainToken, ?string $defaultLibraryId, ?string $defaultPlayer = null): void
     {
         $settings = $this->getSettings();
 
@@ -59,6 +69,7 @@ class SettingsManager
         }
 
         $settings->setDefaultLibraryId($defaultLibraryId ?: null);
+        $settings->setDefaultPlayer($defaultPlayer ?: null);
         $settings->setUpdatedAt(new \DateTimeImmutable());
 
         $this->entityManager->persist($settings);

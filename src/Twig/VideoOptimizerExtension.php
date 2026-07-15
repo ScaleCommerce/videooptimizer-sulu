@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Scale\VideoOptimizerBundle\Twig;
 
+use Scale\VideoOptimizerBundle\Service\SettingsManager;
 use Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
@@ -13,9 +14,16 @@ use Twig\TwigFunction;
  */
 class VideoOptimizerExtension extends AbstractExtension
 {
+    /**
+     * Cached organization-wide default player, resolved lazily so a page with several blocks
+     * only triggers one settings lookup.
+     */
+    private ?string $cachedDefaultPlayer = null;
+
     public function __construct(
         private string $embedBaseUrl,
         private VideoOptimizerEmbedResolver $embedResolver,
+        private SettingsManager $settingsManager,
     ) {
     }
 
@@ -28,9 +36,28 @@ class VideoOptimizerExtension extends AbstractExtension
             new TwigFunction('video_optimizer_dimensions', [$this, 'dimensions']),
             new TwigFunction('video_optimizer_schema', [$this, 'schema'], ['is_safe' => ['html']]),
             new TwigFunction('video_optimizer_player_options', [$this, 'playerOptions']),
+            new TwigFunction('video_optimizer_player', [$this, 'player']),
             new TwigFunction('video_optimizer_srcset', [$this, 'srcset']),
             new TwigFunction('video_optimizer_native', [$this, 'renderNative'], ['is_safe' => ['html']]),
         ];
+    }
+
+    /**
+     * Resolves the effective player for a block: its own 'player' field when it is an explicit
+     * 'hosted'/'native' choice, otherwise the organization-wide default (itself 'hosted' unless
+     * an admin configured 'native'). Any other value (notably the 'inherit' sentinel) falls back
+     * to the default too.
+     *
+     * @param array<string, mixed>|null $block
+     */
+    public function player(?array $block): string
+    {
+        $value = $block['player'] ?? null;
+        if ('hosted' === $value || 'native' === $value) {
+            return $value;
+        }
+
+        return $this->cachedDefaultPlayer ??= $this->settingsManager->getDefaultPlayer();
     }
 
     /**

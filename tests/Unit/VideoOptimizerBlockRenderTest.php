@@ -7,6 +7,7 @@ namespace Scale\VideoOptimizerBundle\Tests\Unit;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
 use Prophecy\Prophecy\ObjectProphecy;
+use Scale\VideoOptimizerBundle\Service\SettingsManager;
 use Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver;
 use Scale\VideoOptimizerBundle\Twig\VideoOptimizerExtension;
 use Twig\Environment;
@@ -239,6 +240,73 @@ class VideoOptimizerBlockRenderTest extends TestCase
         self::assertStringContainsString('data-vo-player="hosted"', $html);
     }
 
+    public function testInheritedPlayerRendersHostedWhenGlobalDefaultIsHosted(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getDimensions('abc')->willReturn(['width' => 1920, 'height' => 1080, 'orientation' => 'landscape']);
+        $resolver->getPosterSrcset('abc')->willReturn(null);
+        $resolver->getSources('abc')->willReturn($this->sources());
+
+        $html = $this->render($resolver, 'vo_media_split.html.twig', [
+            'block' => [
+                'video' => ['uuid' => 'abc', 'posterUrl' => 'https://cdn.example.net/poster.jpg'],
+                'headline' => 'Hero',
+                'presentation' => 'direct',
+                'player' => 'inherit',
+                'priority' => true,
+            ],
+        ], 'hosted');
+
+        self::assertStringContainsString('<iframe', $html);
+        self::assertStringContainsString('data-vo-player="hosted"', $html);
+        self::assertStringNotContainsString('<video', $html);
+    }
+
+    public function testInheritedPlayerRendersNativeWhenGlobalDefaultIsNative(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getDimensions('abc')->willReturn(['width' => 1920, 'height' => 1080, 'orientation' => 'landscape']);
+        $resolver->getPosterSrcset('abc')->willReturn(null);
+        $resolver->getSources('abc')->willReturn($this->sources());
+        $resolver->getPlayable('abc')->willReturn($this->playable());
+
+        $html = $this->render($resolver, 'vo_media_split.html.twig', [
+            'block' => [
+                'video' => ['uuid' => 'abc', 'posterUrl' => 'https://cdn.example.net/poster.jpg'],
+                'headline' => 'Hero',
+                'presentation' => 'direct',
+                'player' => 'inherit',
+            ],
+        ], 'native');
+
+        self::assertStringContainsString('<video', $html);
+        self::assertStringContainsString('data-vo-player="native"', $html);
+        self::assertStringNotContainsString('<iframe', $html);
+    }
+
+    public function testExplicitPlayerChoiceOverridesGlobalDefault(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getDimensions('abc')->willReturn(['width' => 1920, 'height' => 1080, 'orientation' => 'landscape']);
+        $resolver->getPosterSrcset('abc')->willReturn(null);
+        $resolver->getSources('abc')->willReturn($this->sources());
+        $resolver->getPlayable('abc')->willReturn($this->playable());
+
+        // Global default is 'hosted', but the block explicitly chose 'native' -> native wins.
+        $html = $this->render($resolver, 'vo_media_split.html.twig', [
+            'block' => [
+                'video' => ['uuid' => 'abc', 'posterUrl' => 'https://cdn.example.net/poster.jpg'],
+                'headline' => 'Hero',
+                'presentation' => 'direct',
+                'player' => 'native',
+            ],
+        ], 'hosted');
+
+        self::assertStringContainsString('<video', $html);
+        self::assertStringContainsString('data-vo-player="native"', $html);
+        self::assertStringNotContainsString('<iframe', $html);
+    }
+
     public function testFacadeNativePlayerRendersHiddenVideoAlongsidePoster(): void
     {
         $resolver = $this->resolver();
@@ -363,7 +431,7 @@ class VideoOptimizerBlockRenderTest extends TestCase
             'height' => 1080,
         ]);
 
-        $extension = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal());
+        $extension = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
         // eager=true: the above-the-fold 'direct' + priority case, which keeps autoplay+muted.
         $html = $extension->renderNative(['uuid' => 'abc'], ['autoplay' => '1', 'loop' => '1'], true);
 
@@ -384,7 +452,7 @@ class VideoOptimizerBlockRenderTest extends TestCase
         $resolver = $this->resolver();
         $resolver->getPlayable('abc')->willReturn($this->playable());
 
-        $extension = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal());
+        $extension = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
         // eager defaults to false: must not fetch/play until something explicitly plays it.
         $html = $extension->renderNative(['uuid' => 'abc'], ['autoplay' => '1', 'loop' => '1']);
 
@@ -397,7 +465,7 @@ class VideoOptimizerBlockRenderTest extends TestCase
     public function testRenderNativeReturnsEmptyStringWithoutVideo(): void
     {
         $resolver = $this->resolver();
-        $extension = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal());
+        $extension = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
 
         self::assertSame('', $extension->renderNative(null));
         self::assertSame('', $extension->renderNative([]));
@@ -406,14 +474,14 @@ class VideoOptimizerBlockRenderTest extends TestCase
     /**
      * @param array<string, mixed> $context
      */
-    private function render(ObjectProphecy $resolver, string $template, array $context): string
+    private function render(ObjectProphecy $resolver, string $template, array $context, string $defaultPlayer = 'hosted'): string
     {
         // Mirror the bundle's Twig namespace so blocks can include '@ScaleVideoOptimizer/blocks/_video.html.twig'.
         $loader = new FilesystemLoader();
         $loader->addPath(\dirname(__DIR__, 2) . '/src/Resources/views', 'ScaleVideoOptimizer');
 
         $twig = new Environment($loader, ['autoescape' => 'html', 'strict_variables' => false]);
-        $twig->addExtension(new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal()));
+        $twig->addExtension(new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager($defaultPlayer)->reveal()));
 
         return $twig->render('@ScaleVideoOptimizer/blocks/' . $template, $context);
     }
@@ -421,6 +489,17 @@ class VideoOptimizerBlockRenderTest extends TestCase
     private function resolver(): ObjectProphecy
     {
         return $this->prophesize(VideoOptimizerEmbedResolver::class);
+    }
+
+    /**
+     * @return ObjectProphecy<SettingsManager>
+     */
+    private function settingsManager(string $defaultPlayer = 'hosted'): ObjectProphecy
+    {
+        $settingsManager = $this->prophesize(SettingsManager::class);
+        $settingsManager->getDefaultPlayer()->willReturn($defaultPlayer);
+
+        return $settingsManager;
     }
 
     /**

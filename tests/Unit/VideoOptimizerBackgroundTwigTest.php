@@ -6,6 +6,7 @@ namespace Scale\VideoOptimizerBundle\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
+use Scale\VideoOptimizerBundle\Service\SettingsManager;
 use Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver;
 use Scale\VideoOptimizerBundle\Twig\VideoOptimizerExtension;
 
@@ -21,7 +22,7 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
             'hlsUrl' => 'https://cdn.example.net/master.m3u8',
         ]);
 
-        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal());
+        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
 
         $html = $ext->renderBackground(['uuid' => 'abc', 'posterUrl' => 'https://stored/poster.jpg']);
 
@@ -38,7 +39,7 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
         $resolver->getSources('abc')->willReturn(['poster' => null, 'hlsUrl' => null]);
 
-        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal());
+        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
 
         $html = $ext->renderBackground(['uuid' => 'abc', 'posterUrl' => 'https://stored/poster.jpg']);
 
@@ -48,7 +49,7 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
     public function testReturnsEmptyStringWithoutUuid(): void
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
-        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal());
+        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
 
         self::assertSame('', $ext->renderBackground(null));
         self::assertSame('', $ext->renderBackground(['title' => 'x']));
@@ -94,7 +95,18 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
 
-        return new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal());
+        return new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
+    }
+
+    /**
+     * @return \Prophecy\Prophecy\ObjectProphecy<SettingsManager>
+     */
+    private function settingsManager(string $defaultPlayer = 'hosted'): \Prophecy\Prophecy\ObjectProphecy
+    {
+        $settingsManager = $this->prophesize(SettingsManager::class);
+        $settingsManager->getDefaultPlayer()->willReturn($defaultPlayer);
+
+        return $settingsManager;
     }
 
     public function testSchemaRendersVideoObjectJsonLd(): void
@@ -107,7 +119,7 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
             'height' => null,
             'duration' => 90,
         ]);
-        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal());
+        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
 
         $html = $ext->schema(['uuid' => 'abc', 'title' => 'Stored title'], 'My headline');
 
@@ -123,7 +135,7 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
         $resolver->getSources('abc')->willReturn(['poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null]);
-        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal());
+        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
 
         $html = $ext->schema(['uuid' => 'abc'], '</script><script>alert(1)</script>');
 
@@ -153,5 +165,23 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
             ['autoplay' => '0', 'controls' => '1', 'loop' => '0', 'muted' => '1'],
             $this->extension()->playerOptions(['autoplay' => '0', 'controls' => '1', 'loop' => '0', 'muted' => '1']),
         );
+    }
+
+    public function testPlayerFallsBackToGlobalDefaultWhenInherited(): void
+    {
+        $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
+        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager('native')->reveal());
+
+        self::assertSame('native', $ext->player(['player' => 'inherit']));
+        self::assertSame('native', $ext->player([]));
+        self::assertSame('native', $ext->player(null));
+    }
+
+    public function testPlayerHonorsExplicitBlockChoiceRegardlessOfDefault(): void
+    {
+        $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
+        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager('native')->reveal());
+
+        self::assertSame('hosted', $ext->player(['player' => 'hosted']));
     }
 }

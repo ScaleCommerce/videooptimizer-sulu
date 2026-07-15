@@ -13,12 +13,14 @@ class Settings extends React.Component<*> {
     @observable configured = false;
     @observable token = '';
     @observable defaultLibraryId = '';
+    @observable defaultPlayer = 'hosted';
     @observable message = null;
 
     componentDidMount() {
         getSettings().then(action((data) => {
             this.configured = !!data.configured;
             this.defaultLibraryId = data.defaultLibraryId || '';
+            this.defaultPlayer = data.defaultPlayer || 'hosted';
             this.loading = false;
         }));
     }
@@ -31,10 +33,14 @@ class Settings extends React.Component<*> {
         this.defaultLibraryId = event.target.value;
     };
 
+    @action handlePlayerChange = (event: SyntheticInputEvent<HTMLSelectElement>) => {
+        this.defaultPlayer = event.target.value;
+    };
+
     @action handleSave = () => {
         this.saving = true;
         this.message = null;
-        saveSettings({token: this.token, defaultLibraryId: this.defaultLibraryId})
+        saveSettings({token: this.token, defaultLibraryId: this.defaultLibraryId, defaultPlayer: this.defaultPlayer})
             .then(action((data) => {
                 this.configured = !!data.configured;
                 this.token = '';
@@ -90,6 +96,16 @@ class Settings extends React.Component<*> {
                         value={this.defaultLibraryId}
                         onChange={this.handleLibraryChange}
                     />
+
+                    <label className="vo-label">{translate('scale_videooptimizer.default_player')}</label>
+                    <select
+                        className="vo-input"
+                        value={this.defaultPlayer}
+                        onChange={this.handlePlayerChange}
+                    >
+                        <option value="hosted">{translate('scale_videooptimizer.player_hosted')}</option>
+                        <option value="native">{translate('scale_videooptimizer.player_native')}</option>
+                    </select>
 
                     <div className="vo-actions">
                         <Button skin="primary" onClick={this.handleSave} loading={this.saving}>

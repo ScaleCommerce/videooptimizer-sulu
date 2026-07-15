@@ -29,6 +29,13 @@ class VideoOptimizerSettings
     #[ORM\Column(type: 'string', length: 64, nullable: true)]
     private ?string $defaultLibraryId = null;
 
+    /**
+     * Organization-wide default player ('hosted'/'native') blocks fall back to when their own
+     * `player` field is left at 'inherit'.
+     */
+    #[ORM\Column(type: 'string', length: 16, nullable: true)]
+    private ?string $defaultPlayer = null;
+
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $updatedAt = null;
 
@@ -55,6 +62,16 @@ class VideoOptimizerSettings
     public function setDefaultLibraryId(?string $defaultLibraryId): void
     {
         $this->defaultLibraryId = $defaultLibraryId;
+    }
+
+    public function getDefaultPlayer(): ?string
+    {
+        return $this->defaultPlayer;
+    }
+
+    public function setDefaultPlayer(?string $defaultPlayer): void
+    {
+        $this->defaultPlayer = $defaultPlayer;
     }
 
     public function getUpdatedAt(): ?\DateTimeImmutable

@@ -42,6 +42,7 @@
         <service id="Scale\VideoOptimizerBundle\Twig\VideoOptimizerExtension">
             <argument>%scale_video_optimizer.embed_base_url%</argument>
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver"/>
+            <argument type="service" id="Scale\VideoOptimizerBundle\Service\SettingsManager"/>
             <tag name="twig.extension"/>
         </service>
 
