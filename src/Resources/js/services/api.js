@@ -89,6 +89,69 @@ export function uploadParts(file: File, parts: Array<Object>, partSize: number) 
     );
 }
 
+export function updateVideo(uuid: string, payload: Object) {
+    return normalize(Requester.patch(BASE + '/videos/' + encodeURIComponent(uuid), payload));
+}
+
+export function deleteVideo(uuid: string) {
+    return normalize(Requester.delete(BASE + '/videos/' + encodeURIComponent(uuid)));
+}
+
+export function getThumbnails(uuid: string) {
+    return normalize(Requester.get(BASE + '/videos/' + encodeURIComponent(uuid) + '/thumbnails'))
+        .then((response) => response.thumbnails || []);
+}
+
+export function selectThumbnail(uuid: string, index: number) {
+    return normalize(Requester.post(BASE + '/videos/' + encodeURIComponent(uuid) + '/thumbnail', {thumbnailIndex: index}));
+}
+
+export function initiatePosterUpload(uuid: string, payload: Object) {
+    return normalize(Requester.post(BASE + '/videos/' + encodeURIComponent(uuid) + '/poster/initiate', payload));
+}
+
+// Single presigned PUT straight to storage (poster is not multipart).
+export function uploadPoster(uploadUrl: string, file: File) {
+    return fetch(uploadUrl, {method: 'PUT', body: file, headers: {'Content-Type': file.type}}).then((response) => {
+        if (!response.ok) {
+            throw new Error('Poster upload failed (' + response.status + ')');
+        }
+    });
+}
+
+export function completePosterUpload(uuid: string, key: string) {
+    return normalize(Requester.post(BASE + '/videos/' + encodeURIComponent(uuid) + '/poster/complete', {key}));
+}
+
+export function selectPoster(uuid: string, payload: Object) {
+    return normalize(Requester.post(BASE + '/videos/' + encodeURIComponent(uuid) + '/poster/select', payload));
+}
+
+export function deletePoster(uuid: string) {
+    return normalize(Requester.delete(BASE + '/videos/' + encodeURIComponent(uuid) + '/poster'));
+}
+
+// Polls getVideo until predicate(video) is true (or it fails). Returns the final video.
+export function pollVideo(uuid: string, predicate: (video: Object) => boolean, options: Object = {}) {
+    const interval = options.interval || 3000;
+
+    return new Promise((resolve, reject) => {
+        const tick = () => {
+            getVideo(uuid).then((video) => {
+                if (options.onTick) {
+                    options.onTick(video);
+                }
+                if (predicate(video)) {
+                    resolve(video);
+                } else {
+                    setTimeout(tick, interval);
+                }
+            }).catch(reject);
+        };
+        tick();
+    });
+}
+
 // Picks a usable poster/thumbnail URL from a VideoOptimizer video payload.
 export function posterFor(video: Object): ?string {
     return video.poster_url || video.posterUrl || video.thumbnail_url || video.thumbnail || null;
