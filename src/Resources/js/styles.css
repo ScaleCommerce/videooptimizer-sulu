@@ -208,8 +208,8 @@
 
 .vo-thumbs {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
-    overflow-x: auto;
     padding-bottom: 6px;
 }
 .vo-thumb {
@@ -219,13 +219,15 @@
     overflow: hidden;
     cursor: pointer;
     padding: 0;
-    background: #f9fafb;
+    background: #0a1d31;
 }
 .vo-thumb:hover { border-color: #10b6b0; }
+/* Fixed height, auto width + contain so portrait AND landscape frames show fully (no crop). */
 .vo-thumb img {
-    width: 96px;
-    height: 54px;
-    object-fit: cover;
+    height: 90px;
+    width: auto;
+    max-width: 160px;
+    object-fit: contain;
     display: block;
 }
 
