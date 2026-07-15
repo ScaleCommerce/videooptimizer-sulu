@@ -55,7 +55,7 @@ class VideoOptimizerEmbedResolverTest extends TestCase
         $resolver = new VideoOptimizerEmbedResolver($client->reveal(), new ArrayAdapter());
 
         self::assertSame(
-            ['poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'srcset' => null],
+            ['poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'srcset' => null, 'theme' => null, 'sources' => []],
             $resolver->getSources('abc'),
             'A failed lookup must return the null fallback.',
         );
@@ -78,6 +78,10 @@ class VideoOptimizerEmbedResolverTest extends TestCase
                 'height' => 1080,
                 'duration' => 42,
                 'srcset' => null,
+                'theme' => null,
+                'sources' => [
+                    ['src' => 'https://cdn.example.net/encoded/abc/hls/master.m3u8', 'type' => 'application/vnd.apple.mpegurl', 'label' => ''],
+                ],
             ],
             $resolver->getSources('abc'),
             'After a failure the resolver must retry and return the real sources.',
@@ -179,6 +183,53 @@ class VideoOptimizerEmbedResolverTest extends TestCase
         self::assertSame(
             ['width' => 1080, 'height' => 1920, 'orientation' => 'portrait'],
             $resolver->getDimensions('vert'),
+        );
+    }
+
+    public function testExtractSourcesIncludesThemeAndSources(): void
+    {
+        $data = [
+            'poster' => 'https://cdn/p.jpg',
+            'resolution' => '1920x1080',
+            'theme' => ['accentColor' => '#f00', 'controls' => true],
+            'sources' => [
+                ['src' => 'https://cdn/master.m3u8', 'type' => 'application/vnd.apple.mpegurl', 'label' => 'auto'],
+                ['src' => 'https://cdn/720.mp4', 'type' => 'video/mp4', 'label' => '720p'],
+            ],
+        ];
+
+        $result = VideoOptimizerEmbedResolver::extractSources($data);
+
+        self::assertSame('#f00', $result['theme']['accentColor']);
+        self::assertCount(2, $result['sources']);
+        self::assertSame('https://cdn/master.m3u8', $result['hlsUrl']);
+    }
+
+    public function testGetPlayableReturnsPosterSourcesThemeAndDimensions(): void
+    {
+        $client = $this->prophesize(VideoOptimizerClient::class);
+        $client->getEmbed('abc')->willReturn([
+            'poster' => 'https://cdn.example.net/poster.jpg',
+            'resolution' => '1920x1080',
+            'theme' => ['accentColor' => '#f00'],
+            'sources' => [
+                ['src' => 'https://cdn.example.net/master.m3u8', 'type' => 'application/vnd.apple.mpegurl', 'label' => 'auto'],
+            ],
+        ]);
+
+        $resolver = new VideoOptimizerEmbedResolver($client->reveal(), new ArrayAdapter());
+
+        self::assertSame(
+            [
+                'poster' => 'https://cdn.example.net/poster.jpg',
+                'sources' => [
+                    ['src' => 'https://cdn.example.net/master.m3u8', 'type' => 'application/vnd.apple.mpegurl', 'label' => 'auto'],
+                ],
+                'theme' => ['accentColor' => '#f00'],
+                'width' => 1920,
+                'height' => 1080,
+            ],
+            $resolver->getPlayable('abc'),
         );
     }
 }

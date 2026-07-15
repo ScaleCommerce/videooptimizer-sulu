@@ -22,7 +22,7 @@ class VideoOptimizerEmbedResolver
     }
 
     /**
-     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string}
+     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, sources: array<int, array{src:string,type:string,label:string}>}
      */
     public function getSources(string $uuid): array
     {
@@ -34,7 +34,7 @@ class VideoOptimizerEmbedResolver
             });
         } catch (\Throwable) {
             // Do not cache failures: a transient API/network error must not hide the video for 24h.
-            return ['poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'srcset' => null];
+            return ['poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'srcset' => null, 'theme' => null, 'sources' => []];
         }
     }
 
@@ -67,22 +67,32 @@ class VideoOptimizerEmbedResolver
     /**
      * @param array<string, mixed> $data
      *
-     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string}
+     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, sources: array<int, array{src:string,type:string,label:string}>}
      */
     public static function extractSources(array $data): array
     {
         $poster = \is_string($data['poster'] ?? null) ? $data['poster'] : null;
 
         $hlsUrl = null;
+        $sources = [];
         foreach ((array) ($data['sources'] ?? []) as $source) {
-            if (!\is_array($source)) {
+            if (!\is_array($source) || !\is_string($source['src'] ?? null) || '' === $source['src']) {
                 continue;
             }
-            if ('application/vnd.apple.mpegurl' === ($source['type'] ?? '') && \is_string($source['src'] ?? null) && '' !== $source['src']) {
+
+            if (null === $hlsUrl && 'application/vnd.apple.mpegurl' === ($source['type'] ?? '')) {
                 $hlsUrl = $source['src'];
-                break;
             }
+
+            $sources[] = [
+                'src' => $source['src'],
+                'type' => \is_string($source['type'] ?? null) ? $source['type'] : '',
+                'label' => \is_string($source['label'] ?? null) ? $source['label'] : '',
+            ];
         }
+
+        $themeData = $data['theme'] ?? null;
+        $theme = \is_array($themeData) ? $themeData : null;
 
         [$width, $height] = self::parseResolution($data['resolution'] ?? null);
 
@@ -95,6 +105,27 @@ class VideoOptimizerEmbedResolver
             'height' => $height,
             'duration' => $duration,
             'srcset' => self::parsePosterSrcset($data['posterSrcset'] ?? null),
+            'theme' => $theme,
+            'sources' => $sources,
+        ];
+    }
+
+    /**
+     * Returns the essentials a client-side player needs to boot: poster, playable sources, theme
+     * overrides and native dimensions. Thin projection over the cached getSources() lookup.
+     *
+     * @return array{poster: ?string, sources: array<int, array{src:string,type:string,label:string}>, theme: ?array<int|string, mixed>, width: ?int, height: ?int}
+     */
+    public function getPlayable(string $uuid): array
+    {
+        $sources = $this->getSources($uuid);
+
+        return [
+            'poster' => $sources['poster'],
+            'sources' => $sources['sources'],
+            'theme' => $sources['theme'],
+            'width' => $sources['width'],
+            'height' => $sources['height'],
         ];
     }
 
