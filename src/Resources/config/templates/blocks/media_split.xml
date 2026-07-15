@@ -93,6 +93,17 @@
                 </param>
             </params>
         </property>
+        <property name="muted" type="single_select">
+            <meta><title lang="en">Muted</title><title lang="de">Stummgeschaltet</title></meta>
+            <params>
+                <param name="default_value" value="inherit"/>
+                <param name="values" type="collection">
+                    <param name="inherit"><meta><title lang="en">Theme default</title><title lang="de">Theme-Standard</title></meta></param>
+                    <param name="1"><meta><title lang="en">On</title><title lang="de">An</title></meta></param>
+                    <param name="0"><meta><title lang="en">Off</title><title lang="de">Aus</title></meta></param>
+                </param>
+            </params>
+        </property>
         <property name="priority" type="checkbox">
             <meta>
                 <title lang="en">Prioritize loading (above the fold)</title>

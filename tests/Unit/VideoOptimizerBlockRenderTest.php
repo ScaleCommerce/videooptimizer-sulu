@@ -50,6 +50,24 @@ class VideoOptimizerBlockRenderTest extends TestCase
         self::assertStringContainsString('<script type="application/ld+json">', $html);
     }
 
+    public function testHostedFacadeEmbedUrlIncludesExplicitMutedOption(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getDimensions('abc')->willReturn(['width' => 1920, 'height' => 1080, 'orientation' => 'landscape']);
+        $resolver->getPosterSrcset('abc')->willReturn(null);
+        $resolver->getSources('abc')->willReturn($this->sources());
+
+        $html = $this->render($resolver, 'vo_media_split.html.twig', [
+            'block' => [
+                'video' => ['uuid' => 'abc', 'posterUrl' => 'https://cdn.example.net/poster.jpg', 'title' => 'Clip'],
+                'headline' => 'Hello',
+                'muted' => '1',
+            ],
+        ]);
+
+        self::assertStringContainsString('data-vo-embed="https://videooptimizer.eu/embed/abc?autoplay=1&amp;muted=1"', $html);
+    }
+
     public function testPriorityBlockLoadsPosterEagerlyAndSkipsReveal(): void
     {
         $resolver = $this->resolver();
@@ -249,6 +267,34 @@ class VideoOptimizerBlockRenderTest extends TestCase
         // (Checked against the exact attribute renderNative() emits when eager — the facade's
         // click-to-play fallback URL legitimately contains "autoplay=1" as a query param.)
         self::assertStringContainsString('preload="none"', $html);
+        self::assertStringNotContainsString(' autoplay muted', $html);
+    }
+
+    public function testFacadeNativePlayerWithExplicitMutedRendersStandaloneMutedAttribute(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getDimensions('abc')->willReturn(['width' => 1920, 'height' => 1080, 'orientation' => 'landscape']);
+        $resolver->getPosterSrcset('abc')->willReturn(null);
+        $resolver->getSources('abc')->willReturn($this->sources());
+        $resolver->getPlayable('abc')->willReturn($this->playable());
+
+        $html = $this->render($resolver, 'vo_media_split.html.twig', [
+            'block' => [
+                'video' => ['uuid' => 'abc', 'posterUrl' => 'https://cdn.example.net/poster.jpg'],
+                'headline' => 'Hero',
+                'presentation' => 'facade',
+                'player' => 'native',
+                'muted' => '1',
+            ],
+        ]);
+
+        // Not autoplaying (deferred, preload="none"), but the editor explicitly muted the block:
+        // the <video> must still carry a standalone "muted" attribute so a later JS-triggered
+        // play() (reveal-on-click) is not blocked by the browser's autoplay policy.
+        // (Matched as "preload=\"none\" muted" — the exact sequence renderNative() emits — since
+        // the facade's click-to-play fallback URL legitimately contains "muted=1" as a query param.)
+        self::assertStringContainsString('<div class="vo-native-holder" hidden>', $html);
+        self::assertStringContainsString('preload="none" muted', $html);
         self::assertStringNotContainsString(' autoplay muted', $html);
     }
 

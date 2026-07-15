@@ -39,7 +39,7 @@ class VideoOptimizerExtension extends AbstractExtension
      *
      * @param array<string, mixed>|null $block
      *
-     * @return array{autoplay: string, controls: string, loop: string}
+     * @return array{autoplay: string, controls: string, loop: string, muted: string}
      */
     public function playerOptions(?array $block): array
     {
@@ -50,6 +50,7 @@ class VideoOptimizerExtension extends AbstractExtension
             'autoplay' => 'inherit' === $autoplay ? '1' : $autoplay,
             'controls' => (string) ($block['controls'] ?? 'inherit'),
             'loop' => (string) ($block['loop'] ?? 'inherit'),
+            'muted' => (string) ($block['muted'] ?? 'inherit'),
         ];
     }
 
@@ -242,8 +243,14 @@ class VideoOptimizerExtension extends AbstractExtension
         }
 
         $attrs = 'class="vo-native" playsinline controls preload="' . ($eager ? 'auto' : 'none') . '"';
-        if ($eager && isset($options['autoplay']) && '1' === (string) $options['autoplay']) {
+        $autoplayEager = $eager && isset($options['autoplay']) && '1' === (string) $options['autoplay'];
+        if ($autoplayEager) {
             $attrs .= ' autoplay muted';
+        } elseif (isset($options['muted']) && '1' === (string) $options['muted']) {
+            // Not autoplaying (yet), but the editor explicitly muted the block: a JS-triggered
+            // play() later (reveal-on-click, scroll-into-view autoload) needs the attribute
+            // already present, since browsers only allow unmuted autoplay after a user gesture.
+            $attrs .= ' muted';
         }
         if (isset($options['loop']) && '1' === (string) $options['loop']) {
             $attrs .= ' loop';

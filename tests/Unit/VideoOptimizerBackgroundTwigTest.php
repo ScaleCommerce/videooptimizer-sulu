@@ -140,9 +140,9 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
 
     public function testPlayerOptionsDefaultsAutoplayOnWhenInherited(): void
     {
-        // No fields set -> click-to-play surfaces default autoplay on, controls/loop inherit the theme.
+        // No fields set -> click-to-play surfaces default autoplay on, controls/loop/muted inherit the theme.
         self::assertSame(
-            ['autoplay' => '1', 'controls' => 'inherit', 'loop' => 'inherit'],
+            ['autoplay' => '1', 'controls' => 'inherit', 'loop' => 'inherit', 'muted' => 'inherit'],
             $this->extension()->playerOptions([]),
         );
     }
@@ -150,8 +150,8 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
     public function testPlayerOptionsHonorsExplicitValues(): void
     {
         self::assertSame(
-            ['autoplay' => '0', 'controls' => '1', 'loop' => '0'],
-            $this->extension()->playerOptions(['autoplay' => '0', 'controls' => '1', 'loop' => '0']),
+            ['autoplay' => '0', 'controls' => '1', 'loop' => '0', 'muted' => '1'],
+            $this->extension()->playerOptions(['autoplay' => '0', 'controls' => '1', 'loop' => '0', 'muted' => '1']),
         );
     }
 }
