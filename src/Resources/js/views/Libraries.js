@@ -121,6 +121,7 @@ class Libraries extends React.Component<*> {
 
     @action askDelete = (id) => {
         this.deleteId = id;
+        this.error = null;
     };
 
     @action cancelDelete = () => {
@@ -179,12 +180,14 @@ class Libraries extends React.Component<*> {
         const id = this.editId;
         this.saving = true;
         this.error = null;
-        updateLibrary(id, buildLibraryPayload({
-            name: this.editName,
-            description: this.editDescription,
-            resolutions: this.editResolutions,
-            codec: this.editCodec,
-        }))
+        // Unlike buildLibraryPayload (create), edit always sends every optional field —
+        // including empty strings — so clearing a field in the UI actually clears it server-side.
+        updateLibrary(id, {
+            name: this.editName.trim(),
+            description: this.editDescription.trim(),
+            resolutions: this.editResolutions.trim(),
+            codec: this.editCodec.trim(),
+        })
             .then(action(() => {
                 this.saving = false;
                 this.editId = null;
@@ -199,6 +202,7 @@ class Libraries extends React.Component<*> {
     @action askReprocess = (id) => {
         this.reprocessId = id;
         this.reprocessResult = null;
+        this.error = null;
     };
 
     @action cancelReprocess = () => {
