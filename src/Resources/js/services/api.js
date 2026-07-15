@@ -41,8 +41,16 @@ export function createLibrary(data: Object) {
     return normalize(Requester.post(BASE + '/libraries', data));
 }
 
+export function updateLibrary(id: string, data: Object) {
+    return normalize(Requester.patch(BASE + '/libraries/' + encodeURIComponent(id), data));
+}
+
 export function deleteLibrary(id: string) {
     return normalize(Requester.delete(BASE + '/libraries/' + encodeURIComponent(id)));
+}
+
+export function reprocessLibrary(id: string) {
+    return normalize(Requester.post(BASE + '/libraries/' + encodeURIComponent(id) + '/reprocess', {}));
 }
 
 export function getVideos(libraryId: string) {

@@ -51,6 +51,11 @@ class LibraryController
         return $this->guard(fn () => new JsonResponse(['_embedded' => ['videos' => $this->client->listVideos($id)]]));
     }
 
+    public function reprocess(string $id): JsonResponse
+    {
+        return $this->guard(fn () => new JsonResponse($this->client->reprocessLibrary($id)));
+    }
+
     /**
      * @return array<string, mixed>
      */

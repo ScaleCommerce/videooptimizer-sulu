@@ -41,6 +41,11 @@ scale_videooptimizer_library_videos:
     methods: [GET]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\LibraryController::videos'
 
+scale_videooptimizer_library_reprocess:
+    path: /videooptimizer/libraries/{id}/reprocess
+    methods: [POST]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\LibraryController::reprocess'
+
 scale_videooptimizer_video_upload_initiate:
     path: /videooptimizer/videos/upload/initiate
     methods: [POST]
