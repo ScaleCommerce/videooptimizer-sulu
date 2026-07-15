@@ -212,10 +212,17 @@ class VideoOptimizerExtension extends AbstractExtension
      * Renders a native HTML5 <video> built from the embed sources (HLS master via hls.js wired by
      * vo-blocks.js; MP4/WebM as native fallback). Theme accent is passed as a CSS var.
      *
+     * When $eager is false the <video> is rendered DEFERRED: preload="none" and no autoplay/muted,
+     * so it fetches nothing until something actually plays it — a facade/lightbox reveal-on-click
+     * (vo-blocks.js `revealNative()`/lightbox `open()`), or, for a 'direct' non-priority block,
+     * vo-blocks.js calling play() once it scrolls into view (see $autoload). $eager is reserved for
+     * the above-the-fold 'direct' + priority case, which keeps autoplay+muted (when requested) and
+     * preload="auto".
+     *
      * @param array<string, mixed>|null $video
      * @param array<string, string|int> $options
      */
-    public function renderNative(?array $video, array $options = [], bool $eager = false): string
+    public function renderNative(?array $video, array $options = [], bool $eager = false, bool $autoload = false): string
     {
         if (null === $video || empty($video['uuid'])) {
             return '';
@@ -234,12 +241,17 @@ class VideoOptimizerExtension extends AbstractExtension
             }
         }
 
-        $attrs = 'class="vo-native" playsinline controls preload="' . ($eager ? 'auto' : 'metadata') . '"';
-        if (isset($options['autoplay']) && '1' === (string) $options['autoplay']) {
+        $attrs = 'class="vo-native" playsinline controls preload="' . ($eager ? 'auto' : 'none') . '"';
+        if ($eager && isset($options['autoplay']) && '1' === (string) $options['autoplay']) {
             $attrs .= ' autoplay muted';
         }
         if (isset($options['loop']) && '1' === (string) $options['loop']) {
             $attrs .= ' loop';
+        }
+        if ($autoload) {
+            // Marks a deferred, already-visible <video> (direct + non-priority) so vo-blocks.js can
+            // find it and play() it once it scrolls into view.
+            $attrs .= ' data-vo-native-autoload';
         }
         if (null !== $poster) {
             $attrs .= ' poster="' . htmlspecialchars((string) $poster, \ENT_QUOTES) . '"';

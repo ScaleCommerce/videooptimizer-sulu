@@ -166,6 +166,37 @@ class VideoOptimizerBlockRenderTest extends TestCase
         self::assertStringContainsString('data-vo-player="native"', $html);
         self::assertStringNotContainsString('<iframe', $html);
         self::assertStringNotContainsString('data-vo-autoload', $html); // native is rendered directly, not JS-injected
+        // Non-priority 'direct' native must not eagerly fetch/autoplay: deferred until scrolled
+        // into view (vo-blocks.js initNativeAutoload), marked so it can find it.
+        self::assertStringContainsString('preload="none"', $html);
+        self::assertStringNotContainsString('autoplay', $html);
+        self::assertStringContainsString('data-vo-native-autoload', $html);
+    }
+
+    public function testPriorityDirectNativePlayerRendersEagerly(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getDimensions('abc')->willReturn(['width' => 1920, 'height' => 1080, 'orientation' => 'landscape']);
+        $resolver->getPosterSrcset('abc')->willReturn(null);
+        $resolver->getSources('abc')->willReturn($this->sources());
+        $resolver->getPlayable('abc')->willReturn($this->playable());
+
+        $html = $this->render($resolver, 'vo_media_split.html.twig', [
+            'block' => [
+                'video' => ['uuid' => 'abc', 'posterUrl' => 'https://cdn.example.net/poster.jpg'],
+                'headline' => 'Hero',
+                'presentation' => 'direct',
+                'player' => 'native',
+                'priority' => true,
+            ],
+        ]);
+
+        // Above-the-fold direct+native block loads eagerly and may autoplay (default player
+        // options autoplay to on for click-to-play/direct surfaces).
+        self::assertStringContainsString('<video', $html);
+        self::assertStringContainsString('preload="auto"', $html);
+        self::assertStringContainsString('autoplay muted', $html);
+        self::assertStringNotContainsString('data-vo-native-autoload', $html);
     }
 
     public function testDirectHostedPlayerStillRendersIframe(): void
@@ -214,6 +245,11 @@ class VideoOptimizerBlockRenderTest extends TestCase
         self::assertStringContainsString('<div class="vo-native-holder" hidden>', $html);
         self::assertStringContainsString('<video', $html);
         self::assertStringNotContainsString('<iframe', $html);
+        // Hidden native must not eagerly fetch/autoplay while off-screen behind display:none.
+        // (Checked against the exact attribute renderNative() emits when eager — the facade's
+        // click-to-play fallback URL legitimately contains "autoplay=1" as a query param.)
+        self::assertStringContainsString('preload="none"', $html);
+        self::assertStringNotContainsString(' autoplay muted', $html);
     }
 
     public function testLightboxNativePlayerRendersHiddenVideoAlongsidePoster(): void
@@ -237,6 +273,11 @@ class VideoOptimizerBlockRenderTest extends TestCase
         self::assertStringContainsString('<div class="vo-native-holder" hidden>', $html);
         self::assertStringContainsString('<video', $html);
         self::assertStringNotContainsString('<iframe', $html);
+        // Hidden native must not eagerly fetch/autoplay while off-screen behind display:none.
+        // (Checked against the exact attribute renderNative() emits when eager — the facade's
+        // click-to-play fallback URL legitimately contains "autoplay=1" as a query param.)
+        self::assertStringContainsString('preload="none"', $html);
+        self::assertStringNotContainsString(' autoplay muted', $html);
     }
 
     public function testVideoGridNativePlayerAppliesToAllItems(): void
@@ -277,17 +318,34 @@ class VideoOptimizerBlockRenderTest extends TestCase
         ]);
 
         $extension = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal());
-        $html = $extension->renderNative(['uuid' => 'abc'], ['autoplay' => '1', 'loop' => '1']);
+        // eager=true: the above-the-fold 'direct' + priority case, which keeps autoplay+muted.
+        $html = $extension->renderNative(['uuid' => 'abc'], ['autoplay' => '1', 'loop' => '1'], true);
 
         self::assertStringContainsString('<video', $html);
         self::assertStringContainsString('src="https://cdn.example.net/video.mp4"', $html);
         self::assertStringContainsString('type="video/mp4"', $html);
         self::assertStringContainsString('data-hls="https://cdn.example.net/video.m3u8"', $html);
         self::assertStringContainsString('poster="https://cdn.example.net/poster.jpg"', $html);
+        self::assertStringContainsString('preload="auto"', $html);
         self::assertStringContainsString('autoplay muted', $html);
         self::assertStringContainsString('loop', $html);
         self::assertStringContainsString('style="--vo-player-accent:#ff0033"', $html);
         self::assertStringNotContainsString('src="https://cdn.example.net/video.m3u8"', $html); // HLS master is not a <source>, only data-hls
+    }
+
+    public function testRenderNativeIsDeferredByDefault(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getPlayable('abc')->willReturn($this->playable());
+
+        $extension = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal());
+        // eager defaults to false: must not fetch/play until something explicitly plays it.
+        $html = $extension->renderNative(['uuid' => 'abc'], ['autoplay' => '1', 'loop' => '1']);
+
+        self::assertStringContainsString('preload="none"', $html);
+        self::assertStringNotContainsString('autoplay', $html);
+        self::assertStringNotContainsString('muted', $html);
+        self::assertStringContainsString('loop', $html); // loop is allowed regardless of eager
     }
 
     public function testRenderNativeReturnsEmptyStringWithoutVideo(): void

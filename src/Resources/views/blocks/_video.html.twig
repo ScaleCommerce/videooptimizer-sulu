@@ -17,8 +17,11 @@
     <noscript> fallback keeps it working (native lazy) without JS. The frame's fixed aspect-ratio
     reserves the space, so injecting the iframe never shifts layout. This scroll-triggered lazy
     injection only applies to the 'hosted' player, since it needs nothing but the embed URL; the
-    'native' player is rendered directly (preload="metadata" when non-priority is already cheap),
-    since vo-blocks.js has no source URLs to build a <video> from an autoload attribute.
+    'native' player is rendered directly, since vo-blocks.js has no source URLs to build a <video>
+    from an autoload attribute. It is only rendered eager (autoplay+muted, preload="auto") for
+    'direct' + priority; every other case — 'direct' non-priority, facade, lightbox — renders it
+    DEFERRED (preload="none", no autoplay) so it fetches nothing until played. 'direct' non-priority
+    additionally gets data-vo-native-autoload so vo-blocks.js plays it once it scrolls into view.
 
     For 'native' + facade/lightbox, the <video> is pre-rendered (hidden) next to the poster button
     so vo-blocks.js can reveal/play it in place on click, instead of injecting an iframe.
@@ -32,7 +35,7 @@
 <div class="vo-frame{% if dim.orientation %} vo-frame--{{ dim.orientation }}{% endif %}"{% if dim.width and dim.height %} style="aspect-ratio: {{ dim.width }} / {{ dim.height }}"{% endif %}{% if presentation == 'direct' and not isPriority and player == 'hosted' %} data-vo-autoload="{{ url }}"{% endif %} data-vo-player="{{ player }}">
     {% if presentation == 'direct' %}
         {% if player == 'native' %}
-            {{ video_optimizer_native(video, playerOpts, isPriority) }}
+            {{ video_optimizer_native(video, playerOpts, isPriority, not isPriority) }}
         {% elseif isPriority %}
             {{ video_optimizer_embed(video, label|default('Video'), playerOpts, true) }}
         {% else %}

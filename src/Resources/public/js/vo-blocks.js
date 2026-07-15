@@ -49,16 +49,56 @@
         });
     }
 
-    // Native <video> players rendered directly in 'direct' presentation are visible from the
-    // start, so wire their HLS master right away. Natives pre-rendered (hidden) for facade/lightbox
-    // reveal are wired lazily by revealNative() instead, to avoid fetching unseen videos.
+    // Native <video> players rendered eager (direct + priority, above the fold) are visible from
+    // the start, so wire their HLS master right away. Natives pre-rendered (hidden) for
+    // facade/lightbox reveal are wired lazily by revealNative() instead; natives marked
+    // data-vo-native-autoload (direct + non-priority) are deferred and wired by
+    // initNativeAutoload() once they scroll into view — to avoid fetching unseen videos.
     function initNativePlayers(baseUrl) {
         document.querySelectorAll('.vo-native[data-hls]').forEach(function (video) {
-            if (video.closest('.vo-native-holder')) {
+            if (video.closest('.vo-native-holder') || video.hasAttribute('data-vo-native-autoload')) {
                 return;
             }
             attachHls(video, baseUrl);
         });
+    }
+
+    // Direct + non-priority native <video>: deferred (preload="none", no autoplay) and visible
+    // from the start, so — mirroring initAutoload() for the hosted/iframe player — wire its HLS
+    // master and play() it once it scrolls into view. Respects prefers-reduced-motion exactly like
+    // initBackgroundVideos(): when set, the <video> is left unwired, showing only its poster and
+    // native controls, never auto-playing.
+    function initNativeAutoload(baseUrl) {
+        var videos = document.querySelectorAll('.vo-native[data-vo-native-autoload]');
+        if (!videos.length) {
+            return;
+        }
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            return;
+        }
+
+        var load = function (video) {
+            video.removeAttribute('data-vo-native-autoload');
+            attachHls(video, baseUrl);
+            video.play().catch(function () {}); // autoplay-policy rejections are expected/harmless
+        };
+
+        if (!('IntersectionObserver' in window)) {
+            videos.forEach(load);
+            return;
+        }
+
+        // rootMargin preloads slightly before the video is visible so playback is ready in time.
+        var io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    io.unobserve(entry.target);
+                    load(entry.target);
+                }
+            });
+        }, { rootMargin: '200px 0px' });
+
+        videos.forEach(function (video) { io.observe(video); });
     }
 
     // Reveals a hidden native <video> (facade/lightbox click), wiring HLS on first reveal only.
@@ -267,6 +307,7 @@
         var baseUrl = root ? root.getAttribute('data-vo-base') : '/bundles/scalevideooptimizer/';
         initBackgroundVideos(baseUrl);
         initNativePlayers(baseUrl);
+        initNativeAutoload(baseUrl);
         initLightbox(baseUrl);
         initFacades(baseUrl);
         initAutoload();
