@@ -144,6 +144,43 @@ class VideoOptimizerBlockRenderTest extends TestCase
         self::assertStringNotContainsString('data-vo-lightbox', $html);
     }
 
+    public function testRenderNativeBuildsVideoTagWithMp4SourceAndHlsAttribute(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getPlayable('abc')->willReturn([
+            'poster' => 'https://cdn.example.net/poster.jpg',
+            'sources' => [
+                ['src' => 'https://cdn.example.net/video.m3u8', 'type' => 'application/vnd.apple.mpegurl', 'label' => 'HLS'],
+                ['src' => 'https://cdn.example.net/video.mp4', 'type' => 'video/mp4', 'label' => 'MP4'],
+            ],
+            'theme' => ['accentColor' => '#ff0033'],
+            'width' => 1920,
+            'height' => 1080,
+        ]);
+
+        $extension = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal());
+        $html = $extension->renderNative(['uuid' => 'abc'], ['autoplay' => '1', 'loop' => '1']);
+
+        self::assertStringContainsString('<video', $html);
+        self::assertStringContainsString('src="https://cdn.example.net/video.mp4"', $html);
+        self::assertStringContainsString('type="video/mp4"', $html);
+        self::assertStringContainsString('data-hls="https://cdn.example.net/video.m3u8"', $html);
+        self::assertStringContainsString('poster="https://cdn.example.net/poster.jpg"', $html);
+        self::assertStringContainsString('autoplay muted', $html);
+        self::assertStringContainsString('loop', $html);
+        self::assertStringContainsString('style="--vo-player-accent:#ff0033"', $html);
+        self::assertStringNotContainsString('src="https://cdn.example.net/video.m3u8"', $html); // HLS master is not a <source>, only data-hls
+    }
+
+    public function testRenderNativeReturnsEmptyStringWithoutVideo(): void
+    {
+        $resolver = $this->resolver();
+        $extension = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal());
+
+        self::assertSame('', $extension->renderNative(null));
+        self::assertSame('', $extension->renderNative([]));
+    }
+
     /**
      * @param array<string, mixed> $context
      */

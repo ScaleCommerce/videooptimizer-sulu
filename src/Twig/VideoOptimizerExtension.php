@@ -29,6 +29,7 @@ class VideoOptimizerExtension extends AbstractExtension
             new TwigFunction('video_optimizer_schema', [$this, 'schema'], ['is_safe' => ['html']]),
             new TwigFunction('video_optimizer_player_options', [$this, 'playerOptions']),
             new TwigFunction('video_optimizer_srcset', [$this, 'srcset']),
+            new TwigFunction('video_optimizer_native', [$this, 'renderNative'], ['is_safe' => ['html']]),
         ];
     }
 
@@ -205,5 +206,56 @@ class VideoOptimizerExtension extends AbstractExtension
             null !== $poster ? \sprintf(' poster="%s"', htmlspecialchars((string) $poster, \ENT_QUOTES)) : '',
             null !== $hlsUrl ? \sprintf(' data-hls="%s"', htmlspecialchars($hlsUrl, \ENT_QUOTES)) : '',
         );
+    }
+
+    /**
+     * Renders a native HTML5 <video> built from the embed sources (HLS master via hls.js wired by
+     * vo-blocks.js; MP4/WebM as native fallback). Theme accent is passed as a CSS var.
+     *
+     * @param array<string, mixed>|null $video
+     * @param array<string, string|int> $options
+     */
+    public function renderNative(?array $video, array $options = [], bool $eager = false): string
+    {
+        if (null === $video || empty($video['uuid'])) {
+            return '';
+        }
+
+        $playable = $this->embedResolver->getPlayable((string) $video['uuid']);
+        $poster = $playable['poster'] ?? ($video['posterUrl'] ?? null);
+
+        $hls = null;
+        $fallback = [];
+        foreach ($playable['sources'] as $source) {
+            if ('application/vnd.apple.mpegurl' === $source['type']) {
+                $hls = $source['src'];
+            } else {
+                $fallback[] = $source;
+            }
+        }
+
+        $attrs = 'class="vo-native" playsinline controls preload="' . ($eager ? 'auto' : 'metadata') . '"';
+        if (isset($options['autoplay']) && '1' === (string) $options['autoplay']) {
+            $attrs .= ' autoplay muted';
+        }
+        if (isset($options['loop']) && '1' === (string) $options['loop']) {
+            $attrs .= ' loop';
+        }
+        if (null !== $poster) {
+            $attrs .= ' poster="' . htmlspecialchars((string) $poster, \ENT_QUOTES) . '"';
+        }
+        if (null !== $hls) {
+            $attrs .= ' data-hls="' . htmlspecialchars($hls, \ENT_QUOTES) . '"';
+        }
+
+        $sourceTags = '';
+        foreach ($fallback as $source) {
+            $sourceTags .= \sprintf('<source src="%s" type="%s">', htmlspecialchars($source['src'], \ENT_QUOTES), htmlspecialchars($source['type'], \ENT_QUOTES));
+        }
+
+        $accent = $playable['theme']['accentColor'] ?? null;
+        $style = \is_string($accent) && '' !== $accent ? ' style="--vo-player-accent:' . htmlspecialchars($accent, \ENT_QUOTES) . '"' : '';
+
+        return \sprintf('<video %s%s>%s</video>', $attrs, $style, $sourceTags);
     }
 }
