@@ -36,5 +36,22 @@
     "scale_videooptimizer.create": "Anlegen",
     "scale_videooptimizer.delete": "Löschen",
     "scale_videooptimizer.confirm_delete_library": "Diese Bibliothek und alle enthaltenen Videos unwiderruflich löschen?",
-    "scale_videooptimizer.videos_count": "{count} Video(s)"
+    "scale_videooptimizer.videos_count": "{count} Video(s)",
+    "scale_videooptimizer.videos_nav": "Videos",
+    "scale_videooptimizer.thumbnails": "Thumbnails",
+    "scale_videooptimizer.custom_poster": "Eigenes Poster",
+    "scale_videooptimizer.remove_custom_poster": "Eigenes Poster entfernen",
+    "scale_videooptimizer.poster_source_custom": "Eigenes Bild",
+    "scale_videooptimizer.poster_source_thumbnail": "Thumbnail",
+    "scale_videooptimizer.poster_failed": "Das Poster konnte nicht verarbeitet werden.",
+    "scale_videooptimizer.player_options": "Player-Optionen",
+    "scale_videooptimizer.option_responsive": "Responsiv",
+    "scale_videooptimizer.option_autoplay": "Automatische Wiedergabe",
+    "scale_videooptimizer.option_preload": "Vorladen",
+    "scale_videooptimizer.option_loop": "Endlosschleife",
+    "scale_videooptimizer.option_muted": "Stummgeschaltet",
+    "scale_videooptimizer.use_video": "Dieses Video verwenden",
+    "scale_videooptimizer.confirm_delete_video": "Dieses Video unwiderruflich löschen?",
+    "scale_videooptimizer.back": "Zurück",
+    "scale_videooptimizer.manage": "Verwalten"
 }

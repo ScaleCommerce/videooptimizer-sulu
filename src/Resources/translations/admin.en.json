@@ -36,5 +36,22 @@
     "scale_videooptimizer.create": "Create",
     "scale_videooptimizer.delete": "Delete",
     "scale_videooptimizer.confirm_delete_library": "Permanently delete this library and all its videos?",
-    "scale_videooptimizer.videos_count": "{count} video(s)"
+    "scale_videooptimizer.videos_count": "{count} video(s)",
+    "scale_videooptimizer.videos_nav": "Videos",
+    "scale_videooptimizer.thumbnails": "Thumbnails",
+    "scale_videooptimizer.custom_poster": "Custom poster",
+    "scale_videooptimizer.remove_custom_poster": "Remove custom poster",
+    "scale_videooptimizer.poster_source_custom": "Custom image",
+    "scale_videooptimizer.poster_source_thumbnail": "Thumbnail",
+    "scale_videooptimizer.poster_failed": "The poster could not be processed.",
+    "scale_videooptimizer.player_options": "Player options",
+    "scale_videooptimizer.option_responsive": "Responsive",
+    "scale_videooptimizer.option_autoplay": "Autoplay",
+    "scale_videooptimizer.option_preload": "Preload",
+    "scale_videooptimizer.option_loop": "Loop",
+    "scale_videooptimizer.option_muted": "Muted",
+    "scale_videooptimizer.use_video": "Use this video",
+    "scale_videooptimizer.confirm_delete_video": "Permanently delete this video?",
+    "scale_videooptimizer.back": "Back",
+    "scale_videooptimizer.manage": "Manage"
 }

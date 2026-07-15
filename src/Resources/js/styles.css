@@ -163,3 +163,103 @@
     white-space: nowrap;
     cursor: pointer;
 }
+
+/* Video detail / management (thumbnails, poster, options) */
+.vo-detail { padding: 4px; }
+.vo-detail__poster {
+    position: relative;
+    width: 100%;
+    max-width: 320px;
+    margin-bottom: 20px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #0a1d31;
+}
+.vo-detail__poster img {
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+    display: block;
+}
+.vo-detail__poster .vo-video-ph {
+    width: 100%;
+    aspect-ratio: 16/9;
+    display: grid;
+    place-items: center;
+    color: #8fe9e4;
+    font-size: 22px;
+}
+.vo-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(10, 29, 49, .75);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.vo-thumbs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+}
+.vo-thumb {
+    flex: none;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    padding: 0;
+    background: #f9fafb;
+}
+.vo-thumb:hover { border-color: #10b6b0; }
+.vo-thumb img {
+    width: 96px;
+    height: 54px;
+    object-fit: cover;
+    display: block;
+}
+
+.vo-option-checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+}
+
+/* Video grid item with inline manage button */
+.vo-video-item { position: relative; }
+.vo-video-manage {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(10, 29, 49, .75);
+    color: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    display: grid;
+    place-items: center;
+}
+.vo-video-manage:hover { background: rgba(10, 29, 49, .9); }
+
+/* Manage view (back button + video detail) inside the selection overlay */
+.vo-manage { padding: 4px; }
+.vo-back {
+    display: inline-block;
+    background: none;
+    border: none;
+    color: #0a8f8a;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 8px 4px;
+    margin-bottom: 12px;
+}
+.vo-back:hover { text-decoration: underline; }
