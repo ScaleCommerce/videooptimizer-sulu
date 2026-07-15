@@ -4,9 +4,8 @@ import {observer} from 'mobx-react';
 import {observable, action} from 'mobx';
 import {Overlay, Loader, Button} from 'sulu-admin-bundle/components';
 import {translate} from 'sulu-admin-bundle/utils';
-import {getLibraries, getVideos, getVideo, initiateUpload, uploadParts, completeUpload, posterFor} from '../services/api';
-
-const POLL_INTERVAL = 3000;
+import {getLibraries, getVideos, initiateUpload, uploadParts, completeUpload, pollVideo, posterFor} from '../services/api';
+import VideoDetail from '../components/VideoDetail';
 
 @observer
 class VideoSelectionOverlay extends React.Component<*> {
@@ -21,8 +20,7 @@ class VideoSelectionOverlay extends React.Component<*> {
     @observable error = null;
     @observable search = '';
     @observable readyOnly = false;
-
-    pollTimeout = null;
+    @observable managing = null;
 
     componentDidMount() {
         this.loadLibraries();
@@ -31,17 +29,6 @@ class VideoSelectionOverlay extends React.Component<*> {
     componentDidUpdate(prevProps: *) {
         if (this.props.open && !prevProps.open) {
             this.loadLibraries();
-        }
-    }
-
-    componentWillUnmount() {
-        this.clearPoll();
-    }
-
-    clearPoll() {
-        if (this.pollTimeout) {
-            clearTimeout(this.pollTimeout);
-            this.pollTimeout = null;
         }
     }
 
@@ -128,6 +115,25 @@ class VideoSelectionOverlay extends React.Component<*> {
         this.props.onClose();
     };
 
+    @action manage = (video) => {
+        this.managing = video;
+    };
+
+    @action closeManage = () => {
+        this.managing = null;
+    };
+
+    @action updateManaged = (video) => {
+        this.managing = video;
+        this.videos = this.videos.map((v) => (v.uuid === video.uuid ? video : v));
+    };
+
+    @action afterDelete = () => {
+        const id = this.managing.uuid;
+        this.managing = null;
+        this.videos = this.videos.filter((v) => v.uuid !== id);
+    };
+
     handleFileChange = (event: SyntheticInputEvent<HTMLInputElement>) => {
         const file = event.target.files && event.target.files[0];
         if (!file || !this.libraryId) {
@@ -159,32 +165,17 @@ class VideoSelectionOverlay extends React.Component<*> {
                 }))
                 .then(action(() => {
                     this.uploadStatus = translate('scale_videooptimizer.processing');
-                    this.pollUntilReady(upload.uuid);
-                })))
-            .catch(action((e) => {
-                this.uploading = false;
-                this.uploadStatus = null;
-                this.error = e.message || String(e);
-            }));
-    };
-
-    pollUntilReady = (uuid) => {
-        getVideo(uuid)
-            .then(action((video) => {
-                if (video.status === 'ready') {
+                }))
+                .then(() => pollVideo(upload.uuid, (v) => v.status === 'ready' || v.status === 'failed'))
+                .then(action((video) => {
                     this.uploading = false;
                     this.uploadStatus = null;
+                    if (video.status === 'failed') {
+                        this.error = translate('scale_videooptimizer.test_failed', {message: 'processing failed'});
+                        return;
+                    }
                     this.chooseVideo(video);
-                    return;
-                }
-                if (video.status === 'failed') {
-                    this.uploading = false;
-                    this.uploadStatus = null;
-                    this.error = translate('scale_videooptimizer.test_failed', {message: 'processing failed'});
-                    return;
-                }
-                this.pollTimeout = setTimeout(() => this.pollUntilReady(uuid), POLL_INTERVAL);
-            }))
+                })))
             .catch(action((e) => {
                 this.uploading = false;
                 this.uploadStatus = null;
@@ -204,6 +195,22 @@ class VideoSelectionOverlay extends React.Component<*> {
     }
 
     renderSelectTab() {
+        if (this.managing) {
+            return (
+                <div className="vo-manage">
+                    <button type="button" className="vo-back" onClick={this.closeManage}>
+                        {translate('scale_videooptimizer.back')}
+                    </button>
+                    <VideoDetail
+                        video={this.managing}
+                        onChanged={this.updateManaged}
+                        onDeleted={this.afterDelete}
+                        onUse={this.chooseVideo}
+                    />
+                </div>
+            );
+        }
+
         if (this.loadingVideos) {
             return <Loader />;
         }
@@ -236,21 +243,33 @@ class VideoSelectionOverlay extends React.Component<*> {
                             const ready = video.status === 'ready';
 
                             return (
-                                <button
-                                    key={video.uuid}
-                                    type="button"
-                                    className="vo-video"
-                                    disabled={!ready}
-                                    onClick={ready ? () => this.chooseVideo(video) : undefined}
-                                >
-                                    {poster
-                                        ? <img src={poster} alt={video.title || ''} />
-                                        : <span className="vo-video-ph">▶</span>}
-                                    <span className="vo-video-title">{video.title || video.uuid}</span>
-                                    <span className={'vo-video-status vo-video-status--' + (ready ? 'ready' : 'processing')}>
-                                        {ready ? '' : translate('scale_videooptimizer.processing')}
-                                    </span>
-                                </button>
+                                <div key={video.uuid} className="vo-video-item">
+                                    <button
+                                        type="button"
+                                        className="vo-video"
+                                        disabled={!ready}
+                                        onClick={ready ? () => this.chooseVideo(video) : undefined}
+                                    >
+                                        {poster
+                                            ? <img src={poster} alt={video.title || ''} />
+                                            : <span className="vo-video-ph">▶</span>}
+                                        <span className="vo-video-title">{video.title || video.uuid}</span>
+                                        <span className={'vo-video-status vo-video-status--' + (ready ? 'ready' : 'processing')}>
+                                            {ready ? '' : translate('scale_videooptimizer.processing')}
+                                        </span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="vo-video-manage"
+                                        title={translate('scale_videooptimizer.manage')}
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            this.manage(video);
+                                        }}
+                                    >
+                                        ⚙
+                                    </button>
+                                </div>
                             );
                         })}
                     </div>
