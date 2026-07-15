@@ -66,6 +66,16 @@ class VideoOptimizerClient
     }
 
     /**
+     * Re-queues encoding for every video in a library (selfhosted only). Returns {queued}.
+     *
+     * @return array<string, mixed>
+     */
+    public function reprocessLibrary(string $id): array
+    {
+        return $this->requestData('POST', '/libraries/' . rawurlencode($id) . '/reprocess');
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function listVideos(string $libraryId): array

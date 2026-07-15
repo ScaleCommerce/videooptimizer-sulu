@@ -122,6 +122,22 @@ class VideoOptimizerClientTest extends TestCase
         self::assertSame('processing', $result['status']);
     }
 
+    public function testReprocessLibraryPostsAndReturnsQueued(): void
+    {
+        $captured = null;
+        $httpClient = new MockHttpClient(function (string $method, string $url) use (&$captured): MockResponse {
+            $captured = ['method' => $method, 'url' => $url];
+
+            return new MockResponse(json_encode(['data' => ['queued' => 7]], JSON_THROW_ON_ERROR));
+        });
+
+        $result = $this->client($httpClient)->reprocessLibrary('lib-1');
+
+        self::assertSame('POST', $captured['method']);
+        self::assertStringEndsWith('/libraries/lib-1/reprocess', $captured['url']);
+        self::assertSame(7, $result['queued']);
+    }
+
     private function client(MockHttpClient $httpClient): VideoOptimizerClient
     {
         $settings = $this->prophesize(SettingsManager::class);
