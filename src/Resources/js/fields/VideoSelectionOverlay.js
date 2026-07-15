@@ -28,6 +28,7 @@ class VideoSelectionOverlay extends React.Component<*> {
 
     componentDidUpdate(prevProps: *) {
         if (this.props.open && !prevProps.open) {
+            this.closeManage();
             this.loadLibraries();
         }
     }
@@ -63,6 +64,7 @@ class VideoSelectionOverlay extends React.Component<*> {
         // Reset the filter so a switched/reopened library starts from a clean list.
         this.search = '';
         this.readyOnly = false;
+        this.managing = null;
         if (!id) {
             return;
         }
