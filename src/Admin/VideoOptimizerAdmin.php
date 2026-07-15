@@ -14,6 +14,7 @@ class VideoOptimizerAdmin extends Admin
 {
     public const SETTINGS_VIEW = 'scale_videooptimizer.settings';
     public const LIBRARIES_VIEW = 'scale_videooptimizer.libraries';
+    public const VIDEOS_VIEW = 'scale_videooptimizer.videos';
 
     public function __construct(
         private ViewBuilderFactoryInterface $viewBuilderFactory,
@@ -37,6 +38,11 @@ class VideoOptimizerAdmin extends Admin
         $libraries->setView(self::LIBRARIES_VIEW);
         $root->addChild($libraries);
 
+        $videos = new NavigationItem('scale_videooptimizer.videos_nav');
+        $videos->setPosition(30);
+        $videos->setView(self::VIDEOS_VIEW);
+        $root->addChild($videos);
+
         $navigationItemCollection->get(Admin::SETTINGS_NAVIGATION_ITEM)->addChild($root);
     }
 
@@ -51,6 +57,11 @@ class VideoOptimizerAdmin extends Admin
         $viewCollection->add(
             $this->viewBuilderFactory
                 ->createViewBuilder(self::LIBRARIES_VIEW, '/videooptimizer/libraries', 'scale_videooptimizer_libraries')
+        );
+
+        $viewCollection->add(
+            $this->viewBuilderFactory
+                ->createViewBuilder(self::VIDEOS_VIEW, '/videooptimizer/videos', 'scale_videooptimizer_videos')
         );
     }
 }
