@@ -89,6 +89,11 @@ export function uploadParts(file: File, parts: Array<Object>, partSize: number) 
     );
 }
 
+// Ingests a video from a remote URL — the server downloads it, no browser upload needed.
+export function ingestVideoUrl(payload: Object) {
+    return normalize(Requester.post(BASE + '/videos/ingest', payload));
+}
+
 export function updateVideo(uuid: string, payload: Object) {
     return normalize(Requester.patch(BASE + '/videos/' + encodeURIComponent(uuid), payload));
 }

@@ -44,6 +44,16 @@ class VideoController
         return $this->guard(fn () => new JsonResponse($this->client->completeUpload($payload), 201));
     }
 
+    public function ingestUrl(Request $request): JsonResponse
+    {
+        $payload = $this->decodeJson($request);
+        if ('' === (string) ($payload['library_id'] ?? '') || '' === (string) ($payload['source_url'] ?? '')) {
+            return new JsonResponse(['message' => 'Missing library_id or source_url.'], 400);
+        }
+
+        return $this->guard(fn () => new JsonResponse($this->client->ingestVideoUrl($payload)));
+    }
+
     public function patch(Request $request, string $uuid): JsonResponse
     {
         return $this->guard(fn () => new JsonResponse($this->client->updateVideo($uuid, $this->decodeJson($request))));

@@ -51,6 +51,11 @@ scale_videooptimizer_video_upload_complete:
     methods: [POST]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::completeUpload'
 
+scale_videooptimizer_video_ingest:
+    path: /videooptimizer/videos/ingest
+    methods: [POST]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::ingestUrl'
+
 scale_videooptimizer_video_get:
     path: /videooptimizer/videos/{uuid}
     methods: [GET]

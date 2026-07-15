@@ -4,7 +4,7 @@ import {observer} from 'mobx-react';
 import {observable, action} from 'mobx';
 import {Overlay, Loader, Button} from 'sulu-admin-bundle/components';
 import {translate} from 'sulu-admin-bundle/utils';
-import {getLibraries, getVideos, initiateUpload, uploadParts, completeUpload, pollVideo, posterFor} from '../services/api';
+import {getLibraries, getVideos, initiateUpload, uploadParts, completeUpload, ingestVideoUrl, pollVideo, posterFor} from '../services/api';
 import VideoDetail from '../components/VideoDetail';
 
 @observer
@@ -17,6 +17,10 @@ class VideoSelectionOverlay extends React.Component<*> {
     @observable videos = [];
     @observable uploading = false;
     @observable uploadStatus = null;
+    @observable ingestSourceUrl = '';
+    @observable ingestTitle = '';
+    @observable ingesting = false;
+    @observable ingestStatus = null;
     @observable error = null;
     @observable search = '';
     @observable readyOnly = false;
@@ -185,6 +189,46 @@ class VideoSelectionOverlay extends React.Component<*> {
             }));
     };
 
+    @action handleIngestUrlChange = (event: SyntheticInputEvent<HTMLInputElement>) => {
+        this.ingestSourceUrl = event.target.value;
+    };
+
+    @action handleIngestTitleChange = (event: SyntheticInputEvent<HTMLInputElement>) => {
+        this.ingestTitle = event.target.value;
+    };
+
+    @action startIngest = () => {
+        if (!this.ingestSourceUrl.trim() || !this.libraryId) {
+            return;
+        }
+        this.ingesting = true;
+        this.error = null;
+        this.ingestStatus = translate('scale_videooptimizer.processing');
+
+        ingestVideoUrl({
+            library_id: this.libraryId,
+            source_url: this.ingestSourceUrl.trim(),
+            title: this.ingestTitle.trim() || undefined,
+        })
+            .then((result) => pollVideo(result.uuid, (v) => v.status === 'ready' || v.status === 'failed')
+                .then(action((video) => {
+                    this.ingesting = false;
+                    this.ingestStatus = null;
+                    if (video.status === 'failed') {
+                        this.error = translate('scale_videooptimizer.test_failed', {message: 'processing failed'});
+                        return;
+                    }
+                    this.ingestSourceUrl = '';
+                    this.ingestTitle = '';
+                    this.chooseVideo(video);
+                })))
+            .catch(action((e) => {
+                this.ingesting = false;
+                this.ingestStatus = null;
+                this.error = e.message || String(e);
+            }));
+    };
+
     renderLibrarySelect() {
         return (
             <select className="vo-select" value={this.libraryId} onChange={this.handleLibraryChange}>
@@ -286,6 +330,35 @@ class VideoSelectionOverlay extends React.Component<*> {
                 <p className="vo-hint">{translate('scale_videooptimizer.upload_hint')}</p>
                 <input type="file" accept="video/*" disabled={this.uploading || !this.libraryId} onChange={this.handleFileChange} />
                 {this.uploadStatus && <div className="vo-upload-status">{this.uploadStatus}</div>}
+
+                <label className="vo-label">{translate('scale_videooptimizer.ingest_from_url')}</label>
+                <input
+                    type="url"
+                    className="vo-input"
+                    placeholder={translate('scale_videooptimizer.source_url')}
+                    value={this.ingestSourceUrl}
+                    disabled={this.ingesting || !this.libraryId}
+                    onChange={this.handleIngestUrlChange}
+                />
+                <input
+                    type="text"
+                    className="vo-input"
+                    placeholder={translate('sulu_admin.title')}
+                    value={this.ingestTitle}
+                    disabled={this.ingesting || !this.libraryId}
+                    onChange={this.handleIngestTitleChange}
+                />
+                <div className="vo-actions">
+                    <Button
+                        skin="secondary"
+                        onClick={this.startIngest}
+                        loading={this.ingesting}
+                        disabled={!this.ingestSourceUrl.trim() || !this.libraryId}
+                    >
+                        {translate('scale_videooptimizer.ingest')}
+                    </Button>
+                </div>
+                {this.ingestStatus && <div className="vo-upload-status">{this.ingestStatus}</div>}
             </div>
         );
     }
