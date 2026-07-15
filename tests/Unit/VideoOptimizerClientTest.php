@@ -105,6 +105,23 @@ class VideoOptimizerClientTest extends TestCase
         self::assertSame([['index' => 0, 'url' => 'https://cdn/0.jpg']], $result['thumbnails']);
     }
 
+    public function testIngestVideoUrlPostsJson(): void
+    {
+        $captured = null;
+        $httpClient = new MockHttpClient(function (string $method, string $url, array $options) use (&$captured): MockResponse {
+            $captured = ['method' => $method, 'url' => $url, 'body' => $options['body'] ?? null];
+
+            return new MockResponse(json_encode(['data' => ['uuid' => 'v9', 'status' => 'processing']], JSON_THROW_ON_ERROR));
+        });
+
+        $result = $this->client($httpClient)->ingestVideoUrl(['library_id' => 'lib', 'source_url' => 'https://x/v.mp4', 'title' => 'T']);
+
+        self::assertSame('POST', $captured['method']);
+        self::assertStringEndsWith('/videos', $captured['url']);
+        self::assertStringContainsString('"source_url":"https:\/\/x\/v.mp4"', (string) $captured['body']);
+        self::assertSame('processing', $result['status']);
+    }
+
     private function client(MockHttpClient $httpClient): VideoOptimizerClient
     {
         $settings = $this->prophesize(SettingsManager::class);

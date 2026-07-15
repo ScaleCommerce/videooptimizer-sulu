@@ -183,6 +183,18 @@ class VideoOptimizerClient
     }
 
     /**
+     * Remote-URL ingest: creates a video from a public https URL (selfhosted libraries only).
+     *
+     * @param array<string, mixed> $payload expects library_id, source_url, optional title
+     *
+     * @return array<string, mixed> {uuid, status}
+     */
+    public function ingestVideoUrl(array $payload): array
+    {
+        return $this->requestData('POST', '/videos', ['json' => $payload]);
+    }
+
+    /**
      * Fetches every page of a cursor-paginated list endpoint and returns the merged items.
      *
      * @return array<int, array<string, mixed>>
