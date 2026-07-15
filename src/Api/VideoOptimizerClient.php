@@ -119,6 +119,70 @@ class VideoOptimizerClient
     }
 
     /**
+     * @param array<string, mixed> $payload expects title and/or option{responsive,autoplay,preload,loop,muted}
+     *
+     * @return array<string, mixed>
+     */
+    public function updateVideo(string $uuid, array $payload): array
+    {
+        return $this->requestData('PATCH', '/videos/' . rawurlencode($uuid), ['json' => $payload]);
+    }
+
+    public function deleteVideo(string $uuid): void
+    {
+        $this->request('DELETE', '/videos/' . rawurlencode($uuid));
+    }
+
+    /**
+     * @return array<string, mixed> the data object, shaped ['thumbnails' => [{index, url}, ...]]
+     */
+    public function listThumbnails(string $uuid): array
+    {
+        return $this->requestData('GET', '/videos/' . rawurlencode($uuid) . '/thumbnails');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function selectThumbnail(string $uuid, int $index): array
+    {
+        return $this->requestData('POST', '/videos/' . rawurlencode($uuid) . '/thumbnail', ['json' => ['thumbnailIndex' => $index]]);
+    }
+
+    /**
+     * @param array<string, mixed> $payload expects contentType (image/jpeg|png|webp) and fileSize
+     *
+     * @return array<string, mixed> {key, uploadUrl}
+     */
+    public function initiatePosterUpload(string $uuid, array $payload): array
+    {
+        return $this->requestData('POST', '/videos/' . rawurlencode($uuid) . '/poster/initiate', ['json' => $payload]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function completePosterUpload(string $uuid, string $key): array
+    {
+        return $this->requestData('POST', '/videos/' . rawurlencode($uuid) . '/poster/complete', ['json' => ['key' => $key]]);
+    }
+
+    /**
+     * @param array<string, mixed> $payload expects source (custom|thumbnail) and optional thumbnailIndex
+     *
+     * @return array<string, mixed>
+     */
+    public function selectPoster(string $uuid, array $payload): array
+    {
+        return $this->requestData('POST', '/videos/' . rawurlencode($uuid) . '/poster/select', ['json' => $payload]);
+    }
+
+    public function deletePoster(string $uuid): void
+    {
+        $this->request('DELETE', '/videos/' . rawurlencode($uuid) . '/poster');
+    }
+
+    /**
      * Fetches every page of a cursor-paginated list endpoint and returns the merged items.
      *
      * @return array<int, array<string, mixed>>

@@ -60,6 +60,51 @@ class VideoOptimizerClientTest extends TestCase
         self::assertSame(1, $calls, 'Without pagination metadata the client must not request further pages.');
     }
 
+    public function testUpdateVideoSendsPatchWithPayload(): void
+    {
+        $captured = null;
+        $httpClient = new MockHttpClient(function (string $method, string $url, array $options) use (&$captured): MockResponse {
+            $captured = ['method' => $method, 'url' => $url, 'body' => $options['body'] ?? null];
+
+            return new MockResponse(json_encode(['data' => ['uuid' => 'v1', 'title' => 'New']], JSON_THROW_ON_ERROR));
+        });
+
+        $result = $this->client($httpClient)->updateVideo('v1', ['title' => 'New', 'option' => ['loop' => true]]);
+
+        self::assertSame('PATCH', $captured['method']);
+        self::assertStringEndsWith('/videos/v1', $captured['url']);
+        self::assertStringContainsString('"title":"New"', (string) $captured['body']);
+        self::assertSame(['uuid' => 'v1', 'title' => 'New'], $result);
+    }
+
+    public function testSelectThumbnailPostsIndex(): void
+    {
+        $captured = null;
+        $httpClient = new MockHttpClient(function (string $method, string $url, array $options) use (&$captured): MockResponse {
+            $captured = ['method' => $method, 'url' => $url, 'body' => $options['body'] ?? null];
+
+            return new MockResponse(json_encode(['data' => ['success' => true, 'selected_thumbnail' => '3']], JSON_THROW_ON_ERROR));
+        });
+
+        $result = $this->client($httpClient)->selectThumbnail('v1', 3);
+
+        self::assertSame('POST', $captured['method']);
+        self::assertStringEndsWith('/videos/v1/thumbnail', $captured['url']);
+        self::assertStringContainsString('"thumbnailIndex":3', (string) $captured['body']);
+        self::assertTrue($result['success']);
+    }
+
+    public function testListThumbnailsReturnsDataObject(): void
+    {
+        $httpClient = new MockHttpClient(fn () => new MockResponse(json_encode([
+            'data' => ['thumbnails' => [['index' => 0, 'url' => 'https://cdn/0.jpg']]],
+        ], JSON_THROW_ON_ERROR)));
+
+        $result = $this->client($httpClient)->listThumbnails('v1');
+
+        self::assertSame([['index' => 0, 'url' => 'https://cdn/0.jpg']], $result['thumbnails']);
+    }
+
     private function client(MockHttpClient $httpClient): VideoOptimizerClient
     {
         $settings = $this->prophesize(SettingsManager::class);
