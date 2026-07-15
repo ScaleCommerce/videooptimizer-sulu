@@ -2,7 +2,7 @@
 import React from 'react';
 import {observer} from 'mobx-react';
 import {observable, action} from 'mobx';
-import {Button, Loader, Dialog} from 'sulu-admin-bundle/components';
+import {Button, Dialog} from 'sulu-admin-bundle/components';
 import {translate} from 'sulu-admin-bundle/utils';
 import {
     updateVideo, deleteVideo, getThumbnails, selectThumbnail,
@@ -21,14 +21,27 @@ class VideoDetail extends React.Component<*> {
     @observable error = null;
     @observable confirmDelete = false;
 
+    // Plain (non-observable) flag — guards async continuations after unmount, no @action needed.
+    _unmounted = false;
+
     componentDidMount() {
         this.loadThumbnails();
     }
 
+    componentWillUnmount() {
+        this._unmounted = true;
+    }
+
     loadThumbnails() {
         getThumbnails(this.video.uuid)
-            .then(action((thumbnails) => { this.thumbnails = thumbnails; }))
-            .catch(action((e) => { this.error = e.message || String(e); }));
+            .then(action((thumbnails) => {
+                if (this._unmounted) { return; }
+                this.thumbnails = thumbnails;
+            }))
+            .catch(action((e) => {
+                if (this._unmounted) { return; }
+                this.error = e.message || String(e);
+            }));
     }
 
     @action refresh = (video) => {
@@ -46,8 +59,16 @@ class VideoDetail extends React.Component<*> {
         this.busy = 'save';
         this.error = null;
         updateVideo(this.video.uuid, {title: this.title, option: this.options})
-            .then(action((video) => { this.busy = null; this.refresh(video); }))
-            .catch(action((e) => { this.busy = null; this.error = e.message || String(e); }));
+            .then(action((video) => {
+                if (this._unmounted) { return; }
+                this.busy = null;
+                this.refresh(video);
+            }))
+            .catch(action((e) => {
+                if (this._unmounted) { return; }
+                this.busy = null;
+                this.error = e.message || String(e);
+            }));
     };
 
     @action pickThumbnail = (index) => {
@@ -55,8 +76,16 @@ class VideoDetail extends React.Component<*> {
         this.error = null;
         selectThumbnail(this.video.uuid, index)
             .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) === 'thumbnail'))
-            .then(action((video) => { this.busy = null; this.refresh(video); }))
-            .catch(action((e) => { this.busy = null; this.error = e.message || String(e); }));
+            .then(action((video) => {
+                if (this._unmounted) { return; }
+                this.busy = null;
+                this.refresh(video);
+            }))
+            .catch(action((e) => {
+                if (this._unmounted) { return; }
+                this.busy = null;
+                this.error = e.message || String(e);
+            }));
     };
 
     @action handlePosterFile = (event) => {
@@ -69,7 +98,10 @@ class VideoDetail extends React.Component<*> {
         this.status = translate('scale_videooptimizer.uploading');
         initiatePosterUpload(this.video.uuid, {contentType: file.type, fileSize: file.size})
             .then((data) => uploadPoster(data.uploadUrl, file).then(() => completePosterUpload(this.video.uuid, data.key)))
-            .then(action(() => { this.status = translate('scale_videooptimizer.processing'); }))
+            .then(action(() => {
+                if (this._unmounted) { return; }
+                this.status = translate('scale_videooptimizer.processing');
+            }))
             .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.custom_status) === 'ready'
                 || (v.poster && v.poster.custom_status) === 'failed'))
             .then((video) => {
@@ -79,8 +111,18 @@ class VideoDetail extends React.Component<*> {
                 return selectPoster(this.video.uuid, {source: 'custom'});
             })
             .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) === 'custom'))
-            .then(action((video) => { this.busy = null; this.status = null; this.refresh(video); }))
-            .catch(action((e) => { this.busy = null; this.status = null; this.error = e.message || String(e); }));
+            .then(action((video) => {
+                if (this._unmounted) { return; }
+                this.busy = null;
+                this.status = null;
+                this.refresh(video);
+            }))
+            .catch(action((e) => {
+                if (this._unmounted) { return; }
+                this.busy = null;
+                this.status = null;
+                this.error = e.message || String(e);
+            }));
     };
 
     @action removeCustomPoster = () => {
@@ -88,8 +130,16 @@ class VideoDetail extends React.Component<*> {
         this.error = null;
         deletePoster(this.video.uuid)
             .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) !== 'custom'))
-            .then(action((video) => { this.busy = null; this.refresh(video); }))
-            .catch(action((e) => { this.busy = null; this.error = e.message || String(e); }));
+            .then(action((video) => {
+                if (this._unmounted) { return; }
+                this.busy = null;
+                this.refresh(video);
+            }))
+            .catch(action((e) => {
+                if (this._unmounted) { return; }
+                this.busy = null;
+                this.error = e.message || String(e);
+            }));
     };
 
     @action askDelete = () => { this.confirmDelete = true; };
@@ -98,8 +148,18 @@ class VideoDetail extends React.Component<*> {
     @action doDelete = () => {
         this.busy = 'delete';
         deleteVideo(this.video.uuid)
-            .then(action(() => { this.busy = null; this.confirmDelete = false; if (this.props.onDeleted) { this.props.onDeleted(); } }))
-            .catch(action((e) => { this.busy = null; this.confirmDelete = false; this.error = e.message || String(e); }));
+            .then(action(() => {
+                if (this._unmounted) { return; }
+                this.busy = null;
+                this.confirmDelete = false;
+                if (this.props.onDeleted) { this.props.onDeleted(); }
+            }))
+            .catch(action((e) => {
+                if (this._unmounted) { return; }
+                this.busy = null;
+                this.confirmDelete = false;
+                this.error = e.message || String(e);
+            }));
     };
 
     render() {

@@ -54,12 +54,21 @@
     // facade/lightbox reveal are wired lazily by revealNative() instead; natives marked
     // data-vo-native-autoload (direct + non-priority) are deferred and wired by
     // initNativeAutoload() once they scroll into view — to avoid fetching unseen videos.
+    // Respects prefers-reduced-motion exactly like initBackgroundVideos()/initNativeAutoload():
+    // when set, autoplay is stripped and playback stopped, leaving only poster + controls.
     function initNativePlayers(baseUrl) {
+        var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         document.querySelectorAll('.vo-native[data-hls]').forEach(function (video) {
             if (video.closest('.vo-native-holder') || video.hasAttribute('data-vo-native-autoload')) {
                 return;
             }
+            if (reducedMotion) {
+                video.removeAttribute('autoplay');
+            }
             attachHls(video, baseUrl);
+            if (reducedMotion) {
+                video.pause();
+            }
         });
     }
 

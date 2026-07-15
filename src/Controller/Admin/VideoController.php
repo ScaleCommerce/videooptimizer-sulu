@@ -10,8 +10,9 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * Proxies single-video reads and presigned uploads to VideoOptimizer. The browser PUTs the file
- * parts straight to the presigned URLs returned by "initiate"; only initiate/complete carry the token.
+ * Proxies single-video reads/writes to VideoOptimizer: presigned uploads, patch/delete, thumbnail
+ * selection, custom-poster CRUD, and remote-URL ingest. The browser PUTs file parts straight to the
+ * presigned URLs returned by "initiate"; all other calls carry the server-side token.
  */
 class VideoController
 {
