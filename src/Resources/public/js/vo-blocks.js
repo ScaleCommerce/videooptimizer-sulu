@@ -19,26 +19,59 @@
         return hlsPromise;
     }
 
+    // Wires an HLS master (data-hls) to a <video>: native HLS in Safari, hls.js everywhere else
+    // that supports MSE. Shared by the background-hero video and the native <video> player.
+    function attachHls(video, baseUrl) {
+        var src = video.getAttribute('data-hls');
+        if (!src) {
+            return;
+        }
+        if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = src; // Safari: native HLS
+            return;
+        }
+        loadHls(baseUrl).then(function () {
+            if (window.Hls && window.Hls.isSupported()) {
+                var hls = new window.Hls();
+                hls.loadSource(src);
+                hls.attachMedia(video);
+            }
+        });
+    }
+
     function initBackgroundVideos(baseUrl) {
         if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             // Leave the <video> unwired so the browser shows its poster and never plays.
             return;
         }
-        var videos = document.querySelectorAll('.vo-bg-hero__video[data-hls]');
-        videos.forEach(function (video) {
-            var src = video.getAttribute('data-hls');
-            if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = src; // Safari: native HLS
+        document.querySelectorAll('.vo-bg-hero__video[data-hls]').forEach(function (video) {
+            attachHls(video, baseUrl);
+        });
+    }
+
+    // Native <video> players rendered directly in 'direct' presentation are visible from the
+    // start, so wire their HLS master right away. Natives pre-rendered (hidden) for facade/lightbox
+    // reveal are wired lazily by revealNative() instead, to avoid fetching unseen videos.
+    function initNativePlayers(baseUrl) {
+        document.querySelectorAll('.vo-native[data-hls]').forEach(function (video) {
+            if (video.closest('.vo-native-holder')) {
                 return;
             }
-            loadHls(baseUrl).then(function () {
-                if (window.Hls && window.Hls.isSupported()) {
-                    var hls = new window.Hls();
-                    hls.loadSource(src);
-                    hls.attachMedia(video);
-                }
-            });
+            attachHls(video, baseUrl);
         });
+    }
+
+    // Reveals a hidden native <video> (facade/lightbox click), wiring HLS on first reveal only.
+    function revealNative(holder, baseUrl) {
+        holder.hidden = false;
+        var video = holder.querySelector('video');
+        if (!video) {
+            return null;
+        }
+        attachHls(video, baseUrl);
+        video.removeAttribute('data-hls'); // avoid re-wiring hls.js if revealed again
+        video.play().catch(function () {}); // user-gesture play(); ignore autoplay-policy rejections
+        return video;
     }
 
     function buildLightbox() {
@@ -55,7 +88,7 @@
         return box;
     }
 
-    function initLightbox() {
+    function initLightbox(baseUrl) {
         var triggers = document.querySelectorAll('[data-vo-lightbox]');
         if (!triggers.length) {
             return;
@@ -63,17 +96,44 @@
         var box = buildLightbox();
         var slot = box.querySelector('.vo-lightbox__slot');
         var lastFocus = null;
+        var nativeHolder = null; // holder the moved <video> must return to on close
 
-        function open(url) {
+        function open(trigger) {
             lastFocus = document.activeElement;
-            slot.replaceChildren(embedIframe(url));
+            nativeHolder = null;
+
+            var frame = trigger.closest('.vo-frame');
+            var holder = 'native' === trigger.getAttribute('data-vo-player') && frame
+                ? frame.querySelector('.vo-native-holder')
+                : null;
+            var video = holder ? holder.querySelector('video') : null;
+
+            if (video) {
+                attachHls(video, baseUrl);
+                video.removeAttribute('data-hls');
+                slot.replaceChildren(video); // moves the <video> node into the lightbox slot
+                nativeHolder = holder;
+                video.play().catch(function () {});
+            } else {
+                slot.replaceChildren(embedIframe(trigger.getAttribute('data-vo-lightbox')));
+            }
+
             box.setAttribute('data-open', 'true');
             box.querySelector('.vo-lightbox__close').focus();
         }
 
         function close() {
             box.removeAttribute('data-open');
-            slot.replaceChildren(); // stops playback
+            if (nativeHolder) {
+                var video = slot.querySelector('video');
+                if (video) {
+                    video.pause();
+                    nativeHolder.appendChild(video); // move it back, still wired, for next open
+                }
+                nativeHolder.hidden = true;
+                nativeHolder = null;
+            }
+            slot.replaceChildren(); // stops iframe playback
             if (lastFocus) {
                 lastFocus.focus();
             }
@@ -81,7 +141,7 @@
 
         triggers.forEach(function (trigger) {
             trigger.addEventListener('click', function () {
-                open(trigger.getAttribute('data-vo-lightbox'));
+                open(trigger);
             });
         });
 
@@ -101,7 +161,7 @@
             }
             // Focus trap: keep Tab within the dialog while it is open.
             if ('Tab' === event.key) {
-                var focusable = box.querySelectorAll('button, iframe, a[href], [tabindex]:not([tabindex="-1"])');
+                var focusable = box.querySelectorAll('button, iframe, video[controls], a[href], [tabindex]:not([tabindex="-1"])');
                 if (!focusable.length) {
                     return;
                 }
@@ -161,13 +221,22 @@
         frames.forEach(function (frame) { io.observe(frame); });
     }
 
-    // Facade: replace a clicked poster with the player iframe in place, keeping the frame layout.
-    function initFacades() {
+    // Facade: replace a clicked poster with the player in place, keeping the frame layout. For the
+    // 'native' player the <video> is already in the DOM (hidden next to the poster) — reveal and
+    // play it instead of injecting an iframe.
+    function initFacades(baseUrl) {
         document.querySelectorAll('[data-vo-embed]').forEach(function (trigger) {
             trigger.addEventListener('click', function () {
                 var frame = trigger.closest('.vo-frame');
                 if (!frame) {
                     return;
+                }
+                if ('native' === trigger.getAttribute('data-vo-player')) {
+                    var holder = frame.querySelector('.vo-native-holder');
+                    if (holder && revealNative(holder, baseUrl)) {
+                        trigger.hidden = true;
+                        return;
+                    }
                 }
                 frame.replaceChildren(embedIframe(trigger.getAttribute('data-vo-embed')));
             });
@@ -197,8 +266,9 @@
         var root = document.querySelector('[data-vo-base]');
         var baseUrl = root ? root.getAttribute('data-vo-base') : '/bundles/scalevideooptimizer/';
         initBackgroundVideos(baseUrl);
-        initLightbox();
-        initFacades();
+        initNativePlayers(baseUrl);
+        initLightbox(baseUrl);
+        initFacades(baseUrl);
         initAutoload();
         initReveal();
     });

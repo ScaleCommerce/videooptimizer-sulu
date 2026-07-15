@@ -4,6 +4,7 @@
         {% if block.intro %}<p class="vo-grid__intro">{{ block.intro }}</p>{% endif %}
         {% set playerOpts = video_optimizer_player_options(block) %}
         {% set presentation = block.presentation|default('lightbox') %}
+        {% set player = block.player|default('hosted') %}
         <div class="vo-grid__items">
             {% for item in block.items %}
                 {% if item.video and item.video.uuid %}
@@ -11,6 +12,7 @@
                         {% include '@ScaleVideoOptimizer/blocks/_video.html.twig' with {
                             video: item.video,
                             presentation: presentation,
+                            player: player,
                             playerOpts: playerOpts,
                             label: item.label|default(''),
                             sizes: '(min-width: 900px) 360px, (min-width: 560px) 45vw, 100vw',

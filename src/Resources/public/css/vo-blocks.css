@@ -77,6 +77,23 @@
     border: 0;
 }
 
+/* Native <video> player (Task 14/15): fills the frame like the iframe; the theme accent color
+   (from the VideoOptimizer embed theme, if set) tints supporting browsers' native controls. */
+.vo-native {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #000;
+    accent-color: var(--vo-player-accent, var(--vo-accent));
+}
+
+/* Hidden until vo-blocks.js reveals it on facade/lightbox click. */
+.vo-native-holder[hidden] {
+    display: none;
+}
+
 /* Orientation-aware: the real aspect-ratio is set inline from the video's dimensions.
    Portrait clips are bounded and centered so they stay a tidy tall player instead of a huge block. */
 .vo-frame--portrait {

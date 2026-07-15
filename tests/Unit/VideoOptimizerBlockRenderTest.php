@@ -144,6 +144,124 @@ class VideoOptimizerBlockRenderTest extends TestCase
         self::assertStringNotContainsString('data-vo-lightbox', $html);
     }
 
+    public function testDirectNativePlayerRendersVideoTagInsteadOfIframe(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getDimensions('abc')->willReturn(['width' => 1920, 'height' => 1080, 'orientation' => 'landscape']);
+        $resolver->getPosterSrcset('abc')->willReturn(null);
+        $resolver->getSources('abc')->willReturn($this->sources());
+        $resolver->getPlayable('abc')->willReturn($this->playable());
+
+        $html = $this->render($resolver, 'vo_media_split.html.twig', [
+            'block' => [
+                'video' => ['uuid' => 'abc', 'posterUrl' => 'https://cdn.example.net/poster.jpg'],
+                'headline' => 'Hero',
+                'presentation' => 'direct',
+                'player' => 'native',
+            ],
+        ]);
+
+        self::assertStringContainsString('<video', $html);
+        self::assertStringContainsString('data-hls="https://cdn.example.net/video.m3u8"', $html);
+        self::assertStringContainsString('data-vo-player="native"', $html);
+        self::assertStringNotContainsString('<iframe', $html);
+        self::assertStringNotContainsString('data-vo-autoload', $html); // native is rendered directly, not JS-injected
+    }
+
+    public function testDirectHostedPlayerStillRendersIframe(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getDimensions('abc')->willReturn(['width' => 1920, 'height' => 1080, 'orientation' => 'landscape']);
+        $resolver->getPosterSrcset('abc')->willReturn(null);
+        $resolver->getSources('abc')->willReturn($this->sources());
+
+        $html = $this->render($resolver, 'vo_media_split.html.twig', [
+            'block' => [
+                'video' => ['uuid' => 'abc', 'posterUrl' => 'https://cdn.example.net/poster.jpg'],
+                'headline' => 'Hero',
+                'presentation' => 'direct',
+                'priority' => true,
+                'player' => 'hosted',
+            ],
+        ]);
+
+        self::assertStringContainsString('<iframe', $html);
+        self::assertStringNotContainsString('<video', $html);
+        self::assertStringContainsString('data-vo-player="hosted"', $html);
+    }
+
+    public function testFacadeNativePlayerRendersHiddenVideoAlongsidePoster(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getDimensions('abc')->willReturn(['width' => 1920, 'height' => 1080, 'orientation' => 'landscape']);
+        $resolver->getPosterSrcset('abc')->willReturn(null);
+        $resolver->getSources('abc')->willReturn($this->sources());
+        $resolver->getPlayable('abc')->willReturn($this->playable());
+
+        $html = $this->render($resolver, 'vo_media_split.html.twig', [
+            'block' => [
+                'video' => ['uuid' => 'abc', 'posterUrl' => 'https://cdn.example.net/poster.jpg'],
+                'headline' => 'Hero',
+                'presentation' => 'facade',
+                'player' => 'native',
+            ],
+        ]);
+
+        // The poster/play button is still the click target (with the player choice on it)...
+        self::assertStringContainsString('class="vo-facade" data-vo-player="native"', $html);
+        self::assertStringContainsString('data-vo-embed=', $html);
+        // ...and the native <video> is pre-rendered but hidden until vo-blocks.js reveals it.
+        self::assertStringContainsString('<div class="vo-native-holder" hidden>', $html);
+        self::assertStringContainsString('<video', $html);
+        self::assertStringNotContainsString('<iframe', $html);
+    }
+
+    public function testLightboxNativePlayerRendersHiddenVideoAlongsidePoster(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getDimensions('abc')->willReturn(['width' => 1080, 'height' => 1920, 'orientation' => 'portrait']);
+        $resolver->getPosterSrcset('abc')->willReturn(null);
+        $resolver->getSources('abc')->willReturn($this->sources());
+        $resolver->getPlayable('abc')->willReturn($this->playable());
+
+        $html = $this->render($resolver, 'vo_spotlight.html.twig', [
+            'block' => [
+                'video' => ['uuid' => 'abc', 'posterUrl' => 'https://cdn.example.net/poster.jpg'],
+                'headline' => 'Watch',
+                'player' => 'native',
+            ],
+        ]);
+
+        self::assertStringContainsString('data-vo-lightbox=', $html);
+        self::assertStringContainsString('data-vo-player="native"', $html);
+        self::assertStringContainsString('<div class="vo-native-holder" hidden>', $html);
+        self::assertStringContainsString('<video', $html);
+        self::assertStringNotContainsString('<iframe', $html);
+    }
+
+    public function testVideoGridNativePlayerAppliesToAllItems(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getDimensions('abc')->willReturn(['width' => 1920, 'height' => 1080, 'orientation' => 'landscape']);
+        $resolver->getPosterSrcset('abc')->willReturn(null);
+        $resolver->getSources('abc')->willReturn($this->sources());
+        $resolver->getPlayable('abc')->willReturn($this->playable());
+
+        $html = $this->render($resolver, 'vo_video_grid.html.twig', [
+            'block' => [
+                'headline' => 'Clips',
+                'player' => 'native',
+                'items' => [
+                    ['video' => ['uuid' => 'abc', 'posterUrl' => 'https://cdn.example.net/poster.jpg'], 'label' => 'One'],
+                ],
+            ],
+        ]);
+
+        self::assertStringContainsString('<div class="vo-native-holder" hidden>', $html);
+        self::assertStringContainsString('<video', $html);
+        self::assertStringNotContainsString('<iframe', $html);
+    }
+
     public function testRenderNativeBuildsVideoTagWithMp4SourceAndHlsAttribute(): void
     {
         $resolver = $this->resolver();
@@ -207,5 +325,22 @@ class VideoOptimizerBlockRenderTest extends TestCase
     private function sources(): array
     {
         return ['poster' => 'https://cdn.example.net/poster.jpg', 'hlsUrl' => null, 'width' => 1920, 'height' => 1080, 'duration' => 12, 'srcset' => null];
+    }
+
+    /**
+     * @return array{poster: ?string, sources: array<int, array{src: string, type: string, label: string}>, theme: array<string, mixed>, width: ?int, height: ?int}
+     */
+    private function playable(): array
+    {
+        return [
+            'poster' => 'https://cdn.example.net/poster.jpg',
+            'sources' => [
+                ['src' => 'https://cdn.example.net/video.m3u8', 'type' => 'application/vnd.apple.mpegurl', 'label' => 'HLS'],
+                ['src' => 'https://cdn.example.net/video.mp4', 'type' => 'video/mp4', 'label' => 'MP4'],
+            ],
+            'theme' => [],
+            'width' => 1920,
+            'height' => 1080,
+        ];
     }
 }

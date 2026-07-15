@@ -5,6 +5,7 @@
     Params:
     - video:        the resolved `video_optimizer` value ({uuid, title, posterUrl, ...})
     - presentation: 'facade' | 'lightbox' | 'direct'
+    - player:       'hosted' (iframe embed, default) | 'native' (local <video>, Task 14)
     - playerOpts:   result of video_optimizer_player_options(block)
     - label:        aria-label / embed title (e.g. the block headline)
     - sizes:        responsive <img sizes> value for the poster
@@ -14,28 +15,40 @@
     'direct' (non-priority) embeds the player only once the frame scrolls into view (vo-blocks.js
     reads data-vo-autoload) — so off-screen/footer videos cause no traffic until seen. The
     <noscript> fallback keeps it working (native lazy) without JS. The frame's fixed aspect-ratio
-    reserves the space, so injecting the iframe never shifts layout.
+    reserves the space, so injecting the iframe never shifts layout. This scroll-triggered lazy
+    injection only applies to the 'hosted' player, since it needs nothing but the embed URL; the
+    'native' player is rendered directly (preload="metadata" when non-priority is already cheap),
+    since vo-blocks.js has no source URLs to build a <video> from an autoload attribute.
+
+    For 'native' + facade/lightbox, the <video> is pre-rendered (hidden) next to the poster button
+    so vo-blocks.js can reveal/play it in place on click, instead of injecting an iframe.
 #}
 {% set dim = video_optimizer_dimensions(video) %}
 {% set url = video_optimizer_embed_url(video, playerOpts) %}
 {% set srcset = video_optimizer_srcset(video) %}
 {% set isPriority = priority|default(false) %}
+{% set player = player|default('hosted') %}
 {% set posterImg %}{% if video.posterUrl %}<img class="vo-poster__img" src="{{ video.posterUrl }}"{% if srcset %} srcset="{{ srcset }}" sizes="{{ sizes|default('100vw') }}"{% endif %}{% if dim.width and dim.height %} width="{{ dim.width }}" height="{{ dim.height }}"{% endif %} alt="" loading="{{ isPriority ? 'eager' : 'lazy' }}"{% if isPriority %} fetchpriority="high"{% endif %}>{% endif %}{% endset %}
-<div class="vo-frame{% if dim.orientation %} vo-frame--{{ dim.orientation }}{% endif %}"{% if dim.width and dim.height %} style="aspect-ratio: {{ dim.width }} / {{ dim.height }}"{% endif %}{% if presentation == 'direct' and not isPriority %} data-vo-autoload="{{ url }}"{% endif %}>
+<div class="vo-frame{% if dim.orientation %} vo-frame--{{ dim.orientation }}{% endif %}"{% if dim.width and dim.height %} style="aspect-ratio: {{ dim.width }} / {{ dim.height }}"{% endif %}{% if presentation == 'direct' and not isPriority and player == 'hosted' %} data-vo-autoload="{{ url }}"{% endif %} data-vo-player="{{ player }}">
     {% if presentation == 'direct' %}
-        {% if isPriority %}
+        {% if player == 'native' %}
+            {{ video_optimizer_native(video, playerOpts, isPriority) }}
+        {% elseif isPriority %}
             {{ video_optimizer_embed(video, label|default('Video'), playerOpts, true) }}
         {% else %}
             {{ posterImg }}
             <noscript>{{ video_optimizer_embed(video, label|default('Video'), playerOpts) }}</noscript>
         {% endif %}
     {% else %}
-        <button type="button" class="vo-facade"
+        <button type="button" class="vo-facade" data-vo-player="{{ player }}"
                 {% if presentation == 'lightbox' %}data-vo-lightbox="{{ url }}"{% else %}data-vo-embed="{{ url }}"{% endif %}
                 aria-label="{{ label|default('Play video') }}">
             {{ posterImg }}
             <span class="vo-poster__play" aria-hidden="true">▶</span>
         </button>
+        {% if player == 'native' %}
+            <div class="vo-native-holder" hidden>{{ video_optimizer_native(video, playerOpts, false) }}</div>
+        {% endif %}
     {% endif %}
 </div>
 {{ video_optimizer_schema(video, label|default('')) }}

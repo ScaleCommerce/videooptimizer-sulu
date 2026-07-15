@@ -6,6 +6,7 @@
             {% include '@ScaleVideoOptimizer/blocks/_video.html.twig' with {
                 video: block.video,
                 presentation: block.presentation|default('lightbox'),
+                player: block.player|default('hosted'),
                 playerOpts: video_optimizer_player_options(block),
                 label: block.headline|default(''),
                 sizes: '(min-width: 1000px) 960px, 100vw',
