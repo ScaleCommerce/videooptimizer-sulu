@@ -44,6 +44,64 @@ class VideoController
         return $this->guard(fn () => new JsonResponse($this->client->completeUpload($payload), 201));
     }
 
+    public function patch(Request $request, string $uuid): JsonResponse
+    {
+        return $this->guard(fn () => new JsonResponse($this->client->updateVideo($uuid, $this->decodeJson($request))));
+    }
+
+    public function delete(string $uuid): JsonResponse
+    {
+        return $this->guard(function () use ($uuid) {
+            $this->client->deleteVideo($uuid);
+
+            return new JsonResponse(null, 204);
+        });
+    }
+
+    public function thumbnails(string $uuid): JsonResponse
+    {
+        return $this->guard(fn () => new JsonResponse($this->client->listThumbnails($uuid)));
+    }
+
+    public function selectThumbnail(Request $request, string $uuid): JsonResponse
+    {
+        $index = (int) ($this->decodeJson($request)['thumbnailIndex'] ?? -1);
+        if ($index < 0) {
+            return new JsonResponse(['message' => 'Missing thumbnailIndex.'], 400);
+        }
+
+        return $this->guard(fn () => new JsonResponse($this->client->selectThumbnail($uuid, $index)));
+    }
+
+    public function posterInitiate(Request $request, string $uuid): JsonResponse
+    {
+        return $this->guard(fn () => new JsonResponse($this->client->initiatePosterUpload($uuid, $this->decodeJson($request))));
+    }
+
+    public function posterComplete(Request $request, string $uuid): JsonResponse
+    {
+        $key = (string) ($this->decodeJson($request)['key'] ?? '');
+        if ('' === $key) {
+            return new JsonResponse(['message' => 'Missing key.'], 400);
+        }
+
+        return $this->guard(fn () => new JsonResponse($this->client->completePosterUpload($uuid, $key)));
+    }
+
+    public function posterSelect(Request $request, string $uuid): JsonResponse
+    {
+        return $this->guard(fn () => new JsonResponse($this->client->selectPoster($uuid, $this->decodeJson($request))));
+    }
+
+    public function posterDelete(string $uuid): JsonResponse
+    {
+        return $this->guard(function () use ($uuid) {
+            $this->client->deletePoster($uuid);
+
+            return new JsonResponse(null, 204);
+        });
+    }
+
     /**
      * @return array<string, mixed>
      */

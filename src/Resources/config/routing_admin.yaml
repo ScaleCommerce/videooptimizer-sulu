@@ -57,3 +57,51 @@ scale_videooptimizer_video_get:
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::get'
     requirements:
         uuid: '[0-9a-fA-F\-]+'
+
+scale_videooptimizer_video_patch:
+    path: /videooptimizer/videos/{uuid}
+    methods: [PATCH]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::patch'
+    requirements: { uuid: '[0-9a-fA-F\-]+' }
+
+scale_videooptimizer_video_delete:
+    path: /videooptimizer/videos/{uuid}
+    methods: [DELETE]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::delete'
+    requirements: { uuid: '[0-9a-fA-F\-]+' }
+
+scale_videooptimizer_video_thumbnails:
+    path: /videooptimizer/videos/{uuid}/thumbnails
+    methods: [GET]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::thumbnails'
+    requirements: { uuid: '[0-9a-fA-F\-]+' }
+
+scale_videooptimizer_video_thumbnail_select:
+    path: /videooptimizer/videos/{uuid}/thumbnail
+    methods: [POST]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::selectThumbnail'
+    requirements: { uuid: '[0-9a-fA-F\-]+' }
+
+scale_videooptimizer_video_poster_initiate:
+    path: /videooptimizer/videos/{uuid}/poster/initiate
+    methods: [POST]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::posterInitiate'
+    requirements: { uuid: '[0-9a-fA-F\-]+' }
+
+scale_videooptimizer_video_poster_complete:
+    path: /videooptimizer/videos/{uuid}/poster/complete
+    methods: [POST]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::posterComplete'
+    requirements: { uuid: '[0-9a-fA-F\-]+' }
+
+scale_videooptimizer_video_poster_select:
+    path: /videooptimizer/videos/{uuid}/poster/select
+    methods: [POST]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::posterSelect'
+    requirements: { uuid: '[0-9a-fA-F\-]+' }
+
+scale_videooptimizer_video_poster_delete:
+    path: /videooptimizer/videos/{uuid}/poster
+    methods: [DELETE]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::posterDelete'
+    requirements: { uuid: '[0-9a-fA-F\-]+' }
