@@ -1,0 +1,86 @@
+<?xml version="1.0" ?>
+<type xmlns="http://schemas.sulu.io/template/template" name="vo_video_grid">
+    <meta>
+        <title lang="en">Video grid</title>
+        <title lang="de">Video-Grid</title>
+    </meta>
+    <properties>
+        <property name="headline" type="text_line">
+            <meta><title lang="en">Headline</title><title lang="de">Überschrift</title></meta>
+        </property>
+        <property name="intro" type="text_area">
+            <meta><title lang="en">Intro</title><title lang="de">Einleitung</title></meta>
+        </property>
+        <block name="items" default-type="item" minOccurs="1">
+            <meta>
+                <title lang="en">Videos</title>
+                <title lang="de">Videos</title>
+            </meta>
+            <types>
+                <type name="item">
+                    <meta><title lang="en">Video</title><title lang="de">Video</title></meta>
+                    <properties>
+                        <property name="video" type="video_optimizer">
+                            <meta><title lang="en">Video</title><title lang="de">Video</title></meta>
+                        </property>
+                        <property name="label" type="text_line">
+                            <meta><title lang="en">Label</title><title lang="de">Beschriftung</title></meta>
+                        </property>
+                    </properties>
+                </type>
+            </types>
+        </block>
+        <property name="presentation" type="single_select">
+            <meta><title lang="en">Presentation</title><title lang="de">Darstellung</title></meta>
+            <params>
+                <param name="default_value" value="lightbox"/>
+                <param name="values" type="collection">
+                    <param name="facade"><meta><title lang="en">Thumbnail, load player on click</title><title lang="de">Vorschaubild, Klick lädt Player</title></meta></param>
+                    <param name="lightbox"><meta><title lang="en">Thumbnail, open in lightbox</title><title lang="de">Vorschaubild, Lightbox</title></meta></param>
+                    <param name="direct"><meta><title lang="en">Embed player directly</title><title lang="de">Player direkt einbetten</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="autoplay" type="single_select">
+            <meta><title lang="en">Autoplay</title><title lang="de">Autoplay</title></meta>
+            <params>
+                <param name="default_value" value="inherit"/>
+                <param name="values" type="collection">
+                    <param name="inherit"><meta><title lang="en">Theme default</title><title lang="de">Theme-Standard</title></meta></param>
+                    <param name="1"><meta><title lang="en">On</title><title lang="de">An</title></meta></param>
+                    <param name="0"><meta><title lang="en">Off</title><title lang="de">Aus</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="controls" type="single_select">
+            <meta><title lang="en">Player controls</title><title lang="de">Player-Bedienelemente</title></meta>
+            <params>
+                <param name="default_value" value="inherit"/>
+                <param name="values" type="collection">
+                    <param name="inherit"><meta><title lang="en">Theme default</title><title lang="de">Theme-Standard</title></meta></param>
+                    <param name="1"><meta><title lang="en">On</title><title lang="de">An</title></meta></param>
+                    <param name="0"><meta><title lang="en">Off</title><title lang="de">Aus</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="loop" type="single_select">
+            <meta><title lang="en">Loop</title><title lang="de">Endlosschleife</title></meta>
+            <params>
+                <param name="default_value" value="inherit"/>
+                <param name="values" type="collection">
+                    <param name="inherit"><meta><title lang="en">Theme default</title><title lang="de">Theme-Standard</title></meta></param>
+                    <param name="1"><meta><title lang="en">On</title><title lang="de">An</title></meta></param>
+                    <param name="0"><meta><title lang="en">Off</title><title lang="de">Aus</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="priority" type="checkbox">
+            <meta>
+                <title lang="en">Prioritize loading (above the fold)</title>
+                <title lang="de">Bevorzugt laden (above the fold)</title>
+                <info_text lang="en">Enable for the topmost/LCP block: loads its first posters eagerly and skips the fade-in.</info_text>
+                <info_text lang="de">Für den obersten/LCP-Block aktivieren: lädt die ersten Poster sofort und überspringt die Einblend-Animation.</info_text>
+            </meta>
+        </property>
+    </properties>
+</type>

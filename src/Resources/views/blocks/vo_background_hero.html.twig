@@ -1,0 +1,23 @@
+{% set heroStyles = [] %}
+{# Only inject validated hex colors into the inline style to avoid CSS injection via the style attribute. #}
+{% if block.headlineColor|default('') matches '/^#[0-9A-Fa-f]{3,8}$/' %}
+    {% set heroStyles = heroStyles|merge(['--vo-hero-heading: ' ~ block.headlineColor]) %}
+{% endif %}
+{% if block.textColor|default('') matches '/^#[0-9A-Fa-f]{3,8}$/' %}
+    {% set heroStyles = heroStyles|merge(['--vo-hero-text: ' ~ block.textColor]) %}
+{% endif %}
+<section class="vo-block vo-bg-hero vo-bg-hero--{{ block.height|default('large') }} vo-bg-hero--overlay-{{ block.overlay|default('gradient') }}"{% if heroStyles %} style="{{ heroStyles|join('; ') }}"{% endif %}>
+    {% if block.video and block.video.uuid %}
+        {{ video_optimizer_background(block.video, block.priority|default(false)) }}
+        {{ video_optimizer_schema(block.video, block.headline|default('')) }}
+    {% endif %}
+    <div class="vo-bg-hero__overlay"></div>
+    <div class="vo-container vo-bg-hero__content">
+        {% if block.eyebrow %}<span class="vo-eyebrow vo-eyebrow--light">{{ block.eyebrow }}</span>{% endif %}
+        {% if block.headline %}<h2>{{ block.headline }}</h2>{% endif %}
+        {% if block.subline %}<p class="vo-bg-hero__subline">{{ block.subline }}</p>{% endif %}
+        {% if block.ctaLabel and block.ctaUrl %}
+            <a class="vo-btn" href="{{ block.ctaUrl }}">{{ block.ctaLabel }}</a>
+        {% endif %}
+    </div>
+</section>

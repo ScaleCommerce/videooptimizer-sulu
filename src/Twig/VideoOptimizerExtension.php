@@ -1,0 +1,209 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Scale\VideoOptimizerBundle\Twig;
+
+use Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver;
+use Twig\Extension\AbstractExtension;
+use Twig\TwigFunction;
+
+/**
+ * Renders a VideoOptimizer embed (hosted iframe player) from a stored video property.
+ */
+class VideoOptimizerExtension extends AbstractExtension
+{
+    public function __construct(
+        private string $embedBaseUrl,
+        private VideoOptimizerEmbedResolver $embedResolver,
+    ) {
+    }
+
+    public function getFunctions(): array
+    {
+        return [
+            new TwigFunction('video_optimizer_embed', [$this, 'renderEmbed'], ['is_safe' => ['html']]),
+            new TwigFunction('video_optimizer_embed_url', [$this, 'embedUrl']),
+            new TwigFunction('video_optimizer_background', [$this, 'renderBackground'], ['is_safe' => ['html']]),
+            new TwigFunction('video_optimizer_dimensions', [$this, 'dimensions']),
+            new TwigFunction('video_optimizer_schema', [$this, 'schema'], ['is_safe' => ['html']]),
+            new TwigFunction('video_optimizer_player_options', [$this, 'playerOptions']),
+            new TwigFunction('video_optimizer_srcset', [$this, 'srcset']),
+        ];
+    }
+
+    /**
+     * Reads the per-block player-option fields into an options map for embedUrl(). Click-to-play
+     * surfaces (facade, lightbox) default to autoplay on unless the editor explicitly turned it off.
+     *
+     * @param array<string, mixed>|null $block
+     *
+     * @return array{autoplay: string, controls: string, loop: string}
+     */
+    public function playerOptions(?array $block): array
+    {
+        $block ??= [];
+        $autoplay = (string) ($block['autoplay'] ?? 'inherit');
+
+        return [
+            'autoplay' => 'inherit' === $autoplay ? '1' : $autoplay,
+            'controls' => (string) ($block['controls'] ?? 'inherit'),
+            'loop' => (string) ($block['loop'] ?? 'inherit'),
+        ];
+    }
+
+    /**
+     * Returns a responsive poster srcset for a video (from the cached embed lookup), or null.
+     *
+     * @param array<string, mixed>|null $video
+     */
+    public function srcset(?array $video): ?string
+    {
+        if (null === $video || empty($video['uuid'])) {
+            return null;
+        }
+
+        return $this->embedResolver->getPosterSrcset((string) $video['uuid']);
+    }
+
+    /**
+     * Renders a schema.org VideoObject JSON-LD block for SEO/rich results. Metadata (poster,
+     * duration) comes from the cached embed lookup; returns '' when there is no video.
+     *
+     * @param array<string, mixed>|null $video
+     */
+    public function schema(?array $video, ?string $name = null): string
+    {
+        if (null === $video || empty($video['uuid'])) {
+            return '';
+        }
+
+        $sources = $this->embedResolver->getSources((string) $video['uuid']);
+
+        $data = ['@context' => 'https://schema.org', '@type' => 'VideoObject'];
+
+        $name = $name ?? ($video['title'] ?? null);
+        if (\is_string($name) && '' !== $name) {
+            $data['name'] = $name;
+        }
+
+        $poster = $sources['poster'] ?? ($video['posterUrl'] ?? null);
+        if (\is_string($poster) && '' !== $poster) {
+            $data['thumbnailUrl'] = $poster;
+        }
+
+        $embedUrl = $this->embedUrl($video);
+        if (null !== $embedUrl) {
+            $data['embedUrl'] = $embedUrl;
+        }
+
+        $duration = VideoOptimizerEmbedResolver::isoDuration($sources['duration'] ?? null);
+        if (null !== $duration) {
+            $data['duration'] = $duration;
+        }
+
+        // JSON_HEX_TAG escapes < and > so a title containing "</script>" cannot break out of the tag
+        // (angle brackets become </> regardless of slashes, so unescaped slashes stay safe).
+        $json = json_encode($data, \JSON_HEX_TAG | \JSON_HEX_AMP | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
+
+        return '<script type="application/ld+json">' . $json . '</script>';
+    }
+
+    /**
+     * Returns the pixel dimensions and orientation of a video so templates can size the frame
+     * to the real aspect ratio instead of a fixed 16:9. Resolved (and cached) from the embed API.
+     *
+     * @param array<string, mixed>|null $video
+     *
+     * @return array{width: ?int, height: ?int, orientation: ?string}
+     */
+    public function dimensions(?array $video): array
+    {
+        if (null === $video || empty($video['uuid'])) {
+            return ['width' => null, 'height' => null, 'orientation' => null];
+        }
+
+        return $this->embedResolver->getDimensions((string) $video['uuid']);
+    }
+
+    /**
+     * Builds a player embed URL. Only the allowlisted player params that are explicitly set
+     * (not '' / null) are appended, so unset options fall back to the merged embed theme.
+     *
+     * @param array<string, mixed>|null  $video
+     * @param array<string, string|int>  $options e.g. {autoplay: '1', controls: '0', loop: '1'}
+     */
+    public function embedUrl(?array $video, array $options = []): ?string
+    {
+        if (null === $video || empty($video['uuid'])) {
+            return null;
+        }
+
+        $url = rtrim($this->embedBaseUrl, '/') . '/embed/' . rawurlencode((string) $video['uuid']);
+
+        // Only append boolean player params that are explicitly on/off; any other value
+        // (e.g. the "inherit" sentinel) is omitted so the embed theme decides.
+        $query = [];
+        foreach (['autoplay', 'controls', 'loop', 'muted'] as $param) {
+            $value = isset($options[$param]) ? (string) $options[$param] : '';
+            if ('0' === $value || '1' === $value) {
+                $query[$param] = $value;
+            }
+        }
+
+        if ([] !== $query) {
+            $url .= '?' . http_build_query($query);
+        }
+
+        return $url;
+    }
+
+    /**
+     * Renders the hosted player iframe directly. `allow="autoplay"` is required so a cross-origin
+     * embed may autoplay when the player options request it (direct presentation mode).
+     * `$eager` drops the lazy hint for an above-the-fold/LCP block.
+     *
+     * @param array<string, mixed>|null $video
+     * @param array<string, string|int> $options player options forwarded to the embed URL
+     */
+    public function renderEmbed(?array $video, string $title = 'Video', array $options = [], bool $eager = false): string
+    {
+        $url = $this->embedUrl($video, $options);
+        if (null === $url) {
+            return '';
+        }
+
+        return \sprintf(
+            '<iframe src="%s" title="%s" loading="%s" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen style="border:0;width:100%%;height:100%%;aspect-ratio:16/9"></iframe>',
+            htmlspecialchars($url, \ENT_QUOTES),
+            htmlspecialchars($video['title'] ?? $title, \ENT_QUOTES),
+            $eager ? 'eager' : 'lazy',
+        );
+    }
+
+    /**
+     * Renders a silent, looping HLS background <video>. hls.js is wired client-side by vo-blocks.js;
+     * the poster covers the no-JS and reduced-motion cases. When $priority is true (above-the-fold
+     * hero) preload is hinted to "auto" (mainly affects the Safari-native path; hls.js manages its
+     * own buffering) — a mild LCP hint, not a guarantee.
+     *
+     * @param array<string, mixed>|null $video
+     */
+    public function renderBackground(?array $video, bool $priority = false): string
+    {
+        if (null === $video || empty($video['uuid'])) {
+            return '';
+        }
+
+        $sources = $this->embedResolver->getSources((string) $video['uuid']);
+        $poster = $sources['poster'] ?? ($video['posterUrl'] ?? null);
+        $hlsUrl = $sources['hlsUrl'] ?? null;
+
+        return \sprintf(
+            '<video class="vo-bg-hero__video" muted autoplay loop playsinline preload="%s"%s%s></video>',
+            $priority ? 'auto' : 'metadata',
+            null !== $poster ? \sprintf(' poster="%s"', htmlspecialchars((string) $poster, \ENT_QUOTES)) : '',
+            null !== $hlsUrl ? \sprintf(' data-hls="%s"', htmlspecialchars($hlsUrl, \ENT_QUOTES)) : '',
+        );
+    }
+}

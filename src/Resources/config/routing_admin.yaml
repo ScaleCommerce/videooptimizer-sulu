@@ -1,0 +1,59 @@
+# Admin proxy API for VideoOptimizer. Imported with prefix /admin/api,
+# so all paths below are reachable behind the Sulu admin firewall.
+
+scale_videooptimizer_settings_get:
+    path: /videooptimizer/settings
+    methods: [GET]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SettingsController::get'
+
+scale_videooptimizer_settings_put:
+    path: /videooptimizer/settings
+    methods: [PUT]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SettingsController::put'
+
+scale_videooptimizer_settings_test:
+    path: /videooptimizer/settings/test
+    methods: [POST]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SettingsController::test'
+
+scale_videooptimizer_libraries_cget:
+    path: /videooptimizer/libraries
+    methods: [GET]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\LibraryController::cget'
+
+scale_videooptimizer_libraries_post:
+    path: /videooptimizer/libraries
+    methods: [POST]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\LibraryController::post'
+
+scale_videooptimizer_libraries_patch:
+    path: /videooptimizer/libraries/{id}
+    methods: [PATCH]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\LibraryController::patch'
+
+scale_videooptimizer_libraries_delete:
+    path: /videooptimizer/libraries/{id}
+    methods: [DELETE]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\LibraryController::delete'
+
+scale_videooptimizer_library_videos:
+    path: /videooptimizer/libraries/{id}/videos
+    methods: [GET]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\LibraryController::videos'
+
+scale_videooptimizer_video_upload_initiate:
+    path: /videooptimizer/videos/upload/initiate
+    methods: [POST]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::initiateUpload'
+
+scale_videooptimizer_video_upload_complete:
+    path: /videooptimizer/videos/upload/complete
+    methods: [POST]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::completeUpload'
+
+scale_videooptimizer_video_get:
+    path: /videooptimizer/videos/{uuid}
+    methods: [GET]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::get'
+    requirements:
+        uuid: '[0-9a-fA-F\-]+'

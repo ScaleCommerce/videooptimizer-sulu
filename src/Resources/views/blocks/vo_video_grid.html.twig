@@ -1,0 +1,25 @@
+<section class="vo-block vo-grid{% if not block.priority|default(false) %} vo-reveal{% endif %}">
+    <div class="vo-container">
+        {% if block.headline %}<h2>{{ block.headline }}</h2>{% endif %}
+        {% if block.intro %}<p class="vo-grid__intro">{{ block.intro }}</p>{% endif %}
+        {% set playerOpts = video_optimizer_player_options(block) %}
+        {% set presentation = block.presentation|default('lightbox') %}
+        <div class="vo-grid__items">
+            {% for item in block.items %}
+                {% if item.video and item.video.uuid %}
+                    <figure class="vo-grid__item">
+                        {% include '@ScaleVideoOptimizer/blocks/_video.html.twig' with {
+                            video: item.video,
+                            presentation: presentation,
+                            playerOpts: playerOpts,
+                            label: item.label|default(''),
+                            sizes: '(min-width: 900px) 360px, (min-width: 560px) 45vw, 100vw',
+                            priority: block.priority|default(false) and loop.first
+                        } only %}
+                        {% if item.label %}<figcaption>{{ item.label }}</figcaption>{% endif %}
+                    </figure>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</section>

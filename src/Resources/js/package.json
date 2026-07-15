@@ -1,0 +1,12 @@
+{
+    "name": "videooptimizer-sulu",
+    "version": "0.1.0",
+    "license": "proprietary",
+    "main": "index.js",
+    "peerDependencies": {
+        "sulu-admin-bundle": "*",
+        "react": "^17.0.0",
+        "mobx": "^4.0.0",
+        "mobx-react": "^5.0.0"
+    }
+}

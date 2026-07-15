@@ -1,0 +1,17 @@
+<section class="vo-block vo-spotlight{% if not block.priority|default(false) %} vo-reveal{% endif %}">
+    <div class="vo-container vo-spotlight__inner">
+        {% if block.eyebrow %}<span class="vo-eyebrow">{{ block.eyebrow }}</span>{% endif %}
+        {% if block.headline %}<h2>{{ block.headline }}</h2>{% endif %}
+        {% if block.video and block.video.uuid %}
+            {% include '@ScaleVideoOptimizer/blocks/_video.html.twig' with {
+                video: block.video,
+                presentation: block.presentation|default('lightbox'),
+                playerOpts: video_optimizer_player_options(block),
+                label: block.headline|default(''),
+                sizes: '(min-width: 1000px) 960px, 100vw',
+                priority: block.priority|default(false)
+            } only %}
+        {% endif %}
+        {% if block.caption %}<p class="vo-spotlight__caption">{{ block.caption }}</p>{% endif %}
+    </div>
+</section>

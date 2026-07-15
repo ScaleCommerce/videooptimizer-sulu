@@ -1,0 +1,309 @@
+/* VideoOptimizer content blocks — self-contained, theme-overridable via --vo-* custom properties. */
+
+.vo-blocks {
+    --vo-accent: #1d4ed8;
+    --vo-text: #0f172a;
+    --vo-muted: #64748b;
+    --vo-bg: #ffffff;
+    --vo-surface: #f8fafc;
+    --vo-radius: 18px;
+    --vo-gap: clamp(1.5rem, 4vw, 4rem);
+    --vo-max-width: 1180px;
+    --vo-overlay: linear-gradient(180deg, rgba(2, 6, 23, 0.15) 0%, rgba(2, 6, 23, 0.65) 100%);
+    --vo-shadow: 0 30px 60px -25px rgba(2, 6, 23, 0.45);
+    --vo-font: inherit;
+    font-family: var(--vo-font);
+    color: var(--vo-text);
+}
+
+.vo-block {
+    padding-block: clamp(3rem, 7vw, 6rem);
+}
+
+.vo-container {
+    width: min(100% - 2.5rem, var(--vo-max-width));
+    margin-inline: auto;
+}
+
+.vo-eyebrow {
+    display: inline-block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--vo-accent);
+    margin-bottom: 0.75rem;
+}
+
+.vo-block h2 {
+    font-size: clamp(1.8rem, 3.5vw, 2.75rem);
+    line-height: 1.1;
+    margin: 0 0 1rem;
+}
+
+.vo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1.5rem;
+    border-radius: 999px;
+    background: var(--vo-accent);
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vo-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--vo-shadow);
+}
+
+/* Video frame primitive (16:9 iframe embed) */
+.vo-frame {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--vo-radius);
+    overflow: hidden;
+    box-shadow: var(--vo-shadow);
+    background: #000;
+}
+
+.vo-frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+/* Orientation-aware: the real aspect-ratio is set inline from the video's dimensions.
+   Portrait clips are bounded and centered so they stay a tidy tall player instead of a huge block. */
+.vo-frame--portrait {
+    max-width: min(100%, 400px);
+    margin-inline: auto;
+}
+
+/* Facade poster button that fills the frame until clicked (then replaced by the iframe). */
+.vo-facade {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    background: #000;
+}
+
+/* Poster image (responsive via srcset, lazy-loaded); fills the facade button. */
+.vo-poster__img {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.vo-poster__play {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--vo-accent);
+    display: grid;
+    place-items: center;
+    font-size: 1.6rem;
+    box-shadow: 0 0 0 0 rgba(29, 78, 216, 0.5);
+    animation: vo-pulse 2.4s infinite;
+}
+
+@keyframes vo-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(29, 78, 216, 0.5); }
+    70% { box-shadow: 0 0 0 22px rgba(29, 78, 216, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(29, 78, 216, 0); }
+}
+
+/* Lightbox */
+.vo-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+    place-items: center;
+    padding: 5vw;
+    background: rgba(2, 6, 23, 0.82);
+    backdrop-filter: blur(6px);
+}
+
+.vo-lightbox[data-open="true"] {
+    display: grid;
+}
+
+.vo-lightbox__inner {
+    position: relative;
+    width: min(100%, 1100px);
+    aspect-ratio: 16 / 9;
+    border-radius: var(--vo-radius);
+    overflow: hidden;
+    background: #000;
+}
+
+.vo-lightbox__inner iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.vo-lightbox__close {
+    position: absolute;
+    top: -3rem;
+    right: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    border: 0;
+    background: #fff;
+    color: var(--vo-text);
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+/* Reveal-on-scroll (progressive enhancement; JS adds .vo-js then .vo-in).
+   Hidden state only applies once .vo-js is present, so content stays visible without JS. */
+.vo-js .vo-reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.vo-js .vo-reveal.vo-in {
+    opacity: 1;
+    transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vo-js .vo-reveal { opacity: 1; transform: none; transition: none; }
+    .vo-poster__play { animation: none; }
+}
+
+/* Media-Split */
+.vo-media-split__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: var(--vo-gap);
+}
+
+.vo-media-split__body {
+    color: var(--vo-muted);
+}
+
+.vo-media-split__body .vo-prose {
+    font-size: 1.05rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.vo-media-split--right .vo-media-split__media {
+    order: 2;
+}
+
+@media (max-width: 820px) {
+    .vo-media-split__grid {
+        grid-template-columns: 1fr;
+    }
+    .vo-media-split--right .vo-media-split__media {
+        order: 0;
+    }
+}
+
+/* Background-Hero */
+.vo-bg-hero {
+    position: relative;
+    display: grid;
+    align-items: center;
+    overflow: hidden;
+    /* --vo-hero-heading / --vo-hero-text are set inline per block (validated hex); default to white. */
+    color: var(--vo-hero-text, #fff);
+    isolation: isolate;
+}
+
+.vo-bg-hero--full { min-height: 100vh; }
+.vo-bg-hero--large { min-height: 72vh; }
+.vo-bg-hero--medium { min-height: 52vh; }
+
+.vo-bg-hero__video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -2;
+}
+
+.vo-bg-hero__overlay {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+}
+
+.vo-bg-hero--overlay-gradient .vo-bg-hero__overlay { background: var(--vo-overlay); }
+.vo-bg-hero--overlay-dark .vo-bg-hero__overlay { background: rgba(2, 6, 23, 0.55); }
+.vo-bg-hero--overlay-none .vo-bg-hero__overlay { background: none; }
+
+.vo-bg-hero__content { max-width: 40rem; }
+/* Explicit heading color so a host theme's own h2 color can't override the hero text. */
+.vo-bg-hero h2 { font-size: clamp(2.2rem, 5vw, 4rem); color: var(--vo-hero-heading, #fff); }
+.vo-eyebrow--light { color: var(--vo-hero-text, #fff); opacity: 0.85; }
+.vo-bg-hero__subline {
+    font-size: 1.15rem;
+    line-height: 1.6;
+    margin-bottom: 1.75rem;
+    opacity: 0.92;
+}
+
+/* Spotlight */
+.vo-spotlight__inner {
+    max-width: 60rem;
+    margin-inline: auto;
+    text-align: center;
+}
+
+.vo-spotlight .vo-frame {
+    margin-top: 1.5rem;
+}
+
+.vo-spotlight__caption {
+    margin-top: 1rem;
+    color: var(--vo-muted);
+    font-size: 0.95rem;
+}
+
+/* Video-Grid */
+.vo-grid__intro {
+    max-width: 42rem;
+    color: var(--vo-muted);
+    margin-bottom: 2rem;
+}
+
+.vo-grid__items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--vo-gap);
+}
+
+.vo-grid__item {
+    margin: 0;
+}
+
+.vo-grid__item figcaption {
+    margin-top: 0.75rem;
+    font-weight: 600;
+}

@@ -1,0 +1,65 @@
+<?xml version="1.0" ?>
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services https://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <parameters>
+        <parameter key="scale_video_optimizer.api_base_url">https://api.videooptimizer.eu/api/v1</parameter>
+        <parameter key="scale_video_optimizer.embed_base_url">https://videooptimizer.eu</parameter>
+    </parameters>
+
+    <services>
+        <defaults autowire="true" autoconfigure="true" public="false"/>
+
+        <service id="Scale\VideoOptimizerBundle\Security\TokenCipher">
+            <argument>%kernel.secret%</argument>
+        </service>
+
+        <service id="Scale\VideoOptimizerBundle\Service\SettingsManager">
+            <argument type="service" id="doctrine.orm.entity_manager"/>
+            <argument type="service" id="Scale\VideoOptimizerBundle\Security\TokenCipher"/>
+        </service>
+
+        <service id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient">
+            <argument type="service" id="http_client"/>
+            <argument type="service" id="Scale\VideoOptimizerBundle\Service\SettingsManager"/>
+            <argument>%scale_video_optimizer.api_base_url%</argument>
+        </service>
+
+        <service id="Scale\VideoOptimizerBundle\Admin\VideoOptimizerAdmin">
+            <argument type="service" id="sulu_admin.view_builder_factory"/>
+        </service>
+
+        <service id="Scale\VideoOptimizerBundle\Content\VideoOptimizerPropertyResolver">
+            <tag name="sulu_content.property_resolver"/>
+        </service>
+
+        <service id="Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver">
+            <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
+            <argument type="service" id="cache.app"/>
+        </service>
+
+        <service id="Scale\VideoOptimizerBundle\Twig\VideoOptimizerExtension">
+            <argument>%scale_video_optimizer.embed_base_url%</argument>
+            <argument type="service" id="Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver"/>
+            <tag name="twig.extension"/>
+        </service>
+
+        <!-- Admin proxy controllers -->
+        <service id="Scale\VideoOptimizerBundle\Controller\Admin\SettingsController" public="true">
+            <argument type="service" id="Scale\VideoOptimizerBundle\Service\SettingsManager"/>
+            <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
+            <tag name="controller.service_arguments"/>
+        </service>
+
+        <service id="Scale\VideoOptimizerBundle\Controller\Admin\LibraryController" public="true">
+            <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
+            <tag name="controller.service_arguments"/>
+        </service>
+
+        <service id="Scale\VideoOptimizerBundle\Controller\Admin\VideoController" public="true">
+            <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
+            <tag name="controller.service_arguments"/>
+        </service>
+    </services>
+</container>

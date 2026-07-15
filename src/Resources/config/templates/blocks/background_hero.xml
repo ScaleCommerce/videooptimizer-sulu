@@ -1,0 +1,63 @@
+<?xml version="1.0" ?>
+<type xmlns="http://schemas.sulu.io/template/template" name="vo_background_hero">
+    <meta>
+        <title lang="en">Cinematic background hero</title>
+        <title lang="de">Cinematic Background-Hero</title>
+    </meta>
+    <properties>
+        <property name="video" type="video_optimizer">
+            <meta><title lang="en">Background video</title><title lang="de">Hintergrund-Video</title></meta>
+        </property>
+        <property name="eyebrow" type="text_line">
+            <meta><title lang="en">Eyebrow</title><title lang="de">Kicker</title></meta>
+        </property>
+        <property name="headline" type="text_line">
+            <meta><title lang="en">Headline</title><title lang="de">Überschrift</title></meta>
+        </property>
+        <property name="subline" type="text_area">
+            <meta><title lang="en">Subline</title><title lang="de">Unterzeile</title></meta>
+        </property>
+        <property name="headlineColor" type="color">
+            <meta><title lang="en">Headline color</title><title lang="de">Headline-Farbe</title></meta>
+        </property>
+        <property name="textColor" type="color">
+            <meta><title lang="en">Text color (eyebrow + subline)</title><title lang="de">Textfarbe (Kicker + Unterzeile)</title></meta>
+        </property>
+        <property name="ctaLabel" type="text_line">
+            <meta><title lang="en">Button label</title><title lang="de">Button-Text</title></meta>
+        </property>
+        <property name="ctaUrl" type="text_line">
+            <meta><title lang="en">Button URL</title><title lang="de">Button-URL</title></meta>
+        </property>
+        <property name="overlay" type="single_select">
+            <meta><title lang="en">Overlay</title><title lang="de">Overlay</title></meta>
+            <params>
+                <param name="default_value" value="gradient"/>
+                <param name="values" type="collection">
+                    <param name="gradient"><meta><title lang="en">Gradient</title><title lang="de">Verlauf</title></meta></param>
+                    <param name="dark"><meta><title lang="en">Dark</title><title lang="de">Dunkel</title></meta></param>
+                    <param name="none"><meta><title lang="en">None</title><title lang="de">Keins</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="height" type="single_select">
+            <meta><title lang="en">Height</title><title lang="de">Höhe</title></meta>
+            <params>
+                <param name="default_value" value="large"/>
+                <param name="values" type="collection">
+                    <param name="full"><meta><title lang="en">Full screen</title><title lang="de">Vollbild</title></meta></param>
+                    <param name="large"><meta><title lang="en">Large</title><title lang="de">Groß</title></meta></param>
+                    <param name="medium"><meta><title lang="en">Medium</title><title lang="de">Mittel</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="priority" type="checkbox">
+            <meta>
+                <title lang="en">Prioritize loading (above the fold)</title>
+                <title lang="de">Bevorzugt laden (above the fold)</title>
+                <info_text lang="en">Enable when this hero is the topmost/LCP element so its video preloads sooner.</info_text>
+                <info_text lang="de">Aktivieren, wenn dieser Hero das oberste/LCP-Element ist, damit sein Video früher vorlädt.</info_text>
+            </meta>
+        </property>
+    </properties>
+</type>

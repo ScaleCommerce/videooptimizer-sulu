@@ -1,0 +1,24 @@
+<section class="vo-block vo-media-split vo-media-split--{{ block.side|default('left') }}{% if not block.priority|default(false) %} vo-reveal{% endif %}">
+    <div class="vo-container vo-media-split__grid">
+        <div class="vo-media-split__media">
+            {% if block.video and block.video.uuid %}
+                {% include '@ScaleVideoOptimizer/blocks/_video.html.twig' with {
+                    video: block.video,
+                    presentation: block.presentation|default('facade'),
+                    playerOpts: video_optimizer_player_options(block),
+                    label: block.headline|default(''),
+                    sizes: '(min-width: 820px) 45vw, 100vw',
+                    priority: block.priority|default(false)
+                } only %}
+            {% endif %}
+        </div>
+        <div class="vo-media-split__body">
+            {% if block.eyebrow %}<span class="vo-eyebrow">{{ block.eyebrow }}</span>{% endif %}
+            {% if block.headline %}<h2>{{ block.headline }}</h2>{% endif %}
+            {% if block.text %}<div class="vo-prose">{{ block.text|raw }}</div>{% endif %}
+            {% if block.ctaLabel and block.ctaUrl %}
+                <a class="vo-btn" href="{{ block.ctaUrl }}">{{ block.ctaLabel }}</a>
+            {% endif %}
+        </div>
+    </div>
+</section>

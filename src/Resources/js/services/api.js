@@ -1,0 +1,95 @@
+// @flow
+import {Requester} from 'sulu-admin-bundle/services';
+
+const BASE = '/admin/api/videooptimizer';
+
+// Requester rejects with the raw Response object on non-2xx. Convert that into a
+// proper Error carrying the server's { message } so views can show a readable text.
+function normalize(promise) {
+    return promise.catch((rejection) => {
+        if (rejection && typeof rejection.json === 'function') {
+            return rejection.json().then(
+                (data) => {
+                    throw new Error((data && data.message) || ('Request failed (' + rejection.status + ')'));
+                },
+                () => {
+                    throw new Error('Request failed (' + (rejection.status || '?') + ')');
+                }
+            );
+        }
+        throw (rejection instanceof Error ? rejection : new Error(String(rejection)));
+    });
+}
+
+export function getSettings() {
+    return normalize(Requester.get(BASE + '/settings'));
+}
+
+export function saveSettings(data: Object) {
+    return normalize(Requester.put(BASE + '/settings', data));
+}
+
+export function testConnection() {
+    return normalize(Requester.post(BASE + '/settings/test', {}));
+}
+
+export function getLibraries() {
+    return normalize(Requester.get(BASE + '/libraries')).then((response) => response._embedded.libraries || []);
+}
+
+export function createLibrary(data: Object) {
+    return normalize(Requester.post(BASE + '/libraries', data));
+}
+
+export function deleteLibrary(id: string) {
+    return normalize(Requester.delete(BASE + '/libraries/' + encodeURIComponent(id)));
+}
+
+export function getVideos(libraryId: string) {
+    return normalize(Requester.get(BASE + '/libraries/' + encodeURIComponent(libraryId) + '/videos'))
+        .then((response) => response._embedded.videos || []);
+}
+
+export function getVideo(uuid: string) {
+    return normalize(Requester.get(BASE + '/videos/' + encodeURIComponent(uuid)));
+}
+
+// Presigned multipart upload. The token stays server-side: initiate/complete go through the
+// proxy, while the file parts are PUT straight to the presigned S3 URLs from the browser.
+export function initiateUpload(payload: Object) {
+    return normalize(Requester.post(BASE + '/videos/upload/initiate', payload));
+}
+
+export function completeUpload(payload: Object) {
+    return normalize(Requester.post(BASE + '/videos/upload/complete', payload));
+}
+
+// PUTs each file part to its presigned URL and collects the ETags the complete step needs.
+// Cross-origin, so no credentials; the bucket must expose ETag via CORS.
+export function uploadParts(file: File, parts: Array<Object>, partSize: number) {
+    return parts.reduce(
+        (chain, part) => chain.then((etags) => {
+            const start = (part.partNumber - 1) * partSize;
+            const blob = file.slice(start, start + partSize);
+
+            return fetch(part.url, {method: 'PUT', body: blob}).then((response) => {
+                if (!response.ok) {
+                    throw new Error('Part upload failed (' + response.status + ')');
+                }
+                const etag = response.headers.get('ETag');
+                if (!etag) {
+                    throw new Error('Missing ETag on uploaded part — check bucket CORS (expose ETag).');
+                }
+                etags.push({partNumber: part.partNumber, etag});
+
+                return etags;
+            });
+        }),
+        Promise.resolve([])
+    );
+}
+
+// Picks a usable poster/thumbnail URL from a VideoOptimizer video payload.
+export function posterFor(video: Object): ?string {
+    return video.poster_url || video.posterUrl || video.thumbnail_url || video.thumbnail || null;
+}
