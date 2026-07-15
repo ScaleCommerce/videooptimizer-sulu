@@ -7,7 +7,7 @@ import {translate} from 'sulu-admin-bundle/utils';
 import {
     updateVideo, deleteVideo, getThumbnails, selectThumbnail,
     initiatePosterUpload, uploadPoster, completePosterUpload, selectPoster, deletePoster,
-    pollVideo, posterFor,
+    pollVideo, posterFor, bustCache, bumpCacheBust,
 } from '../services/api';
 
 @observer
@@ -45,6 +45,9 @@ class VideoDetail extends React.Component<*> {
     }
 
     @action refresh = (video) => {
+        // The stable poster/thumbnail CDN URLs are cached; bump the cache-buster so the preview
+        // reflects the just-changed image instead of the browser's stale copy.
+        bumpCacheBust();
         this.video = video;
         if (this.props.onChanged) {
             this.props.onChanged(video);
@@ -171,7 +174,7 @@ class VideoDetail extends React.Component<*> {
         return (
             <div className="vo-detail">
                 <div className="vo-detail__poster">
-                    {poster ? <img src={poster} alt="" /> : <span className="vo-video-ph">▶</span>}
+                    {poster ? <img src={bustCache(poster)} alt="" /> : <span className="vo-video-ph">▶</span>}
                     {source && <span className="vo-badge">{translate('scale_videooptimizer.poster_source_' + source)}</span>}
                 </div>
 
@@ -180,7 +183,7 @@ class VideoDetail extends React.Component<*> {
                     {this.thumbnails.map((t) => (
                         <button key={t.index} type="button" className="vo-thumb" disabled={this.busy === 'thumb'}
                             onClick={() => this.pickThumbnail(t.index)}>
-                            <img src={t.url} alt={'#' + t.index} />
+                            <img src={bustCache(t.url)} alt={'#' + t.index} />
                         </button>
                     ))}
                 </div>

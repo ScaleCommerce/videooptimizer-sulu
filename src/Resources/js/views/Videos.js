@@ -4,7 +4,7 @@ import {observer} from 'mobx-react';
 import {observable, action} from 'mobx';
 import {Button, Loader} from 'sulu-admin-bundle/components';
 import {translate} from 'sulu-admin-bundle/utils';
-import {getLibraries, getVideos, ingestVideoUrl, pollVideo, posterFor} from '../services/api';
+import {getLibraries, getVideos, ingestVideoUrl, pollVideo, posterFor, bustCache} from '../services/api';
 import VideoDetail from '../components/VideoDetail';
 
 @observer
@@ -141,7 +141,7 @@ class Videos extends React.Component<*> {
                                 <div className="vo-video-grid">
                                     {this.videos.map((video) => (
                                         <button key={video.uuid} type="button" className="vo-video" onClick={() => this.open(video)}>
-                                            {posterFor(video) ? <img src={posterFor(video)} alt="" /> : <span className="vo-video-ph">▶</span>}
+                                            {posterFor(video) ? <img src={bustCache(posterFor(video))} alt="" /> : <span className="vo-video-ph">▶</span>}
                                             <span className="vo-video-title">{video.title || video.uuid}</span>
                                         </button>
                                     ))}

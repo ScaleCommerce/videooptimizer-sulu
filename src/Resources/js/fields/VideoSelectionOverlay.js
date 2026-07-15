@@ -4,7 +4,7 @@ import {observer} from 'mobx-react';
 import {observable, action} from 'mobx';
 import {Overlay, Loader, Button} from 'sulu-admin-bundle/components';
 import {translate} from 'sulu-admin-bundle/utils';
-import {getLibraries, getVideos, initiateUpload, uploadParts, completeUpload, ingestVideoUrl, pollVideo, posterFor} from '../services/api';
+import {getLibraries, getVideos, initiateUpload, uploadParts, completeUpload, ingestVideoUrl, pollVideo, posterFor, bustCache} from '../services/api';
 import VideoDetail from '../components/VideoDetail';
 
 @observer
@@ -297,7 +297,7 @@ class VideoSelectionOverlay extends React.Component<*> {
                                         onClick={ready ? () => this.chooseVideo(video) : undefined}
                                     >
                                         {poster
-                                            ? <img src={poster} alt={video.title || ''} />
+                                            ? <img src={bustCache(poster)} alt={video.title || ''} />
                                             : <span className="vo-video-ph">▶</span>}
                                         <span className="vo-video-title">{video.title || video.uuid}</span>
                                         <span className={'vo-video-status vo-video-status--' + (ready ? 'ready' : 'processing')}>

@@ -169,3 +169,18 @@ export function pollVideo(uuid: string, predicate: (video: Object) => boolean, o
 export function posterFor(video: Object): ?string {
     return video.poster_url || video.posterUrl || video.thumbnail_url || video.thumbnail || null;
 }
+
+// Poster/thumbnail URLs are STABLE CDN paths cached ~30 days; their content changes in place when
+// the poster/thumbnail is switched, so the admin would keep showing a stale image. bustCache() adds
+// a token (bumped on every poster/thumbnail mutation) so admin PREVIEWS always show the current
+// image. Never use it for the stored field value or the frontend embed — those keep the clean URL.
+let cacheBustToken = Date.now();
+export function bumpCacheBust() {
+    cacheBustToken = Date.now();
+}
+export function bustCache(url: ?string): ?string {
+    if (!url) {
+        return url;
+    }
+    return url + (url.indexOf('?') === -1 ? '?' : '&') + '_=' + cacheBustToken;
+}
