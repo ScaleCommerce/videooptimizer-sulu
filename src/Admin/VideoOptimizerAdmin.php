@@ -43,7 +43,9 @@ class VideoOptimizerAdmin extends Admin
         $videos->setView(self::VIDEOS_VIEW);
         $root->addChild($videos);
 
-        $navigationItemCollection->get(Admin::SETTINGS_NAVIGATION_ITEM)->addChild($root);
+        // Top-level navigation entry (own section with its own icon) — video management is a
+        // primary editorial task, so it lives in the main left nav, not nested under Settings.
+        $navigationItemCollection->add($root);
     }
 
     public function configureViews(ViewCollection $viewCollection): void

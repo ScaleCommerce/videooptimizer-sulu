@@ -168,17 +168,22 @@
 .vo-detail { padding: 4px; }
 .vo-detail__poster {
     position: relative;
-    width: 100%;
-    max-width: 320px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    max-width: 340px;
     margin-bottom: 20px;
     border-radius: 6px;
     overflow: hidden;
     background: #0a1d31;
 }
+/* Respect the poster's real aspect ratio — portrait (e.g. reels) videos must not be cropped to 16:9. */
 .vo-detail__poster img {
-    width: 100%;
-    aspect-ratio: 16/9;
-    object-fit: cover;
+    max-width: 100%;
+    max-height: 460px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
     display: block;
 }
 .vo-detail__poster .vo-video-ph {
@@ -263,3 +268,6 @@
     margin-bottom: 12px;
 }
 .vo-back:hover { text-decoration: underline; }
+
+/* Space out the per-library action links (Edit / Reprocess / Delete) so they don't run together. */
+.vo-lib-actions { display: inline-flex; gap: 16px; align-items: center; }

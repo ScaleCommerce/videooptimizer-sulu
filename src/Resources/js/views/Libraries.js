@@ -304,15 +304,17 @@ class Libraries extends React.Component<*> {
                                                 </div>
                                             </td>
                                             <td style={{padding: '12px 0', textAlign: 'right', whiteSpace: 'nowrap'}}>
-                                                <Button skin="link" onClick={() => this.startEdit(library)}>
-                                                    {translate('scale_videooptimizer.edit')}
-                                                </Button>
-                                                <Button skin="link" onClick={() => this.askReprocess(library.id)}>
-                                                    {translate('scale_videooptimizer.reprocess')}
-                                                </Button>
-                                                <Button skin="link" onClick={() => this.askDelete(library.id)}>
-                                                    {translate('scale_videooptimizer.delete')}
-                                                </Button>
+                                                <span className="vo-lib-actions">
+                                                    <Button skin="link" onClick={() => this.startEdit(library)}>
+                                                        {translate('scale_videooptimizer.edit')}
+                                                    </Button>
+                                                    <Button skin="link" onClick={() => this.askReprocess(library.id)}>
+                                                        {translate('scale_videooptimizer.reprocess')}
+                                                    </Button>
+                                                    <Button skin="link" onClick={() => this.askDelete(library.id)}>
+                                                        {translate('scale_videooptimizer.delete')}
+                                                    </Button>
+                                                </span>
                                             </td>
                                         </tr>
                                         {this.editId === library.id && (
