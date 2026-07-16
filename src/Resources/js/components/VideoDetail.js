@@ -9,7 +9,7 @@ import SingleMediaSelectionOverlay from 'sulu-media-bundle/containers/SingleMedi
 import {
     updateVideo, deleteVideo, getThumbnails, selectThumbnail,
     initiatePosterUpload, uploadPoster, completePosterUpload, selectPoster, deletePoster,
-    pollVideo, posterFor, bustCache, bumpCacheBust,
+    pollVideo, bustCache, bumpCacheBust,
 } from '../services/api';
 
 @observer
@@ -224,8 +224,29 @@ class VideoDetail extends React.Component<*> {
             }));
     };
 
+    // Embeds the actual VideoOptimizer player, sized to the video's own aspect ratio (so portrait
+    // reels are not letterboxed), capped so neither orientation grows too large in the admin.
+    renderPlayer() {
+        const embedUrl = this.video.embed_url || ('https://videooptimizer.eu/embed/' + this.video.uuid);
+        const parts = (typeof this.video.resolution === 'string' ? this.video.resolution : '').split('x');
+        const width = parseInt(parts[0], 10);
+        const height = parseInt(parts[1], 10);
+        const ratio = (width > 0 && height > 0) ? [width, height] : [16, 9];
+        const maxWidth = Math.min(640, Math.round(400 * ratio[0] / ratio[1]));
+
+        return (
+            <div className="vo-detail__player" style={{aspectRatio: ratio[0] + ' / ' + ratio[1], maxWidth: maxWidth + 'px'}}>
+                <iframe
+                    src={embedUrl}
+                    title={this.video.title || 'Video'}
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                />
+            </div>
+        );
+    }
+
     render() {
-        const poster = posterFor(this.video);
         const source = this.video.poster && this.video.poster.source;
         const customStatus = this.video.poster && this.video.poster.custom_status;
         const customUrl = this.video.poster && this.video.poster.custom_url;
@@ -234,10 +255,7 @@ class VideoDetail extends React.Component<*> {
 
         return (
             <div className="vo-detail">
-                <div className="vo-detail__poster">
-                    {poster ? <img src={bustCache(poster)} alt="" /> : <span className="vo-video-ph">▶</span>}
-                    {source && <span className="vo-badge">{translate('scale_videooptimizer.poster_source_' + source)}</span>}
-                </div>
+                {this.renderPlayer()}
 
                 <label className="vo-label">{translate('scale_videooptimizer.thumbnails')}</label>
                 <div className="vo-thumbs">

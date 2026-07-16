@@ -186,44 +186,20 @@
 
 /* Video detail / management (thumbnails, poster, options) */
 .vo-detail { padding: 4px; }
-.vo-detail__poster {
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    max-width: 340px;
+/* Actual video player embed. The wrapper carries the video's aspect ratio (set inline) so
+   portrait reels aren't letterboxed; the iframe just fills it. */
+.vo-detail__player {
+    width: 100%;
     margin-bottom: 20px;
     border-radius: 6px;
     overflow: hidden;
     background: #0a1d31;
 }
-/* Respect the poster's real aspect ratio — portrait (e.g. reels) videos must not be cropped to 16:9. */
-.vo-detail__poster img {
-    max-width: 100%;
-    max-height: 460px;
-    width: auto;
-    height: auto;
-    object-fit: contain;
+.vo-detail__player iframe {
     display: block;
-}
-.vo-detail__poster .vo-video-ph {
     width: 100%;
-    aspect-ratio: 16/9;
-    display: grid;
-    place-items: center;
-    color: #8fe9e4;
-    font-size: 22px;
-}
-.vo-badge {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: rgba(10, 29, 49, .75);
-    color: #fff;
-    font-size: 11px;
-    font-weight: 600;
+    height: 100%;
+    border: 0;
 }
 
 .vo-thumbs {
