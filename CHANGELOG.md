@@ -39,6 +39,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The video detail view shows the selected poster with a play button — updating
   live when you switch thumbnails — and embeds the actual player on click,
   instead of a static duplicate poster.
+- The video detail view shows read-only facts: dimensions, duration, status,
+  view count and creation date.
 - The settings entity gained a `default_player` column — run
   `doctrine:schema:update` (or a migration) when upgrading.
 
@@ -51,6 +53,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Admin preview images bust the CDN cache so poster/thumbnail changes are
   reflected immediately (stored value and frontend embed keep the clean URL).
 - Uniform video grid in the selection overlay.
+- The title field in the video detail view is labelled "Title" instead of the
+  plugin name.
 
 ## [0.1.0] - 2026-07-14
 

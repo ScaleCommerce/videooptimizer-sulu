@@ -244,6 +244,18 @@
 }
 .vo-detail__play:hover .vo-detail__play-icon { background: #0a8f8a; }
 
+/* Read-only video facts under the player */
+.vo-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 24px;
+    margin: 0 0 22px;
+    max-width: 640px;
+}
+.vo-meta__row { display: flex; gap: 6px; font-size: 13px; }
+.vo-meta dt { color: #667085; }
+.vo-meta dd { margin: 0; font-weight: 600; color: #344054; }
+
 .vo-thumbs {
     display: flex;
     flex-wrap: wrap;

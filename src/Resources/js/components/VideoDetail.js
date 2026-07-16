@@ -12,6 +12,20 @@ import {
     pollVideo, posterFor, bustCache, bumpCacheBust,
 } from '../services/api';
 
+// Formats a duration in seconds as m:ss (e.g. 83 -> "1:23").
+function formatDuration(seconds) {
+    const total = Math.max(0, Math.round(seconds));
+
+    return Math.floor(total / 60) + ':' + String(total % 60).padStart(2, '0');
+}
+
+// Formats an ISO timestamp as a localized date, or '' when unparseable.
+function formatDate(iso) {
+    const date = new Date(iso);
+
+    return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString();
+}
+
 @observer
 class VideoDetail extends React.Component<*> {
     @observable video = this.props.video;
@@ -260,6 +274,32 @@ class VideoDetail extends React.Component<*> {
         );
     }
 
+    // Read-only facts about the video (dimensions, duration, status, views, created date).
+    renderMeta() {
+        const v = this.video;
+        const rows = [];
+        if (v.resolution) { rows.push([translate('scale_videooptimizer.dimensions'), v.resolution]); }
+        if (typeof v.duration === 'number') { rows.push([translate('scale_videooptimizer.duration'), formatDuration(v.duration)]); }
+        if (v.status) { rows.push([translate('scale_videooptimizer.status'), translate('scale_videooptimizer.status_' + v.status)]); }
+        if (typeof v.views === 'number') { rows.push([translate('scale_videooptimizer.views'), String(v.views)]); }
+        if (v.created_at) { rows.push([translate('scale_videooptimizer.created'), formatDate(v.created_at)]); }
+
+        if (rows.length === 0) {
+            return null;
+        }
+
+        return (
+            <dl className="vo-meta">
+                {rows.map(([label, value]) => (
+                    <div key={label} className="vo-meta__row">
+                        <dt>{label}</dt>
+                        <dd>{value}</dd>
+                    </div>
+                ))}
+            </dl>
+        );
+    }
+
     render() {
         const source = this.video.poster && this.video.poster.source;
         const customStatus = this.video.poster && this.video.poster.custom_status;
@@ -270,6 +310,7 @@ class VideoDetail extends React.Component<*> {
         return (
             <div className="vo-detail">
                 {this.renderPlayer()}
+                {this.renderMeta()}
 
                 <label className="vo-label">{translate('scale_videooptimizer.thumbnails')}</label>
                 <div className="vo-thumbs">
@@ -313,7 +354,7 @@ class VideoDetail extends React.Component<*> {
                     onConfirm={this.handleMediaSelect}
                 />
 
-                <label className="vo-label">{translate('scale_videooptimizer.title')}</label>
+                <label className="vo-label">{translate('sulu_admin.title')}</label>
                 <input type="text" className="vo-input" value={this.title} onChange={this.handleTitleChange} />
 
                 <label className="vo-label">{translate('scale_videooptimizer.player_options')}</label>
