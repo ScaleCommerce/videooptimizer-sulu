@@ -36,6 +36,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Videos, Libraries, Settings.
 - The media selection overlay uses the form's locale (or the user's content
   locale in the standalone view) instead of a fixed locale.
+- The video detail view embeds the actual player instead of a large duplicate
+  of the selected poster.
 - The settings entity gained a `default_player` column — run
   `doctrine:schema:update` (or a migration) when upgrading.
 
