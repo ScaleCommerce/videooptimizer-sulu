@@ -65,6 +65,7 @@ class VideoOptimizerField extends React.Component<*> {
                     open={this.overlayOpen}
                     onClose={this.closeOverlay}
                     onSelect={this.handleSelect}
+                    locale={this.props.formInspector && this.props.formInspector.locale}
                 />
             </div>
         );

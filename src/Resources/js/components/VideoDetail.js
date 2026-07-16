@@ -4,6 +4,7 @@ import {observer} from 'mobx-react';
 import {observable, action} from 'mobx';
 import {Button, Dialog} from 'sulu-admin-bundle/components';
 import {translate} from 'sulu-admin-bundle/utils';
+import {userStore} from 'sulu-admin-bundle/stores';
 import SingleMediaSelectionOverlay from 'sulu-media-bundle/containers/SingleMediaSelectionOverlay';
 import {
     updateVideo, deleteVideo, getThumbnails, selectThumbnail,
@@ -23,8 +24,9 @@ class VideoDetail extends React.Component<*> {
     @observable confirmDelete = false;
     @observable mediaOverlayOpen = false;
 
-    // Locale for Sulu's media selection overlay (affects displayed media titles only, not the upload).
-    mediaLocale = observable.box(this.props.locale || 'de');
+    // Locale for Sulu's media selection overlay: use the form's locale when embedded in a field,
+    // otherwise fall back to the user's current content locale (standalone videos view).
+    mediaLocale = this.props.locale || observable.box(userStore.contentLocale);
 
     // Plain (non-observable) flag — guards async continuations after unmount, no @action needed.
     _unmounted = false;

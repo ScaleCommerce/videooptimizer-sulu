@@ -257,6 +257,7 @@ class VideoSelectionOverlay extends React.Component<*> {
                         onChanged={this.updateManaged}
                         onDeleted={this.afterDelete}
                         onUse={this.chooseVideo}
+                        locale={this.props.locale}
                     />
                 </div>
             );
