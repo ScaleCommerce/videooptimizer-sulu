@@ -4,6 +4,7 @@ import {observer} from 'mobx-react';
 import {observable, action} from 'mobx';
 import {Button, Dialog} from 'sulu-admin-bundle/components';
 import {translate} from 'sulu-admin-bundle/utils';
+import SingleMediaSelectionOverlay from 'sulu-media-bundle/containers/SingleMediaSelectionOverlay';
 import {
     updateVideo, deleteVideo, getThumbnails, selectThumbnail,
     initiatePosterUpload, uploadPoster, completePosterUpload, selectPoster, deletePoster,
@@ -20,6 +21,10 @@ class VideoDetail extends React.Component<*> {
     @observable status = null;
     @observable error = null;
     @observable confirmDelete = false;
+    @observable mediaOverlayOpen = false;
+
+    // Locale for Sulu's media selection overlay (affects displayed media titles only, not the upload).
+    mediaLocale = observable.box(this.props.locale || 'de');
 
     // Plain (non-observable) flag — guards async continuations after unmount, no @action needed.
     _unmounted = false;
@@ -110,16 +115,49 @@ class VideoDetail extends React.Component<*> {
             }));
     };
 
-    @action handlePosterFile = (event) => {
+    handlePosterFile = (event) => {
         const file = event.target.files && event.target.files[0];
-        if (!file) {
+        if (file) {
+            this.uploadPosterBlob(file);
+        }
+    };
+
+    @action openMediaOverlay = () => { this.mediaOverlayOpen = true; };
+    @action closeMediaOverlay = () => { this.mediaOverlayOpen = false; };
+
+    // Picks an image from the Sulu media library and uploads it as the custom poster: the browser
+    // fetches the (same-origin) media file and feeds it through the presigned poster pipeline.
+    @action handleMediaSelect = (media) => {
+        this.mediaOverlayOpen = false;
+        if (!media || !media.url) {
             return;
         }
         this.busy = 'poster';
         this.error = null;
         this.status = translate('scale_videooptimizer.uploading');
-        initiatePosterUpload(this.video.uuid, {contentType: file.type, fileSize: file.size})
-            .then((data) => uploadPoster(data.uploadUrl, file).then(() => completePosterUpload(this.video.uuid, data.key)))
+        fetch(media.url, {credentials: 'same-origin'})
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Could not load media (' + response.status + ')');
+                }
+                return response.blob();
+            })
+            .then((blob) => this.uploadPosterBlob(blob))
+            .catch(action((e) => {
+                if (this._unmounted) { return; }
+                this.busy = null;
+                this.status = null;
+                this.error = e.message || String(e);
+            }));
+    };
+
+    // Runs the presigned custom-poster pipeline for any File/Blob and selects it as the poster.
+    @action uploadPosterBlob = (blob) => {
+        this.busy = 'poster';
+        this.error = null;
+        this.status = translate('scale_videooptimizer.uploading');
+        initiatePosterUpload(this.video.uuid, {contentType: blob.type, fileSize: blob.size})
+            .then((data) => uploadPoster(data.uploadUrl, blob).then(() => completePosterUpload(this.video.uuid, data.key)))
             .then(action(() => {
                 if (this._unmounted) { return; }
                 this.status = translate('scale_videooptimizer.processing');
@@ -222,13 +260,24 @@ class VideoDetail extends React.Component<*> {
                 </div>
 
                 <label className="vo-label">{translate('scale_videooptimizer.custom_poster')}</label>
-                <div className="vo-actions" style={{marginTop: 0}}>
+                <div className="vo-actions" style={{marginTop: 0, alignItems: 'center'}}>
                     <input type="file" accept="image/jpeg,image/png,image/webp" disabled={this.busy === 'poster'} onChange={this.handlePosterFile} />
+                    <Button skin="secondary" onClick={this.openMediaOverlay} disabled={this.busy === 'poster'}>
+                        {translate('scale_videooptimizer.choose_from_media')}
+                    </Button>
                     {hasCustomPoster && (
                         <Button skin="link" onClick={this.removeCustomPoster}>{translate('scale_videooptimizer.remove_custom_poster')}</Button>
                     )}
                 </div>
                 {this.status && <div className="vo-upload-status">{this.status}</div>}
+
+                <SingleMediaSelectionOverlay
+                    open={this.mediaOverlayOpen}
+                    locale={this.mediaLocale}
+                    types={['image']}
+                    onClose={this.closeMediaOverlay}
+                    onConfirm={this.handleMediaSelect}
+                />
 
                 <label className="vo-label">{translate('scale_videooptimizer.title')}</label>
                 <input type="text" className="vo-input" value={this.title} onChange={this.handleTitleChange} />

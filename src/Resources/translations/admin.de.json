@@ -55,6 +55,7 @@
     "scale_videooptimizer.videos_nav": "Videos",
     "scale_videooptimizer.thumbnails": "Thumbnails",
     "scale_videooptimizer.custom_poster": "Eigenes Poster",
+    "scale_videooptimizer.choose_from_media": "Aus Medien wählen",
     "scale_videooptimizer.remove_custom_poster": "Eigenes Poster entfernen",
     "scale_videooptimizer.poster_source_custom": "Eigenes Bild",
     "scale_videooptimizer.poster_source_thumbnail": "Thumbnail",
