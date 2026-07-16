@@ -9,7 +9,7 @@ import SingleMediaSelectionOverlay from 'sulu-media-bundle/containers/SingleMedi
 import {
     updateVideo, deleteVideo, getThumbnails, selectThumbnail,
     initiatePosterUpload, uploadPoster, completePosterUpload, selectPoster, deletePoster,
-    pollVideo, bustCache, bumpCacheBust,
+    pollVideo, posterFor, bustCache, bumpCacheBust,
 } from '../services/api';
 
 @observer
@@ -23,6 +23,7 @@ class VideoDetail extends React.Component<*> {
     @observable error = null;
     @observable confirmDelete = false;
     @observable mediaOverlayOpen = false;
+    @observable playing = false;
 
     // Locale for Sulu's media selection overlay: use the form's locale when embedded in a field,
     // otherwise fall back to the user's current content locale (standalone videos view).
@@ -51,10 +52,14 @@ class VideoDetail extends React.Component<*> {
             }));
     }
 
+    @action play = () => { this.playing = true; };
+
     @action refresh = (video) => {
         // The stable poster/thumbnail CDN URLs are cached; bump the cache-buster so the preview
         // reflects the just-changed image instead of the browser's stale copy.
         bumpCacheBust();
+        // Drop back to the (updated) poster so a just-changed thumbnail is visible immediately.
+        this.playing = false;
         this.video = video;
         if (this.props.onChanged) {
             this.props.onChanged(video);
@@ -224,24 +229,33 @@ class VideoDetail extends React.Component<*> {
             }));
     };
 
-    // Embeds the actual VideoOptimizer player, sized to the video's own aspect ratio (so portrait
-    // reels are not letterboxed), capped so neither orientation grows too large in the admin.
+    // Shows the video's current poster with a play button; clicking embeds the actual VideoOptimizer
+    // player. The poster is our own cache-busted <img>, so switching a thumbnail/poster is reflected
+    // here immediately — unlike the embed iframe, which keeps the CDN-cached poster until played.
+    // Sized to the video's own aspect ratio (so portrait reels are not letterboxed).
     renderPlayer() {
-        const embedUrl = this.video.embed_url || ('https://videooptimizer.eu/embed/' + this.video.uuid);
         const parts = (typeof this.video.resolution === 'string' ? this.video.resolution : '').split('x');
         const width = parseInt(parts[0], 10);
         const height = parseInt(parts[1], 10);
         const ratio = (width > 0 && height > 0) ? [width, height] : [16, 9];
         const maxWidth = Math.min(640, Math.round(400 * ratio[0] / ratio[1]));
+        const poster = posterFor(this.video);
 
         return (
             <div className="vo-detail__player" style={{aspectRatio: ratio[0] + ' / ' + ratio[1], maxWidth: maxWidth + 'px'}}>
-                <iframe
-                    src={embedUrl}
-                    title={this.video.title || 'Video'}
-                    allow="autoplay; fullscreen; picture-in-picture"
-                    allowFullScreen
-                />
+                {this.playing ? (
+                    <iframe
+                        src={(this.video.embed_url || ('https://videooptimizer.eu/embed/' + this.video.uuid)) + '?autoplay=1'}
+                        title={this.video.title || 'Video'}
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                    />
+                ) : (
+                    <button type="button" className="vo-detail__play" onClick={this.play} aria-label={translate('scale_videooptimizer.use_video')}>
+                        {poster ? <img src={bustCache(poster)} alt="" /> : <span className="vo-video-ph">▶</span>}
+                        <span className="vo-detail__play-icon" aria-hidden="true">▶</span>
+                    </button>
+                )}
             </div>
         );
     }
