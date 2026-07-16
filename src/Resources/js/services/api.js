@@ -53,8 +53,10 @@ export function reprocessLibrary(id: string) {
     return normalize(Requester.post(BASE + '/libraries/' + encodeURIComponent(id) + '/reprocess', {}));
 }
 
-export function getVideos(libraryId: string) {
-    return normalize(Requester.get(BASE + '/libraries/' + encodeURIComponent(libraryId) + '/videos'))
+// Loads every video across all libraries as a flat array (newest first). The server resolves the
+// cursor pagination behind GET /videos; each item carries library_id so callers can group/filter.
+export function getAllVideos() {
+    return normalize(Requester.get(BASE + '/videos'))
         .then((response) => response._embedded.videos || []);
 }
 

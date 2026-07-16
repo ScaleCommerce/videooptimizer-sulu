@@ -20,6 +20,14 @@ class VideoController
     {
     }
 
+    public function list(Request $request): JsonResponse
+    {
+        $libraryId = $request->query->get('library_id');
+        $libraryId = \is_string($libraryId) && '' !== $libraryId ? $libraryId : null;
+
+        return $this->guard(fn () => new JsonResponse(['_embedded' => ['videos' => $this->client->listAllVideos($libraryId)]]));
+    }
+
     public function get(string $uuid): JsonResponse
     {
         return $this->guard(fn () => new JsonResponse($this->client->getVideo($uuid)));

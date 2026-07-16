@@ -3,17 +3,18 @@ import React from 'react';
 import {observer} from 'mobx-react';
 import {observable, action} from 'mobx';
 import {Overlay, Loader, Button} from 'sulu-admin-bundle/components';
+import FolderList from 'sulu-admin-bundle/components/FolderList';
 import {translate} from 'sulu-admin-bundle/utils';
-import {getLibraries, getVideos, initiateUpload, uploadParts, completeUpload, ingestVideoUrl, pollVideo, posterFor, bustCache} from '../services/api';
+import {getLibraries, getAllVideos, initiateUpload, uploadParts, completeUpload, ingestVideoUrl, pollVideo, posterFor, bustCache} from '../services/api';
 import VideoDetail from '../components/VideoDetail';
 
 @observer
 class VideoSelectionOverlay extends React.Component<*> {
     @observable tab = 'select';
-    @observable loadingLibraries = true;
+    @observable loading = true;
     @observable libraries = [];
-    @observable libraryId = '';
-    @observable loadingVideos = false;
+    // null = show videos from every library; a library id = filter to that library.
+    @observable activeLibraryId = null;
     @observable videos = [];
     @observable uploading = false;
     @observable uploadStatus = null;
@@ -27,66 +28,53 @@ class VideoSelectionOverlay extends React.Component<*> {
     @observable managing = null;
 
     componentDidMount() {
-        this.loadLibraries();
+        this.load();
     }
 
     componentDidUpdate(prevProps: *) {
         if (this.props.open && !prevProps.open) {
             this.closeManage();
-            this.loadLibraries();
+            this.load();
         }
     }
 
-    loadLibraries() {
-        this.setLoadingLibraries(true);
-        getLibraries()
-            .then(action((libraries) => {
+    load() {
+        this.setLoading(true);
+        Promise.all([getLibraries(), getAllVideos()])
+            .then(action(([libraries, videos]) => {
                 this.libraries = libraries;
-                this.loadingLibraries = false;
+                this.videos = videos;
+                this.loading = false;
                 const preferred = this.props.defaultLibraryId;
-                const initial = (preferred && libraries.find((l) => l.id === preferred))
-                    ? preferred
-                    : (libraries[0] ? libraries[0].id : '');
-                if (initial) {
-                    this.selectLibrary(initial);
-                }
+                // Preselect the preferred library folder when it exists; otherwise start on "all".
+                this.activeLibraryId = (preferred && libraries.find((l) => l.id === preferred)) ? preferred : null;
             }))
             .catch(action((e) => {
-                this.loadingLibraries = false;
+                this.loading = false;
                 this.error = e.message || String(e);
             }));
     }
 
-    @action setLoadingLibraries = (value) => {
-        this.loadingLibraries = value;
+    @action setLoading = (value) => {
+        this.loading = value;
         this.error = null;
     };
 
     @action selectLibrary = (id) => {
-        this.libraryId = id;
-        this.videos = [];
-        // Reset the filter so a switched/reopened library starts from a clean list.
+        this.activeLibraryId = id;
         this.search = '';
         this.readyOnly = false;
         this.managing = null;
-        if (!id) {
-            return;
-        }
-        this.loadingVideos = true;
-        getVideos(id)
-            .then(action((videos) => {
-                this.videos = videos;
-                this.loadingVideos = false;
-            }))
-            .catch(action((e) => {
-                this.loadingVideos = false;
-                this.error = e.message || String(e);
-            }));
     };
 
-    handleLibraryChange = (event: SyntheticInputEvent<HTMLSelectElement>) => {
-        this.selectLibrary(event.target.value);
+    @action showAll = () => {
+        this.activeLibraryId = null;
+        this.managing = null;
     };
+
+    activeLibrary() {
+        return this.libraries.find((l) => l.id === this.activeLibraryId) || null;
+    }
 
     @action setTab = (tab) => {
         this.tab = tab;
@@ -104,6 +92,7 @@ class VideoSelectionOverlay extends React.Component<*> {
         const term = this.search.trim().toLowerCase();
 
         return this.videos
+            .filter((video) => !this.activeLibraryId || video.library_id === this.activeLibraryId)
             .filter((video) => !this.readyOnly || video.status === 'ready')
             .filter((video) => term === '' || (video.title || '').toLowerCase().indexOf(term) !== -1)
             // Show pickable (ready) videos first; the preceding filters already return a fresh array
@@ -114,7 +103,7 @@ class VideoSelectionOverlay extends React.Component<*> {
     chooseVideo = (video: Object) => {
         this.props.onSelect({
             uuid: video.uuid,
-            libraryId: this.libraryId,
+            libraryId: video.library_id || this.activeLibraryId,
             title: video.title || '',
             posterUrl: posterFor(video) || null,
         });
@@ -142,7 +131,7 @@ class VideoSelectionOverlay extends React.Component<*> {
 
     handleFileChange = (event: SyntheticInputEvent<HTMLInputElement>) => {
         const file = event.target.files && event.target.files[0];
-        if (!file || !this.libraryId) {
+        if (!file || !this.activeLibraryId) {
             return;
         }
 
@@ -155,14 +144,14 @@ class VideoSelectionOverlay extends React.Component<*> {
         this.uploadStatus = translate('scale_videooptimizer.uploading');
 
         initiateUpload({
-            libraryId: this.libraryId,
+            libraryId: this.activeLibraryId,
             filename: file.name,
             contentType: file.type || 'application/octet-stream',
             fileSize: file.size,
         })
             .then((upload) => uploadParts(file, upload.parts || [], upload.partSize)
                 .then((parts) => completeUpload({
-                    libraryId: this.libraryId,
+                    libraryId: this.activeLibraryId,
                     uuid: upload.uuid,
                     key: upload.key,
                     uploadId: upload.uploadId,
@@ -198,7 +187,7 @@ class VideoSelectionOverlay extends React.Component<*> {
     };
 
     @action startIngest = () => {
-        if (!this.ingestSourceUrl.trim() || !this.libraryId) {
+        if (!this.ingestSourceUrl.trim() || !this.activeLibraryId) {
             return;
         }
         this.ingesting = true;
@@ -206,7 +195,7 @@ class VideoSelectionOverlay extends React.Component<*> {
         this.ingestStatus = translate('scale_videooptimizer.processing');
 
         ingestVideoUrl({
-            library_id: this.libraryId,
+            library_id: this.activeLibraryId,
             source_url: this.ingestSourceUrl.trim(),
             title: this.ingestTitle.trim() || undefined,
         })
@@ -229,14 +218,30 @@ class VideoSelectionOverlay extends React.Component<*> {
             }));
     };
 
-    renderLibrarySelect() {
+    renderFolders() {
+        const activeLibrary = this.activeLibrary();
+
         return (
-            <select className="vo-select" value={this.libraryId} onChange={this.handleLibraryChange}>
-                {this.libraries.length === 0 && <option value="">—</option>}
-                {this.libraries.map((library) => (
-                    <option key={library.id} value={library.id}>{library.name}</option>
-                ))}
-            </select>
+            <React.Fragment>
+                <FolderList onFolderClick={this.selectLibrary}>
+                    {this.libraries.map((library) => (
+                        <FolderList.Folder
+                            key={library.id}
+                            id={library.id}
+                            title={library.name}
+                            info={translate('scale_videooptimizer.library_videos_count', {count: library.video_count || 0})}
+                        />
+                    ))}
+                </FolderList>
+                <div className="vo-list-header">
+                    <h5>{activeLibrary ? activeLibrary.name : translate('scale_videooptimizer.all_videos')}</h5>
+                    {activeLibrary && (
+                        <button type="button" className="vo-back" onClick={this.showAll}>
+                            ← {translate('scale_videooptimizer.show_all')}
+                        </button>
+                    )}
+                </div>
+            </React.Fragment>
         );
     }
 
@@ -255,13 +260,6 @@ class VideoSelectionOverlay extends React.Component<*> {
                     />
                 </div>
             );
-        }
-
-        if (this.loadingVideos) {
-            return <Loader />;
-        }
-        if (this.videos.length === 0) {
-            return <div className="vo-empty">{translate('scale_videooptimizer.no_videos')}</div>;
         }
 
         const videos = this.filteredVideos();
@@ -325,10 +323,15 @@ class VideoSelectionOverlay extends React.Component<*> {
     }
 
     renderUploadTab() {
+        // Upload and URL ingest need a target library — only available once a folder is selected.
+        if (!this.activeLibraryId) {
+            return <div className="vo-hint">{translate('scale_videooptimizer.select_library_hint')}</div>;
+        }
+
         return (
             <div className="vo-uploader">
                 <p className="vo-hint">{translate('scale_videooptimizer.upload_hint')}</p>
-                <input type="file" accept="video/*" disabled={this.uploading || !this.libraryId} onChange={this.handleFileChange} />
+                <input type="file" accept="video/*" disabled={this.uploading} onChange={this.handleFileChange} />
                 {this.uploadStatus && <div className="vo-upload-status">{this.uploadStatus}</div>}
 
                 <label className="vo-label">{translate('scale_videooptimizer.ingest_from_url')}</label>
@@ -337,7 +340,7 @@ class VideoSelectionOverlay extends React.Component<*> {
                     className="vo-input"
                     placeholder={translate('scale_videooptimizer.source_url')}
                     value={this.ingestSourceUrl}
-                    disabled={this.ingesting || !this.libraryId}
+                    disabled={this.ingesting}
                     onChange={this.handleIngestUrlChange}
                 />
                 <input
@@ -345,7 +348,7 @@ class VideoSelectionOverlay extends React.Component<*> {
                     className="vo-input"
                     placeholder={translate('sulu_admin.title')}
                     value={this.ingestTitle}
-                    disabled={this.ingesting || !this.libraryId}
+                    disabled={this.ingesting}
                     onChange={this.handleIngestTitleChange}
                 />
                 <div className="vo-actions">
@@ -353,7 +356,7 @@ class VideoSelectionOverlay extends React.Component<*> {
                         skin="secondary"
                         onClick={this.startIngest}
                         loading={this.ingesting}
-                        disabled={!this.ingestSourceUrl.trim() || !this.libraryId}
+                        disabled={!this.ingestSourceUrl.trim()}
                     >
                         {translate('scale_videooptimizer.ingest')}
                     </Button>
@@ -375,7 +378,7 @@ class VideoSelectionOverlay extends React.Component<*> {
                 size="large"
             >
                 <div className="vo-overlay">
-                    {this.loadingLibraries ? <Loader /> : (
+                    {this.loading ? <Loader /> : (
                         <React.Fragment>
                             <div className="vo-tabs">
                                 <button
@@ -398,8 +401,7 @@ class VideoSelectionOverlay extends React.Component<*> {
                                 ? <div className="vo-empty">{translate('scale_videooptimizer.not_configured')}</div>
                                 : (
                                     <React.Fragment>
-                                        <label className="vo-label">{translate('scale_videooptimizer.choose_library')}</label>
-                                        {this.renderLibrarySelect()}
+                                        {this.renderFolders()}
                                         {this.tab === 'select' ? this.renderSelectTab() : this.renderUploadTab()}
                                     </React.Fragment>
                                 )}

@@ -68,5 +68,9 @@
     "scale_videooptimizer.use_video": "Dieses Video verwenden",
     "scale_videooptimizer.confirm_delete_video": "Dieses Video unwiderruflich löschen?",
     "scale_videooptimizer.back": "Zurück",
-    "scale_videooptimizer.manage": "Verwalten"
+    "scale_videooptimizer.manage": "Verwalten",
+    "scale_videooptimizer.all_videos": "Alle Videos",
+    "scale_videooptimizer.show_all": "Alle anzeigen",
+    "scale_videooptimizer.no_videos_anywhere": "Es sind noch keine Videos vorhanden.",
+    "scale_videooptimizer.select_library_hint": "Bitte oben eine Bibliothek wählen, um ein Video hochzuladen oder einzuziehen."
 }

@@ -68,5 +68,9 @@
     "scale_videooptimizer.use_video": "Use this video",
     "scale_videooptimizer.confirm_delete_video": "Permanently delete this video?",
     "scale_videooptimizer.back": "Back",
-    "scale_videooptimizer.manage": "Manage"
+    "scale_videooptimizer.manage": "Manage",
+    "scale_videooptimizer.all_videos": "All videos",
+    "scale_videooptimizer.show_all": "Show all",
+    "scale_videooptimizer.no_videos_anywhere": "There are no videos yet.",
+    "scale_videooptimizer.select_library_hint": "Please select a library above to upload or ingest a video."
 }

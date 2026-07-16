@@ -84,6 +84,18 @@ class VideoOptimizerClient
     }
 
     /**
+     * Lists videos across every library, newest first. Optionally filtered to one library.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listAllVideos(?string $libraryId = null): array
+    {
+        $query = (null !== $libraryId && '' !== $libraryId) ? ['library_id' => $libraryId] : [];
+
+        return $this->requestAllPages('/videos', $query);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function getVideo(string $uuid): array
@@ -207,16 +219,18 @@ class VideoOptimizerClient
     /**
      * Fetches every page of a cursor-paginated list endpoint and returns the merged items.
      *
+     * @param array<string, mixed> $extraQuery additional query params applied to every page request
+     *
      * @return array<int, array<string, mixed>>
      */
-    private function requestAllPages(string $path): array
+    private function requestAllPages(string $path, array $extraQuery = []): array
     {
         $items = [];
         $cursor = null;
         $previousCursor = null;
 
         for ($page = 0; $page < self::MAX_PAGES; ++$page) {
-            $query = ['limit' => self::PAGE_LIMIT];
+            $query = $extraQuery + ['limit' => self::PAGE_LIMIT];
             if (null !== $cursor) {
                 $query['cursor'] = $cursor;
             }

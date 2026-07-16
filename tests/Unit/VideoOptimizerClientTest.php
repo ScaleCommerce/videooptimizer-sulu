@@ -43,6 +43,53 @@ class VideoOptimizerClientTest extends TestCase
         self::assertStringContainsString('cursor=cursor-2', $requestedUrls[1], 'The second request must carry the next cursor.');
     }
 
+    public function testListAllVideosHitsGlobalEndpointWithoutLibraryFilter(): void
+    {
+        $requestedUrls = [];
+        $httpClient = new MockHttpClient(function (string $method, string $url) use (&$requestedUrls): MockResponse {
+            $requestedUrls[] = $url;
+
+            return new MockResponse(json_encode([
+                'data' => [['uuid' => 'a'], ['uuid' => 'b']],
+                'pagination' => ['next_cursor' => null, 'has_more' => false],
+            ], JSON_THROW_ON_ERROR));
+        });
+
+        $videos = $this->client($httpClient)->listAllVideos();
+
+        self::assertSame([['uuid' => 'a'], ['uuid' => 'b']], $videos);
+        self::assertStringContainsString('/api/v1/videos?', $requestedUrls[0]);
+        self::assertStringNotContainsString('library_id', $requestedUrls[0], 'No filter must be sent when no library is given.');
+    }
+
+    public function testListAllVideosPropagatesLibraryFilterOnEveryPage(): void
+    {
+        $requestedUrls = [];
+        $pages = [
+            new MockResponse(json_encode([
+                'data' => [['uuid' => 'a']],
+                'pagination' => ['next_cursor' => 'c2', 'has_more' => true],
+            ], JSON_THROW_ON_ERROR)),
+            new MockResponse(json_encode([
+                'data' => [['uuid' => 'b']],
+                'pagination' => ['next_cursor' => null, 'has_more' => false],
+            ], JSON_THROW_ON_ERROR)),
+        ];
+        $httpClient = new MockHttpClient(function (string $method, string $url) use (&$requestedUrls, &$pages): MockResponse {
+            $requestedUrls[] = $url;
+
+            return array_shift($pages);
+        });
+
+        $videos = $this->client($httpClient)->listAllVideos('lib-7');
+
+        self::assertSame([['uuid' => 'a'], ['uuid' => 'b']], $videos);
+        self::assertCount(2, $requestedUrls);
+        self::assertStringContainsString('library_id=lib-7', $requestedUrls[0]);
+        self::assertStringContainsString('library_id=lib-7', $requestedUrls[1], 'The filter must persist across paginated requests.');
+        self::assertStringContainsString('cursor=c2', $requestedUrls[1]);
+    }
+
     public function testListLibrariesStopsAfterSinglePageWithoutPagination(): void
     {
         $calls = 0;

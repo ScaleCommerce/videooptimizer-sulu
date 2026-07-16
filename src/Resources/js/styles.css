@@ -3,6 +3,23 @@
     max-width: 780px;
 }
 
+/* Full-bleed variant (like the Media view): no centered card, uses the whole width. */
+.vo-page--wide {
+    max-width: none;
+}
+
+/* Header row above the video grid: title + "show all" reset when a library is filtered. */
+.vo-list-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin: 24px 0 16px;
+}
+.vo-list-header h1,
+.vo-list-header h5 {
+    margin: 0;
+}
+
 .vo-card {
     background: #fff;
     border: 1px solid #e4e7ec;
