@@ -233,6 +233,7 @@
     padding-bottom: 6px;
 }
 .vo-thumb {
+    position: relative;
     flex: none;
     border: 2px solid transparent;
     border-radius: 4px;
@@ -242,6 +243,23 @@
     background: #0a1d31;
 }
 .vo-thumb:hover { border-color: #10b6b0; }
+/* Currently active poster source (only the custom tile can be reliably marked — the API exposes
+   no selected-thumbnail index). */
+.vo-thumb--active { border-color: #10b6b0; box-shadow: 0 0 0 2px rgba(16, 182, 176, .35); }
+.vo-thumb--custom { border-color: #b692f6; }
+.vo-thumb--custom.vo-thumb--active { border-color: #7f56d9; box-shadow: 0 0 0 2px rgba(127, 86, 217, .35); }
+.vo-thumb-badge {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgba(10, 29, 49, .8);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    pointer-events: none;
+}
 /* Fixed height, auto width + contain so portrait AND landscape frames show fully (no crop). */
 .vo-thumb img {
     height: 90px;

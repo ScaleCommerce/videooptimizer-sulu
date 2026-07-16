@@ -91,6 +91,25 @@ class VideoDetail extends React.Component<*> {
             }));
     };
 
+    // Re-activates the already-uploaded custom poster (source='custom') so the editor can switch
+    // back to it after picking a generated thumbnail — without re-uploading.
+    @action pickCustomPoster = () => {
+        this.busy = 'thumb';
+        this.error = null;
+        selectPoster(this.video.uuid, {source: 'custom'})
+            .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) === 'custom'))
+            .then(action((video) => {
+                if (this._unmounted) { return; }
+                this.busy = null;
+                this.refresh(video);
+            }))
+            .catch(action((e) => {
+                if (this._unmounted) { return; }
+                this.busy = null;
+                this.error = e.message || String(e);
+            }));
+    };
+
     @action handlePosterFile = (event) => {
         const file = event.target.files && event.target.files[0];
         if (!file) {
@@ -169,6 +188,8 @@ class VideoDetail extends React.Component<*> {
         const poster = posterFor(this.video);
         const source = this.video.poster && this.video.poster.source;
         const customStatus = this.video.poster && this.video.poster.custom_status;
+        const customUrl = this.video.poster && this.video.poster.custom_url;
+        const hasCustomPoster = customStatus === 'ready' && !!customUrl;
         const OPTION_KEYS = ['responsive', 'autoplay', 'preload', 'loop', 'muted'];
 
         return (
@@ -180,6 +201,18 @@ class VideoDetail extends React.Component<*> {
 
                 <label className="vo-label">{translate('scale_videooptimizer.thumbnails')}</label>
                 <div className="vo-thumbs">
+                    {hasCustomPoster && (
+                        <button
+                            type="button"
+                            className={'vo-thumb vo-thumb--custom' + (source === 'custom' ? ' vo-thumb--active' : '')}
+                            disabled={this.busy === 'thumb'}
+                            title={translate('scale_videooptimizer.poster_source_custom')}
+                            onClick={this.pickCustomPoster}
+                        >
+                            <img src={bustCache(customUrl)} alt={translate('scale_videooptimizer.poster_source_custom')} />
+                            <span className="vo-thumb-badge">{translate('scale_videooptimizer.poster_source_custom')}</span>
+                        </button>
+                    )}
                     {this.thumbnails.map((t) => (
                         <button key={t.index} type="button" className="vo-thumb" disabled={this.busy === 'thumb'}
                             onClick={() => this.pickThumbnail(t.index)}>
@@ -191,7 +224,7 @@ class VideoDetail extends React.Component<*> {
                 <label className="vo-label">{translate('scale_videooptimizer.custom_poster')}</label>
                 <div className="vo-actions" style={{marginTop: 0}}>
                     <input type="file" accept="image/jpeg,image/png,image/webp" disabled={this.busy === 'poster'} onChange={this.handlePosterFile} />
-                    {customStatus === 'ready' && source === 'custom' && (
+                    {hasCustomPoster && (
                         <Button skin="link" onClick={this.removeCustomPoster}>{translate('scale_videooptimizer.remove_custom_poster')}</Button>
                     )}
                 </div>
