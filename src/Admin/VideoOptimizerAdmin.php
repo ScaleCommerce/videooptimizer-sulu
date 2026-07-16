@@ -28,20 +28,20 @@ class VideoOptimizerAdmin extends Admin
         $root->setIcon('su-video');
         $root->setView(self::SETTINGS_VIEW);
 
-        $settings = new NavigationItem('scale_videooptimizer.settings_nav');
-        $settings->setPosition(10);
-        $settings->setView(self::SETTINGS_VIEW);
-        $root->addChild($settings);
+        $videos = new NavigationItem('scale_videooptimizer.videos_nav');
+        $videos->setPosition(10);
+        $videos->setView(self::VIDEOS_VIEW);
+        $root->addChild($videos);
 
         $libraries = new NavigationItem('scale_videooptimizer.libraries_nav');
         $libraries->setPosition(20);
         $libraries->setView(self::LIBRARIES_VIEW);
         $root->addChild($libraries);
 
-        $videos = new NavigationItem('scale_videooptimizer.videos_nav');
-        $videos->setPosition(30);
-        $videos->setView(self::VIDEOS_VIEW);
-        $root->addChild($videos);
+        $settings = new NavigationItem('scale_videooptimizer.settings_nav');
+        $settings->setPosition(30);
+        $settings->setView(self::SETTINGS_VIEW);
+        $root->addChild($settings);
 
         // Top-level navigation entry (own section with its own icon) — video management is a
         // primary editorial task, so it lives in the main left nav, not nested under Settings.
