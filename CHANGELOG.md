@@ -19,6 +19,35 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Per-block player choice: render the hosted iframe embed or a native
   HTML5 `<video>` player, with lazy/deferred loading for the native player
   (no eager fetch or autoplay off-screen, respects reduced-motion).
+- Per-block `muted` player option (media split, spotlight, video grid).
+- Global default player setting (hosted/native); blocks default to `inherit`
+  and resolve against it.
+- Browse a library's videos as folder tiles, like Sulu media collections: the
+  Videos view and the selection overlay list all videos across libraries and
+  filter to a library on folder click. The Videos view uses the full width.
+- Pick a custom poster from the Sulu media library (image is uploaded to the
+  VideoOptimizer), in addition to uploading a file from disk.
+
+### Changed
+- Load videos through the consolidated `GET /videos` endpoint (server-resolved
+  cursor pagination, optional `library_id` filter) instead of a per-library
+  fan-out.
+- VideoOptimizer is a top-level navigation section; its entries are ordered
+  Videos, Libraries, Settings.
+- The media selection overlay uses the form's locale (or the user's content
+  locale in the standalone view) instead of a fixed locale.
+- The settings entity gained a `default_player` column — run
+  `doctrine:schema:update` (or a migration) when upgrading.
+
+### Fixed
+- Switch back to an uploaded custom poster from the thumbnail strip without
+  re-uploading; the remove action stays available whenever a custom poster
+  exists.
+- Portrait posters and thumbnails are no longer cropped in the admin, and all
+  generated thumbnails are shown.
+- Admin preview images bust the CDN cache so poster/thumbnail changes are
+  reflected immediately (stored value and frontend embed keep the clean URL).
+- Uniform video grid in the selection overlay.
 
 ## [0.1.0] - 2026-07-14
 
