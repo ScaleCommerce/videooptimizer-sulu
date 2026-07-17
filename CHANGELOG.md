@@ -6,6 +6,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Documentation
+- Clarify in the README that the `npm run build` step is Sulu's standard admin build, how it relates to
+  `sulu:admin:update-build`, and that `sulu:build` is unrelated (data layer, not the admin JS).
+
 ## [1.3.2] - 2026-07-17
 
 ### Fixed

@@ -3,7 +3,6 @@
 # 🎬 VideoOptimizer for Sulu
 
 **Pick, upload and manage CDN-delivered videos — right inside the Sulu admin.**
-No separate VideoOptimizer login. No credentials in the browser. Just video.
 
 [![CI](https://github.com/ScaleCommerce/videooptimizer-sulu/actions/workflows/ci.yml/badge.svg)](https://github.com/ScaleCommerce/videooptimizer-sulu/actions/workflows/ci.yml)
 [![Latest Version](https://img.shields.io/packagist/v/scalecommerce/videooptimizer-sulu.svg)](https://packagist.org/packages/scalecommerce/videooptimizer-sulu)
@@ -149,6 +148,12 @@ running installer would delete the cache it is still using.
 ```bash
 cd assets/admin && npm install && npm run build
 ```
+
+This is Sulu's standard admin build — the admin is a webpack app compiled in your project, so it's a
+plain `npm run build` (use `npm run watch` while developing). It's exactly what `sulu:admin:update-build`
+runs under the hood for a customized project; that command is for syncing `assets/admin` with the Sulu
+skeleton on upgrades, not a routine build. `bin/console sulu:build` is unrelated — it builds the data
+layer (database/content), not the admin JS.
 
 > After updating the bundle, hard-reload the admin (the build hash changes) so the browser doesn't run
 > the stale bundle.
