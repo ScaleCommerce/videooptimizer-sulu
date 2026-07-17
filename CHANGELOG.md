@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-17
+
+### Added
+- Console command **`scale:videooptimizer:install`** that automates the post-`composer require` setup:
+  it imports the admin API routes, wires the (pre-compiled) admin JS into `assets/admin`
+  (`package.json` dependency + `app.js` import), and creates the `vo_settings` table. Idempotent and
+  safe to re-run; `--dry-run` previews the changes. Install shrinks to: register the bundle → run the
+  command → `npm run build` → set the token.
+
 ## [1.1.0] - 2026-07-17
 
 ### Changed

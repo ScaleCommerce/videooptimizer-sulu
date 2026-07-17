@@ -20,6 +20,11 @@
             <argument type="service" id="Scale\VideoOptimizerBundle\Security\TokenCipher"/>
         </service>
 
+        <service id="Scale\VideoOptimizerBundle\Command\InstallCommand">
+            <argument type="service" id="doctrine.orm.entity_manager"/>
+            <argument>%kernel.project_dir%</argument>
+        </service>
+
         <service id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient">
             <argument type="service" id="http_client"/>
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\SettingsManager"/>

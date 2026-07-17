@@ -89,50 +89,44 @@ composer require scalecommerce/videooptimizer-sulu
 Scale\VideoOptimizerBundle\ScaleVideoOptimizerBundle::class => ['all' => true],
 ```
 
-**3. Import the admin API routes** in `config/routes/sulu_admin.yaml`:
-
-```yaml
-scale_videooptimizer_api:
-    resource: "@ScaleVideoOptimizerBundle/Resources/config/routing_admin.yaml"
-    prefix: /admin/api
-```
-
-**4. Create the settings table.** The bundle ships the `VideoOptimizerSettings` entity but no
-migration — per the Sulu/Symfony convention, migrations belong to the application. Generate one against
-your schema and apply it:
+**3. Run the installer.** The bundle ships a console command that does the steps a plain
+`composer require` cannot — it imports the admin API routes, wires its (pre-compiled) admin JS into
+`assets/admin`, and creates the settings table:
 
 ```bash
-bin/adminconsole doctrine:migrations:diff      # generate a migration from the entity
-bin/adminconsole doctrine:migrations:migrate   # apply it
+bin/adminconsole scale:videooptimizer:install
 ```
+
+It is idempotent (safe to re-run) and only fills in what's missing; add `--dry-run` to preview.
 
 <details>
-<summary>Prefer a one-liner for local dev?</summary>
+<summary>What it does — or set it up by hand instead</summary>
 
-```bash
-bin/adminconsole doctrine:schema:update --force   # no migration file, dev only
-```
+- **Admin API routes** — creates `config/routes/scale_videooptimizer_admin.yaml`:
 
-</details>
+  ```yaml
+  scale_videooptimizer_api:
+      resource: "@ScaleVideoOptimizerBundle/Resources/config/routing_admin.yaml"
+      prefix: /admin/api
+  ```
 
-**5. Wire the admin UI into the build.** Sulu compiles the admin frontend from the host project, and a
-third-party bundle's admin JS has to be registered there — `composer require` alone does not do this, so
-without this step the VideoOptimizer navigation appears but its views won't open. The bundle ships
-**pre-compiled** admin JS, so it's just two edits under `assets/admin/` (no `webpack.config.js` change):
-
-- **`package.json`** — add the bundle's JS as a dependency (next to the `sulu-*-bundle` entries):
+- **Admin JS wiring** — adds the dependency to `assets/admin/package.json` and imports it in
+  `assets/admin/app.js` (the JS ships pre-compiled, so no `webpack.config.js` change is needed):
 
   ```json
   "videooptimizer-sulu": "file:../../vendor/scalecommerce/videooptimizer-sulu/src/Resources/js"
   ```
-
-- **`app.js`** — import it:
-
   ```js
   import 'videooptimizer-sulu';
   ```
 
-Then install and build:
+- **Settings table** — creates `vo_settings` from the `VideoOptimizerSettings` entity. If your team
+  tracks schema through migrations, run `bin/adminconsole doctrine:migrations:diff` then `:migrate`
+  instead.
+
+</details>
+
+**4. Build the admin frontend:**
 
 ```bash
 cd assets/admin && npm install && npm run build
@@ -141,7 +135,7 @@ cd assets/admin && npm install && npm run build
 > After updating the bundle, hard-reload the admin (the build hash changes) so the browser doesn't run
 > the stale bundle.
 
-**6. Add your token.** In the Sulu admin, open **Settings → VideoOptimizer** and paste your `vp_…` API
+**5. Add your token.** In the Sulu admin, open **Settings → VideoOptimizer** and paste your `vp_…` API
 token. It's stored encrypted and never returned to the browser. Done — editors can now pick videos. 🎉
 
 <div align="center">
@@ -152,30 +146,29 @@ token. It's stored encrypted and never returned to the browser. Done — editors
 
 </div>
 
-**7. See the blocks in action (optional).** Run `bin/console assets:install`, then create a page with the
+**6. See the blocks in action (optional).** Run `bin/console assets:install`, then create a page with the
 **"VideoOptimizer showcase"** template (shipped by the bundle, no setup) — it already has all four
 content blocks wired up and renders them on a self-contained page. See [Content blocks](#-content-blocks).
 
-> **Optional:** a [Symfony Flex recipe](#optional-zero-config-install-with-symfony-flex) is included in
-> the repo that can apply steps 2 and 3 automatically.
+> **Optional:** a [Symfony Flex recipe](#optional-zero-config-install-with-symfony-flex) is included that
+> can register the bundle (step 2) automatically.
 
 ## Optional: zero-config install with Symfony Flex
 
 A [Symfony Flex](https://symfony.com/doc/current/setup/flex.html) recipe is included in the repository
 under [`.recipe/`](.recipe/). It is **not published** to
-[`symfony/recipes-contrib`](https://github.com/symfony/recipes-contrib) — the manual steps above are the
-supported path. If you want a Flex-enabled project to get **steps 2 and 3 for free** on
-`composer require` (bundle registration in `config/bundles.php` and the admin route import), you can
-submit the recipe yourself; see [`.recipe/README.md`](.recipe/README.md).
-
-Either way the admin-frontend wiring (step 5) stays manual — Flex cannot touch `assets/admin`.
+[`symfony/recipes-contrib`](https://github.com/symfony/recipes-contrib) — the steps above are the
+supported path. If you want a Flex-enabled project to register the bundle in `config/bundles.php` and
+import the admin routes on `composer require`, you can submit the recipe yourself; see
+[`.recipe/README.md`](.recipe/README.md). The `scale:videooptimizer:install` command still handles the
+admin JS wiring and the settings table.
 
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| The **VideoOptimizer navigation appears but clicking does nothing** / no view opens | The admin JS was not wired into the build (step 5) | Add the `assets/admin` dependency + `app.js` import, then `npm run build`, then hard-reload the admin |
-| Views open but show **"…admin API is not reachable (404)"** | The proxy routes are not imported (step 3) | Add the route import to `config/routes/sulu_admin.yaml`, then `bin/adminconsole cache:clear` |
+| The **VideoOptimizer navigation appears but clicking does nothing** / no view opens | The admin JS was not wired into the build | Run `bin/adminconsole scale:videooptimizer:install`, then `cd assets/admin && npm run build`, then hard-reload the admin |
+| Views open but show **"…admin API is not reachable (404)"** | The proxy routes are not imported | Run `bin/adminconsole scale:videooptimizer:install`, then `bin/adminconsole cache:clear` |
 | A view says **"No VideoOptimizer token is configured yet"** | No API token stored | Open **Settings → VideoOptimizer** and save your `vp_…` token |
 | Settings shows an error but the form is still usable | Expected on a fresh/misconfigured install — the form never blocks so you can always enter the token | Enter the token and save; fix routes if the error mentions 404 |
 
