@@ -71,13 +71,13 @@ class VideoOptimizerExtension extends AbstractExtension
     public function playerOptions(?array $block): array
     {
         $block ??= [];
-        $autoplay = (string) ($block['autoplay'] ?? 'inherit');
+        $autoplay = self::str($block['autoplay'] ?? 'inherit');
 
         return [
             'autoplay' => 'inherit' === $autoplay ? '1' : $autoplay,
-            'controls' => (string) ($block['controls'] ?? 'inherit'),
-            'loop' => (string) ($block['loop'] ?? 'inherit'),
-            'muted' => (string) ($block['muted'] ?? 'inherit'),
+            'controls' => self::str($block['controls'] ?? 'inherit'),
+            'loop' => self::str($block['loop'] ?? 'inherit'),
+            'muted' => self::str($block['muted'] ?? 'inherit'),
         ];
     }
 
@@ -92,7 +92,7 @@ class VideoOptimizerExtension extends AbstractExtension
             return null;
         }
 
-        return $this->embedResolver->getPosterSrcset((string) $video['uuid']);
+        return $this->embedResolver->getPosterSrcset(self::str($video['uuid']));
     }
 
     /**
@@ -107,7 +107,7 @@ class VideoOptimizerExtension extends AbstractExtension
             return '';
         }
 
-        $sources = $this->embedResolver->getSources((string) $video['uuid']);
+        $sources = $this->embedResolver->getSources(self::str($video['uuid']));
 
         $data = ['@context' => 'https://schema.org', '@type' => 'VideoObject'];
 
@@ -152,7 +152,7 @@ class VideoOptimizerExtension extends AbstractExtension
             return ['width' => null, 'height' => null, 'orientation' => null];
         }
 
-        return $this->embedResolver->getDimensions((string) $video['uuid']);
+        return $this->embedResolver->getDimensions(self::str($video['uuid']));
     }
 
     /**
@@ -168,7 +168,7 @@ class VideoOptimizerExtension extends AbstractExtension
             return null;
         }
 
-        $url = rtrim($this->embedBaseUrl, '/') . '/embed/' . rawurlencode((string) $video['uuid']);
+        $url = rtrim($this->embedBaseUrl, '/') . '/embed/' . rawurlencode(self::str($video['uuid']));
 
         // Only append boolean player params that are explicitly on/off; any other value
         // (e.g. the "inherit" sentinel) is omitted so the embed theme decides.
@@ -205,7 +205,7 @@ class VideoOptimizerExtension extends AbstractExtension
         return \sprintf(
             '<iframe src="%s" title="%s" loading="%s" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen style="border:0;width:100%%;height:100%%;aspect-ratio:16/9"></iframe>',
             htmlspecialchars($url, \ENT_QUOTES),
-            htmlspecialchars($video['title'] ?? $title, \ENT_QUOTES),
+            htmlspecialchars(self::str($video['title'] ?? $title), \ENT_QUOTES),
             $eager ? 'eager' : 'lazy',
         );
     }
@@ -224,14 +224,14 @@ class VideoOptimizerExtension extends AbstractExtension
             return '';
         }
 
-        $sources = $this->embedResolver->getSources((string) $video['uuid']);
+        $sources = $this->embedResolver->getSources(self::str($video['uuid']));
         $poster = $sources['poster'] ?? ($video['posterUrl'] ?? null);
         $hlsUrl = $sources['hlsUrl'] ?? null;
 
         return \sprintf(
             '<video class="vo-bg-hero__video" muted autoplay loop playsinline preload="%s"%s%s></video>',
             $priority ? 'auto' : 'metadata',
-            null !== $poster ? \sprintf(' poster="%s"', htmlspecialchars((string) $poster, \ENT_QUOTES)) : '',
+            null !== $poster ? \sprintf(' poster="%s"', htmlspecialchars(self::str($poster), \ENT_QUOTES)) : '',
             null !== $hlsUrl ? \sprintf(' data-hls="%s"', htmlspecialchars($hlsUrl, \ENT_QUOTES)) : '',
         );
     }
@@ -256,7 +256,7 @@ class VideoOptimizerExtension extends AbstractExtension
             return '';
         }
 
-        $playable = $this->embedResolver->getPlayable((string) $video['uuid']);
+        $playable = $this->embedResolver->getPlayable(self::str($video['uuid']));
         $poster = $playable['poster'] ?? ($video['posterUrl'] ?? null);
 
         $hls = null;
@@ -288,7 +288,7 @@ class VideoOptimizerExtension extends AbstractExtension
             $attrs .= ' data-vo-native-autoload';
         }
         if (null !== $poster) {
-            $attrs .= ' poster="' . htmlspecialchars((string) $poster, \ENT_QUOTES) . '"';
+            $attrs .= ' poster="' . htmlspecialchars(self::str($poster), \ENT_QUOTES) . '"';
         }
         if (null !== $hls) {
             $attrs .= ' data-hls="' . htmlspecialchars($hls, \ENT_QUOTES) . '"';
@@ -303,5 +303,14 @@ class VideoOptimizerExtension extends AbstractExtension
         $style = \is_string($accent) && '' !== $accent ? ' style="--vo-player-accent:' . htmlspecialchars($accent, \ENT_QUOTES) . '"' : '';
 
         return \sprintf('<video %s%s>%s</video>', $attrs, $style, $sourceTags);
+    }
+
+    /**
+     * Casts a value read from the (mixed-typed) stored video/block property to a string,
+     * defaulting to '' for non-scalars.
+     */
+    private static function str(mixed $value): string
+    {
+        return \is_scalar($value) ? (string) $value : '';
     }
 }

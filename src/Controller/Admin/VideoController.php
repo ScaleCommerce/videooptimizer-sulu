@@ -36,7 +36,7 @@ class VideoController
     public function initiateUpload(Request $request): JsonResponse
     {
         $payload = $this->decodeJson($request);
-        if ('' === (string) ($payload['libraryId'] ?? '')) {
+        if ('' === self::str($payload, 'libraryId')) {
             return new JsonResponse(['message' => 'Missing libraryId.'], 400);
         }
 
@@ -46,7 +46,7 @@ class VideoController
     public function completeUpload(Request $request): JsonResponse
     {
         $payload = $this->decodeJson($request);
-        if ('' === (string) ($payload['uuid'] ?? '')) {
+        if ('' === self::str($payload, 'uuid')) {
             return new JsonResponse(['message' => 'Missing uuid.'], 400);
         }
 
@@ -56,7 +56,7 @@ class VideoController
     public function ingestUrl(Request $request): JsonResponse
     {
         $payload = $this->decodeJson($request);
-        if ('' === (string) ($payload['library_id'] ?? '') || '' === (string) ($payload['source_url'] ?? '')) {
+        if ('' === self::str($payload, 'library_id') || '' === self::str($payload, 'source_url')) {
             return new JsonResponse(['message' => 'Missing library_id or source_url.'], 400);
         }
 
@@ -84,7 +84,7 @@ class VideoController
 
     public function selectThumbnail(Request $request, string $uuid): JsonResponse
     {
-        $index = (int) ($this->decodeJson($request)['thumbnailIndex'] ?? -1);
+        $index = self::int($this->decodeJson($request), 'thumbnailIndex', -1);
         if ($index < 0) {
             return new JsonResponse(['message' => 'Missing thumbnailIndex.'], 400);
         }
@@ -99,7 +99,7 @@ class VideoController
 
     public function posterComplete(Request $request, string $uuid): JsonResponse
     {
-        $key = (string) ($this->decodeJson($request)['key'] ?? '');
+        $key = self::str($this->decodeJson($request), 'key');
         if ('' === $key) {
             return new JsonResponse(['message' => 'Missing key.'], 400);
         }
@@ -127,10 +127,37 @@ class VideoController
     private function decodeJson(Request $request): array
     {
         $decoded = json_decode($request->getContent(), true);
+        if (!\is_array($decoded)) {
+            return [];
+        }
 
-        return \is_array($decoded) ? $decoded : [];
+        /** @var array<string, mixed> $decoded */
+        return $decoded;
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
+    private static function str(array $data, string $key): string
+    {
+        $value = $data[$key] ?? null;
+
+        return \is_scalar($value) ? (string) $value : '';
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private static function int(array $data, string $key, int $default): int
+    {
+        $value = $data[$key] ?? null;
+
+        return \is_numeric($value) ? (int) $value : $default;
+    }
+
+    /**
+     * @param callable(): JsonResponse $callback
+     */
     private function guard(callable $callback): JsonResponse
     {
         try {

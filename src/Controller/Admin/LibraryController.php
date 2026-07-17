@@ -67,10 +67,17 @@ class LibraryController
     private function payload(Request $request): array
     {
         $data = json_decode($request->getContent(), true);
+        if (!\is_array($data)) {
+            return [];
+        }
 
-        return \is_array($data) ? $data : [];
+        /** @var array<string, mixed> $data */
+        return $data;
     }
 
+    /**
+     * @param callable(): JsonResponse $callback
+     */
     private function guard(callable $callback): JsonResponse
     {
         try {

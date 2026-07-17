@@ -236,6 +236,7 @@ class VideoOptimizerClient
      */
     private function requestAllPages(string $path, array $extraQuery = []): array
     {
+        /** @var array<int, array<string, mixed>> $items */
         $items = [];
         $cursor = null;
         $previousCursor = null;
@@ -251,7 +252,10 @@ class VideoOptimizerClient
             $data = $response['data'] ?? null;
             if (\is_array($data)) {
                 foreach ($data as $item) {
-                    $items[] = $item;
+                    if (\is_array($item)) {
+                        /** @var array<string, mixed> $item */
+                        $items[] = $item;
+                    }
                 }
             }
 
@@ -274,14 +278,18 @@ class VideoOptimizerClient
     /**
      * @param array<string, mixed> $options
      *
-     * @return array<int|string, mixed>
+     * @return array<string, mixed>
      */
     private function requestData(string $method, string $path, array $options = []): array
     {
         $response = $this->request($method, $path, $options);
         $payload = $response['data'] ?? null;
+        if (!\is_array($payload)) {
+            return [];
+        }
 
-        return \is_array($payload) ? $payload : [];
+        /** @var array<string, mixed> $payload */
+        return $payload;
     }
 
     /**
@@ -298,7 +306,7 @@ class VideoOptimizerClient
 
         $options['headers'] = array_merge(
             ['Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json'],
-            $options['headers'] ?? [],
+            (array) ($options['headers'] ?? []),
         );
 
         $url = rtrim($this->baseUrl, '/') . $path;
@@ -326,6 +334,7 @@ class VideoOptimizerClient
         if (!\is_array($decoded)) {
             $decoded = [];
         }
+        /** @var array<string, mixed> $decoded */
 
         if ($status >= 400) {
             $message = 'VideoOptimizer request failed.';
