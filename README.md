@@ -178,22 +178,19 @@ token. It's stored encrypted and never returned to the browser. Done — editors
 **"VideoOptimizer showcase"** template (shipped by the bundle, no setup) — it already has all four
 content blocks wired up and renders them on a self-contained page. See [Content blocks](#-content-blocks).
 
-> **Once the [Symfony Flex recipe](#zero-config-install-with-symfony-flex) is published,** steps 2 and 3
-> (bundle registration and route import) are applied automatically — you only do steps 4–7.
+> **Optional:** a [Symfony Flex recipe](#optional-zero-config-install-with-symfony-flex) is included in
+> the repo that can apply steps 2 and 3 automatically.
 
-## Zero-config install with Symfony Flex
+## Optional: zero-config install with Symfony Flex
 
-A [Symfony Flex](https://symfony.com/doc/current/setup/flex.html) recipe ships in the repository under
-[`.recipe/`](.recipe/). Once it is merged into
-[`symfony/recipes-contrib`](https://github.com/symfony/recipes-contrib), a Flex-enabled project gets
-**steps 2 and 3 for free** on `composer require`:
+A [Symfony Flex](https://symfony.com/doc/current/setup/flex.html) recipe is included in the repository
+under [`.recipe/`](.recipe/). It is **not published** to
+[`symfony/recipes-contrib`](https://github.com/symfony/recipes-contrib) — the manual steps above are the
+supported path. If you want a Flex-enabled project to get **steps 2 and 3 for free** on
+`composer require` (bundle registration in `config/bundles.php` and the admin route import), you can
+submit the recipe yourself; see [`.recipe/README.md`](.recipe/README.md).
 
-- the bundle is registered in `config/bundles.php`, and
-- `config/routes/scale_videooptimizer_admin.yaml` is created, importing the admin proxy routes behind the
-  `/admin` firewall.
-
-Only the admin-frontend wiring (step 5) then remains manual — Flex cannot patch `webpack.config.js`.
-See [`.recipe/README.md`](.recipe/README.md) for how to submit the recipe.
+Either way the admin-frontend wiring (step 5) stays manual — Flex cannot patch `webpack.config.js`.
 
 ## Troubleshooting
 
