@@ -6,8 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-07-17
+
 ### Changed
 - The bundle now passes PHPStan at level max; static analysis runs in CI. No runtime behaviour change.
+
+### Documentation
+- The bundled Symfony Flex recipe is framed as optional and unpublished; the manual install steps are
+  the supported path.
 
 ## [1.0.1] - 2026-07-17
 
