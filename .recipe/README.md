@@ -16,7 +16,7 @@ The admin-frontend wiring (install step 5) still has to be done by hand — Flex
 ## Layout
 
 ```
-scalecommerce/videooptimizer-sulu/0.2/
+scalecommerce/videooptimizer-sulu/1.0/
 ├── manifest.json
 └── config/routes/scale_videooptimizer_admin.yaml
 ```
