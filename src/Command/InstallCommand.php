@@ -13,6 +13,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * One-shot, idempotent installer: imports the admin API routes, wires the admin JS into the
@@ -33,6 +34,7 @@ class InstallCommand extends Command
     public function __construct(
         private EntityManagerInterface $entityManager,
         private string $projectDir,
+        private string $cacheDir,
     ) {
         parent::__construct();
     }
@@ -52,14 +54,25 @@ class InstallCommand extends Command
             $io->note('Dry run — no files or tables are changed.');
         }
 
+        $changed = false;
         foreach (['importRoutes', 'wireAdminDependency', 'wireAdminImport', 'createSettingsTable'] as $step) {
             [$status, $message] = $this->{$step}($dryRun);
             if ('done' === $status) {
                 $io->writeln(' <info>✓</info> ' . $message);
+                $changed = true;
             } elseif ('skip' === $status) {
                 $io->writeln(' <comment>•</comment> ' . $message . ' <comment>(already done)</comment>');
             } else {
                 $io->warning($message);
+            }
+        }
+
+        // The new route file only becomes visible once the (already-warmed) cache is dropped.
+        if ($changed && !$dryRun) {
+            if ($this->clearCache()) {
+                $io->writeln(' <info>✓</info> Cleared the cache so the new routes are served');
+            } else {
+                $io->warning('Could not clear the cache — run "bin/adminconsole cache:clear" so the routes are picked up.');
             }
         }
 
@@ -71,6 +84,25 @@ class InstallCommand extends Command
         $io->success('VideoOptimizer is wired in.');
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * Drops the (already-warmed) cache dir so the freshly written route file is served on the next
+     * request. Best-effort — returns false if the directory cannot be cleared.
+     */
+    private function clearCache(): bool
+    {
+        try {
+            $filesystem = new Filesystem();
+            if (is_dir($this->cacheDir)) {
+                $filesystem->remove($this->cacheDir);
+                $filesystem->mkdir($this->cacheDir);
+            }
+
+            return true;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**

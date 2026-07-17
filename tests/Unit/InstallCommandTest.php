@@ -37,7 +37,7 @@ class InstallCommandTest extends TestCase
 
     public function testWiresRoutesDependencyAndImportAndSkipsExistingTable(): void
     {
-        $tester = new CommandTester(new InstallCommand($this->entityManager(tableExists: true), $this->projectDir));
+        $tester = new CommandTester(new InstallCommand($this->entityManager(tableExists: true), $this->projectDir, $this->projectDir . "/var/cache"));
         $tester->execute([]);
         $tester->assertCommandIsSuccessful();
 
@@ -56,7 +56,7 @@ class InstallCommandTest extends TestCase
 
     public function testDryRunChangesNothing(): void
     {
-        $tester = new CommandTester(new InstallCommand($this->entityManager(tableExists: true), $this->projectDir));
+        $tester = new CommandTester(new InstallCommand($this->entityManager(tableExists: true), $this->projectDir, $this->projectDir . "/var/cache"));
         $tester->execute(['--dry-run' => true]);
         $tester->assertCommandIsSuccessful();
 
@@ -66,9 +66,9 @@ class InstallCommandTest extends TestCase
 
     public function testIsIdempotent(): void
     {
-        (new CommandTester(new InstallCommand($this->entityManager(tableExists: true), $this->projectDir)))->execute([]);
+        (new CommandTester(new InstallCommand($this->entityManager(tableExists: true), $this->projectDir, $this->projectDir . "/var/cache")))->execute([]);
 
-        $second = new CommandTester(new InstallCommand($this->entityManager(tableExists: true), $this->projectDir));
+        $second = new CommandTester(new InstallCommand($this->entityManager(tableExists: true), $this->projectDir, $this->projectDir . "/var/cache"));
         $second->execute([]);
         $second->assertCommandIsSuccessful();
         self::assertStringContainsString('already done', $second->getDisplay());

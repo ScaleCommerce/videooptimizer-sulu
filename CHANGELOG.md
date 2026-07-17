@@ -6,6 +6,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- `scale:videooptimizer:install` now clears the cache after writing the route file, so the admin API is
+  reachable immediately. Previously the freshly imported routes stayed invisible to the already-warmed
+  cache, causing a 404 ("admin API is not reachable") until a manual `cache:clear`.
+
 ## [1.3.0] - 2026-07-17
 
 ### Added
