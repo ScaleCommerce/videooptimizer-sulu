@@ -8,3 +8,8 @@
 /tests             export-ignore
 /phpunit.xml.dist  export-ignore
 /phpstan.dist.neon export-ignore
+
+# Admin JS build inputs (consumers use the pre-compiled src/Resources/js/dist).
+/src/Resources/js/babel.config.json export-ignore
+/src/Resources/js/package-lock.json export-ignore
+/src/Resources/js/.gitignore         export-ignore

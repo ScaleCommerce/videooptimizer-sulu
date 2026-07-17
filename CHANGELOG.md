@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-17
+
+### Changed
+- The admin JS now ships **pre-compiled** (`src/Resources/js/dist`, built with Babel mirroring Sulu's
+  config). Installing a project's admin frontend no longer needs the `webpack.config.js` babel-exclude
+  edit — only the `assets/admin/package.json` dependency and the `app.js` import remain (install step 5).
+  Verified end-to-end in a real Sulu 3.0 admin (all views render, no console errors). CI rebuilds the
+  compiled output and fails if the committed `dist/` is stale.
+
 ## [1.0.2] - 2026-07-17
 
 ### Changed

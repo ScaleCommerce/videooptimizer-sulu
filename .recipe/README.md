@@ -10,8 +10,8 @@ automatically:
   the `/admin` firewall (**install step 3** — the `_admin` filename suffix scopes it to Sulu's admin
   context).
 
-The admin-frontend wiring (install step 5) still has to be done by hand — Flex cannot patch
-`assets/admin/webpack.config.js`.
+The admin-frontend wiring (install step 5 — the `assets/admin` dependency + `app.js` import) still has
+to be done by hand; Flex cannot touch `assets/admin`.
 
 ## Layout
 

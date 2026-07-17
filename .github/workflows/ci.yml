@@ -33,3 +33,23 @@ jobs:
 
       - name: Run tests
         run: vendor/bin/phpunit
+
+  admin-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install admin JS build deps
+        working-directory: src/Resources/js
+        run: npm ci --legacy-peer-deps
+
+      - name: Rebuild the pre-compiled admin JS
+        working-directory: src/Resources/js
+        run: npm run build
+
+      - name: Fail if the committed dist/ is stale
+        run: git diff --exit-code -- src/Resources/js/dist

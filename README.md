@@ -117,8 +117,8 @@ bin/adminconsole doctrine:schema:update --force   # no migration file, dev only
 
 **5. Wire the admin UI into the build.** Sulu compiles the admin frontend from the host project, and a
 third-party bundle's admin JS has to be registered there — `composer require` alone does not do this, so
-without this step the VideoOptimizer navigation appears but its views won't open. Make three edits under
-`assets/admin/`:
+without this step the VideoOptimizer navigation appears but its views won't open. The bundle ships
+**pre-compiled** admin JS, so it's just two edits under `assets/admin/` (no `webpack.config.js` change):
 
 - **`package.json`** — add the bundle's JS as a dependency (next to the `sulu-*-bundle` entries):
 
@@ -132,36 +132,14 @@ without this step the VideoOptimizer navigation appears but its views won't open
   import 'videooptimizer-sulu';
   ```
 
-- **`webpack.config.js`** — the bundle ships JSX/decorators like the `sulu-*-bundle` packages, so
-  babel-loader must transpile it too (the default config excludes all of `node_modules` except Sulu's own
-  packages). Widen the `node_modules` exclude while keeping every other entry:
-
-  ```js
-  const config = webpackConfig(env, argv);
-  config.entry = path.resolve(__dirname, 'index.js');
-
-  config.module.rules.forEach((rule) => {
-      if (!Array.isArray(rule.exclude)) {
-          return;
-      }
-      rule.exclude = rule.exclude.map((pattern) =>
-          String(pattern).includes('sulu-')
-              ? /node_modules[/\\](?!(sulu-(.*)-bundle|videooptimizer-sulu|@ckeditor|array-move|lodash-es|vanilla-colorful)[/\\])/
-              : pattern
-      );
-  });
-
-  return config;
-  ```
-
 Then install and build:
 
 ```bash
 cd assets/admin && npm install && npm run build
 ```
 
-> After later JS changes, hard-reload the admin (the build hash changes) so the browser doesn't run the
-> stale bundle.
+> After updating the bundle, hard-reload the admin (the build hash changes) so the browser doesn't run
+> the stale bundle.
 
 **6. Add your token.** In the Sulu admin, open **Settings → VideoOptimizer** and paste your `vp_…` API
 token. It's stored encrypted and never returned to the browser. Done — editors can now pick videos. 🎉
@@ -190,13 +168,13 @@ supported path. If you want a Flex-enabled project to get **steps 2 and 3 for fr
 `composer require` (bundle registration in `config/bundles.php` and the admin route import), you can
 submit the recipe yourself; see [`.recipe/README.md`](.recipe/README.md).
 
-Either way the admin-frontend wiring (step 5) stays manual — Flex cannot patch `webpack.config.js`.
+Either way the admin-frontend wiring (step 5) stays manual — Flex cannot touch `assets/admin`.
 
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| The **VideoOptimizer navigation appears but clicking does nothing** / no view opens | The admin JS was not wired into the build (step 5) | Add the `assets/admin` dependency + `app.js` import + `webpack.config.js` exclude, then `npm run build`, then hard-reload the admin |
+| The **VideoOptimizer navigation appears but clicking does nothing** / no view opens | The admin JS was not wired into the build (step 5) | Add the `assets/admin` dependency + `app.js` import, then `npm run build`, then hard-reload the admin |
 | Views open but show **"…admin API is not reachable (404)"** | The proxy routes are not imported (step 3) | Add the route import to `config/routes/sulu_admin.yaml`, then `bin/adminconsole cache:clear` |
 | A view says **"No VideoOptimizer token is configured yet"** | No API token stored | Open **Settings → VideoOptimizer** and save your `vp_…` token |
 | Settings shows an error but the form is still usable | Expected on a fresh/misconfigured install — the form never blocks so you can always enter the token | Enter the token and save; fix routes if the error mentions 404 |
@@ -362,18 +340,16 @@ vendor/bin/phpunit
 <details>
 <summary><b>Working on the admin UI</b></summary>
 
-The admin UI lives under `src/Resources/js` (React 17 + MobX, built by Sulu's webpack in the host
-project). When developing via a Composer **path repository**, npm *copies* that JS into the host's
-`node_modules` rather than symlinking it — so after editing, refresh the copy before rebuilding:
+The admin UI source lives under `src/Resources/js` (React 17 + MobX). It is shipped **pre-compiled**
+to `src/Resources/js/dist` (via Babel, mirroring Sulu's own config) so consumers don't need to widen
+their webpack babel config. **After editing the source, rebuild the compiled output and commit it:**
 
 ```bash
-rm -rf assets/admin/node_modules/videooptimizer-sulu \
-  && cp -r vendor/scalecommerce/videooptimizer-sulu/src/Resources/js assets/admin/node_modules/videooptimizer-sulu \
-  && (cd assets/admin && npm run build)
+cd src/Resources/js && npm install && npm run build   # regenerates dist/
 ```
 
-State mutations in admin field/view handlers must be wrapped in MobX `@action` (the Sulu production
-build enforces actions).
+CI verifies `dist/` is in sync with the source, so a stale build fails the pipeline. State mutations in
+admin field/view handlers must be wrapped in MobX `@action` (the Sulu production build enforces actions).
 
 </details>
 
