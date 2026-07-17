@@ -20,7 +20,6 @@
         <service id="Scale\VideoOptimizerBundle\Command\InstallCommand">
             <argument type="service" id="doctrine.orm.entity_manager"/>
             <argument>%kernel.project_dir%</argument>
-            <argument>%kernel.cache_dir%</argument>
         </service>
 
         <service id="Scale\VideoOptimizerBundle\Command\UninstallCommand">

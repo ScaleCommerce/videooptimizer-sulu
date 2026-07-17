@@ -81,7 +81,8 @@ Compared to serving `.mp4` files from your own origin:
 
 ```bash
 composer require scalecommerce/videooptimizer-sulu
-bin/adminconsole scale:videooptimizer:install        # routes + admin JS + settings table + cache
+bin/adminconsole scale:videooptimizer:install        # routes + admin JS wiring + settings table
+bin/adminconsole cache:clear                         # so the new routes are served
 (cd assets/admin && npm install && npm run build)    # build the admin frontend
 ```
 
@@ -105,13 +106,16 @@ Scale\VideoOptimizerBundle\ScaleVideoOptimizerBundle::class => ['all' => true],
 
 **3. Run the installer.** The bundle ships a console command that does the steps a plain
 `composer require` cannot — it imports the admin API routes, wires its (pre-compiled) admin JS into
-`assets/admin`, creates the settings table, and clears the cache so the routes are served right away:
+`assets/admin`, and creates the settings table:
 
 ```bash
 bin/adminconsole scale:videooptimizer:install
+bin/adminconsole cache:clear                 # so the freshly imported routes are served
 ```
 
-It is idempotent (safe to re-run) and only fills in what's missing; add `--dry-run` to preview.
+The installer is idempotent (safe to re-run) and only fills in what's missing; add `--dry-run` to
+preview. The `cache:clear` is a separate command on purpose — clearing the cache from inside the
+running installer would delete the cache it is still using.
 
 <details>
 <summary>What it does — or set it up by hand instead</summary>
@@ -182,7 +186,7 @@ admin JS wiring and the settings table.
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | The **VideoOptimizer navigation appears but clicking does nothing** / no view opens | The admin JS was not wired into the build | Run `bin/adminconsole scale:videooptimizer:install`, then `cd assets/admin && npm run build`, then hard-reload the admin |
-| Views open but show **"…admin API is not reachable (404)"** | The proxy routes are not imported (or the cache is stale) | Run `bin/adminconsole scale:videooptimizer:install` — it imports the routes and clears the cache. (If it still 404s, run `bin/adminconsole cache:clear`.) |
+| Views open but show **"…admin API is not reachable (404)"** | The proxy routes are not imported, or the cache is stale | Run `bin/adminconsole scale:videooptimizer:install` (imports the routes) then `bin/adminconsole cache:clear` |
 | A view says **"No VideoOptimizer token is configured yet"** | No API token stored | Open **Settings → VideoOptimizer** and save your `vp_…` token |
 | Settings shows an error but the form is still usable | Expected on a fresh/misconfigured install — the form never blocks so you can always enter the token | Enter the token and save; fix routes if the error mentions 404 |
 

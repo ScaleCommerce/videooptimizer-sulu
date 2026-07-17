@@ -6,9 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- `scale:videooptimizer:install` no longer clears the cache itself. Doing so from inside the running
+  process deleted the cache that process was still using and crashed on shutdown
+  (`Failed to open stream: .../ContainerXXX/...`). Clearing the cache is now a separate step the command
+  points to (`bin/adminconsole cache:clear`), as it must run in its own process.
+
 ### Documentation
-- README quick-start: added a TL;DR command block, clarified that Symfony Flex registers the bundle
-  automatically, and noted the installer clears the cache itself.
+- README quick-start: TL;DR command block, Symfony Flex auto-registration note, and `cache:clear` as an
+  explicit step after the installer.
 
 ## [1.3.1] - 2026-07-17
 
