@@ -6,6 +6,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Documentation
+- Document the required admin-frontend wiring (register the bundle JS in
+  `assets/admin/package.json`, import it in `app.js`, and widen the
+  `webpack.config.js` babel exclude). Without it the navigation shows but its
+  views won't open on a plain `composer require` install.
+
 ## [0.2.0] - 2026-07-17
 
 ### Added

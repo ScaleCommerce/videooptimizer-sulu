@@ -115,11 +115,53 @@ bin/adminconsole doctrine:schema:update --force   # no migration file, dev only
 
 </details>
 
-**5. Build the admin frontend:**
+**5. Wire the admin UI into the build.** Sulu compiles the admin frontend from the host project, and a
+third-party bundle's admin JS has to be registered there — `composer require` alone does not do this, so
+without this step the VideoOptimizer navigation appears but its views won't open. Make three edits under
+`assets/admin/`:
+
+- **`package.json`** — add the bundle's JS as a dependency (next to the `sulu-*-bundle` entries):
+
+  ```json
+  "videooptimizer-sulu": "file:../../vendor/scalecommerce/videooptimizer-sulu/src/Resources/js"
+  ```
+
+- **`app.js`** — import it:
+
+  ```js
+  import 'videooptimizer-sulu';
+  ```
+
+- **`webpack.config.js`** — the bundle ships JSX/decorators like the `sulu-*-bundle` packages, so
+  babel-loader must transpile it too (the default config excludes all of `node_modules` except Sulu's own
+  packages). Widen the `node_modules` exclude while keeping every other entry:
+
+  ```js
+  const config = webpackConfig(env, argv);
+  config.entry = path.resolve(__dirname, 'index.js');
+
+  config.module.rules.forEach((rule) => {
+      if (!Array.isArray(rule.exclude)) {
+          return;
+      }
+      rule.exclude = rule.exclude.map((pattern) =>
+          String(pattern).includes('sulu-')
+              ? /node_modules[/\\](?!(sulu-(.*)-bundle|videooptimizer-sulu|@ckeditor|array-move|lodash-es|vanilla-colorful)[/\\])/
+              : pattern
+      );
+  });
+
+  return config;
+  ```
+
+Then install and build:
 
 ```bash
 cd assets/admin && npm install && npm run build
 ```
+
+> After later JS changes, hard-reload the admin (the build hash changes) so the browser doesn't run the
+> stale bundle.
 
 **6. Add your token.** In the Sulu admin, open **Settings → VideoOptimizer** and paste your `vp_…` API
 token. It's stored encrypted and never returned to the browser. Done — editors can now pick videos. 🎉
