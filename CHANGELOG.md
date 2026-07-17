@@ -6,11 +6,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Remove the stored API token from the admin: a "Remove token" action on the
+  Settings page (with a confirmation dialog) clears it server-side.
+- Symfony Flex recipe (under `.recipe/`) that registers the bundle and imports
+  the admin routes automatically once merged into `symfony/recipes-contrib`.
+
+### Changed
+- The Settings form always renders now, even when the initial load fails (e.g. a
+  fresh or misconfigured install) — the token can always be entered.
+- Views show an actionable message instead of a raw error: a "configure your
+  token" hint when none is set (HTTP 428), and an install hint pointing at the
+  route import when the admin API is unreachable (HTTP 404).
+
 ### Documentation
 - Document the required admin-frontend wiring (register the bundle JS in
   `assets/admin/package.json`, import it in `app.js`, and widen the
   `webpack.config.js` babel exclude). Without it the navigation shows but its
   views won't open on a plain `composer require` install.
+- Add a Troubleshooting section and a Symfony Flex section to the README.
 
 ## [0.2.0] - 2026-07-17
 

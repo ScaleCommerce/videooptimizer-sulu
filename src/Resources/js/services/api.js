@@ -4,16 +4,36 @@ import {Requester} from 'sulu-admin-bundle/services';
 const BASE = '/admin/api/videooptimizer';
 
 // Requester rejects with the raw Response object on non-2xx. Convert that into a
-// proper Error carrying the server's { message } so views can show a readable text.
+// proper Error carrying the server's { message } and HTTP status, so views can show a
+// readable text and branch on "not configured" (428) vs "routes missing" (404).
+function toError(message, status) {
+    const error = new Error(message);
+    error.status = status || null;
+
+    return error;
+}
+
+function messageForStatus(status, serverMessage) {
+    if (404 === status) {
+        // The proxy routes are not registered — a missing installation step, not a runtime failure.
+        return 'The VideoOptimizer admin API is not reachable (404). Import its routes in '
+            + 'config/routes/sulu_admin.yaml — see the installation guide.';
+    }
+
+    return serverMessage || ('Request failed (' + (status || '?') + ')');
+}
+
 function normalize(promise) {
     return promise.catch((rejection) => {
         if (rejection && typeof rejection.json === 'function') {
+            const status = rejection.status || null;
+
             return rejection.json().then(
                 (data) => {
-                    throw new Error((data && data.message) || ('Request failed (' + rejection.status + ')'));
+                    throw toError(messageForStatus(status, data && data.message), status);
                 },
                 () => {
-                    throw new Error('Request failed (' + (rejection.status || '?') + ')');
+                    throw toError(messageForStatus(status, null), status);
                 }
             );
         }
@@ -31,6 +51,10 @@ export function saveSettings(data: Object) {
 
 export function testConnection() {
     return normalize(Requester.post(BASE + '/settings/test', {}));
+}
+
+export function clearToken() {
+    return normalize(Requester.delete(BASE + '/settings/token'));
 }
 
 export function getLibraries() {

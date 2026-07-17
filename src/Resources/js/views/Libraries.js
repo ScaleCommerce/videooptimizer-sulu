@@ -79,7 +79,9 @@ class Libraries extends React.Component<*> {
             }))
             .catch(action((e) => {
                 this.loading = false;
-                this.error = e.message || String(e);
+                this.error = 428 === e.status
+                    ? translate('scale_videooptimizer.not_configured')
+                    : (e.message || String(e));
             }));
 
         // Best-effort: the ladder pickers still work from stored keys if this fails.

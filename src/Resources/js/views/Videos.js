@@ -46,7 +46,12 @@ class Videos extends React.Component<*> {
                 this.videos = videos;
                 this.loading = false;
             }))
-            .catch(action((e) => { this.loading = false; this.error = e.message || String(e); }));
+            .catch(action((e) => {
+                this.loading = false;
+                this.error = 428 === e.status
+                    ? translate('scale_videooptimizer.not_configured')
+                    : (e.message || String(e));
+            }));
     }
 
     reloadVideos() {

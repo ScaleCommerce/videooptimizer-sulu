@@ -16,6 +16,11 @@ scale_videooptimizer_settings_test:
     methods: [POST]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SettingsController::test'
 
+scale_videooptimizer_settings_token_delete:
+    path: /videooptimizer/settings/token
+    methods: [DELETE]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SettingsController::deleteToken'
+
 scale_videooptimizer_encodings_get:
     path: /videooptimizer/encodings
     methods: [GET]

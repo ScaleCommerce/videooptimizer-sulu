@@ -3,6 +3,7 @@
 /.gitignore        export-ignore
 /.github           export-ignore
 /.superpowers      export-ignore
+/.recipe           export-ignore
 /docs              export-ignore
 /tests             export-ignore
 /phpunit.xml.dist  export-ignore

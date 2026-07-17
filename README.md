@@ -174,6 +174,32 @@ token. It's stored encrypted and never returned to the browser. Done — editors
 
 </div>
 
+> **Once the [Symfony Flex recipe](#zero-config-install-with-symfony-flex) is published,** steps 2 and 3
+> (bundle registration and route import) are applied automatically — you only do steps 4–6.
+
+## Zero-config install with Symfony Flex
+
+A [Symfony Flex](https://symfony.com/doc/current/setup/flex.html) recipe ships in the repository under
+[`.recipe/`](.recipe/). Once it is merged into
+[`symfony/recipes-contrib`](https://github.com/symfony/recipes-contrib), a Flex-enabled project gets
+**steps 2 and 3 for free** on `composer require`:
+
+- the bundle is registered in `config/bundles.php`, and
+- `config/routes/scale_videooptimizer_admin.yaml` is created, importing the admin proxy routes behind the
+  `/admin` firewall.
+
+Only the admin-frontend wiring (step 5) then remains manual — Flex cannot patch `webpack.config.js`.
+See [`.recipe/README.md`](.recipe/README.md) for how to submit the recipe.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| The **VideoOptimizer navigation appears but clicking does nothing** / no view opens | The admin JS was not wired into the build (step 5) | Add the `assets/admin` dependency + `app.js` import + `webpack.config.js` exclude, then `npm run build`, then hard-reload the admin |
+| Views open but show **"…admin API is not reachable (404)"** | The proxy routes are not imported (step 3) | Add the route import to `config/routes/sulu_admin.yaml`, then `bin/adminconsole cache:clear` |
+| A view says **"No VideoOptimizer token is configured yet"** | No API token stored | Open **Settings → VideoOptimizer** and save your `vp_…` token |
+| Settings shows an error but the form is still usable | Expected on a fresh/misconfigured install — the form never blocks so you can always enter the token | Enter the token and save; fix routes if the error mentions 404 |
+
 ## Usage
 
 Add the field to a template (`config/templates/pages/*.xml`):

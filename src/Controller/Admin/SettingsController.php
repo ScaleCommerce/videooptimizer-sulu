@@ -53,6 +53,16 @@ class SettingsController
     }
 
     /**
+     * Clears the stored API token (leaves the default library/player untouched).
+     */
+    public function deleteToken(): JsonResponse
+    {
+        $this->settingsManager->clearToken();
+
+        return $this->get();
+    }
+
+    /**
      * Verifies the stored token by calling the VideoOptimizer API.
      */
     public function test(): JsonResponse
