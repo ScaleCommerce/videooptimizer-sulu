@@ -16,6 +16,11 @@ scale_videooptimizer_settings_test:
     methods: [POST]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SettingsController::test'
 
+scale_videooptimizer_encodings_get:
+    path: /videooptimizer/encodings
+    methods: [GET]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\LibraryController::encodings'
+
 scale_videooptimizer_libraries_cget:
     path: /videooptimizer/libraries
     methods: [GET]

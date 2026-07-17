@@ -185,6 +185,27 @@ class VideoOptimizerClientTest extends TestCase
         self::assertSame(7, $result['queued']);
     }
 
+    public function testListEncodingsReturnsRawPayload(): void
+    {
+        $captured = null;
+        $httpClient = new MockHttpClient(function (string $method, string $url) use (&$captured): MockResponse {
+            $captured = ['method' => $method, 'url' => $url];
+
+            // Unlike the list endpoints, /encodings is NOT wrapped in { data }.
+            return new MockResponse(json_encode([
+                'codecs' => [['key' => 'h264', 'label' => 'H.264/AVC', 'access' => 'included', 'available' => true]],
+                'resolutions' => [['key' => '1080p', 'label' => '1080p', 'access' => 'included', 'available' => true]],
+            ], JSON_THROW_ON_ERROR));
+        });
+
+        $result = $this->client($httpClient)->listEncodings();
+
+        self::assertSame('GET', $captured['method']);
+        self::assertStringEndsWith('/encodings', $captured['url']);
+        self::assertSame('h264', $result['codecs'][0]['key']);
+        self::assertSame('1080p', $result['resolutions'][0]['key']);
+    }
+
     private function client(MockHttpClient $httpClient): VideoOptimizerClient
     {
         $settings = $this->prophesize(SettingsManager::class);

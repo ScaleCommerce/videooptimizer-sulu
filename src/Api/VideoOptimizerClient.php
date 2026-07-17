@@ -76,6 +76,17 @@ class VideoOptimizerClient
     }
 
     /**
+     * Lists the codecs and resolutions the organization may enable on a library. Unlike the other
+     * list endpoints this returns the payload as-is ({codecs, resolutions}), not wrapped in { data }.
+     *
+     * @return array<string, mixed>
+     */
+    public function listEncodings(): array
+    {
+        return $this->request('GET', '/encodings');
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function listVideos(string $libraryId): array

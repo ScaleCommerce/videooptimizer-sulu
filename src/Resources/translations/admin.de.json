@@ -81,5 +81,15 @@
     "scale_videooptimizer.all_videos": "Alle Videos",
     "scale_videooptimizer.show_all": "Alle anzeigen",
     "scale_videooptimizer.no_videos_anywhere": "Es sind noch keine Videos vorhanden.",
-    "scale_videooptimizer.select_library_hint": "Bitte oben eine Bibliothek wählen, um ein Video hochzuladen oder einzuziehen."
+    "scale_videooptimizer.select_library_hint": "Bitte oben eine Bibliothek wählen, um ein Video hochzuladen oder einzuziehen.",
+    "scale_videooptimizer.codecs": "Codecs",
+    "scale_videooptimizer.resolutions": "Auflösungen",
+    "scale_videooptimizer.videos_label": "Videos",
+    "scale_videooptimizer.addon": "Add-on",
+    "scale_videooptimizer.addon_hint": "Kostenpflichtiges Add-on – für eure Organisation noch nicht freigeschaltet.",
+    "scale_videooptimizer.delivery_only": "Nur Auslieferung",
+    "scale_videooptimizer.delivery_only_hint": "Diese Bibliothek liefert nur aus. Encoding-Leiter, Upload und Poster stehen nicht zur Verfügung.",
+    "scale_videooptimizer.ladder_reprocess_hint": "Nach dem Speichern „Neu verarbeiten\", damit die geänderte Encoding-Leiter greift.",
+    "scale_videooptimizer.select_or_create_hint": "Wähle oben eine Bibliothek aus oder lege eine neue an.",
+    "scale_videooptimizer.upload_file": "Datei hochladen"
 }

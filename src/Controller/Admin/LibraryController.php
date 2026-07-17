@@ -56,6 +56,11 @@ class LibraryController
         return $this->guard(fn () => new JsonResponse($this->client->reprocessLibrary($id)));
     }
 
+    public function encodings(): JsonResponse
+    {
+        return $this->guard(fn () => new JsonResponse($this->client->listEncodings()));
+    }
+
     /**
      * @return array<string, mixed>
      */

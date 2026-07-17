@@ -53,6 +53,16 @@ export function reprocessLibrary(id: string) {
     return normalize(Requester.post(BASE + '/libraries/' + encodeURIComponent(id) + '/reprocess', {}));
 }
 
+// Codecs and resolutions the organization may enable on a library. Each entry is
+// {key, label, access: 'included'|'addon', available: boolean}. Used to render the
+// encoding-ladder pickers with proper labels and add-on/upgrade hints.
+export function getEncodings() {
+    return normalize(Requester.get(BASE + '/encodings')).then((response) => ({
+        codecs: response.codecs || [],
+        resolutions: response.resolutions || [],
+    }));
+}
+
 // Loads every video across all libraries as a flat array (newest first). The server resolves the
 // cursor pagination behind GET /videos; each item carries library_id so callers can group/filter.
 export function getAllVideos() {

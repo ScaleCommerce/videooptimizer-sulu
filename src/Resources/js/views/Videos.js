@@ -4,8 +4,19 @@ import {observer} from 'mobx-react';
 import {observable, action} from 'mobx';
 import {Button, Loader} from 'sulu-admin-bundle/components';
 import FolderList from 'sulu-admin-bundle/components/FolderList';
+import {withToolbar} from 'sulu-admin-bundle/containers';
 import {translate} from 'sulu-admin-bundle/utils';
-import {getLibraries, getAllVideos, ingestVideoUrl, pollVideo, posterFor, bustCache} from '../services/api';
+import {
+    getLibraries,
+    getAllVideos,
+    initiateUpload,
+    uploadParts,
+    completeUpload,
+    ingestVideoUrl,
+    pollVideo,
+    posterFor,
+    bustCache,
+} from '../services/api';
 import VideoDetail from '../components/VideoDetail';
 
 @observer
@@ -18,10 +29,15 @@ class Videos extends React.Component<*> {
     @observable videos = [];
     @observable selected = null;
     @observable error = null;
+    @observable uploading = false;
+    @observable uploadStatus = null;
     @observable ingestSourceUrl = '';
     @observable ingestTitle = '';
     @observable ingesting = false;
     @observable ingestStatus = null;
+
+    // Hidden file input driven by the toolbar "upload" button (Sulu media pattern).
+    fileInputRef = React.createRef();
 
     componentDidMount() {
         Promise.all([getLibraries(), getAllVideos()])
@@ -66,6 +82,65 @@ class Videos extends React.Component<*> {
     @action back = () => { this.selected = null; };
     @action onChanged = (video) => { this.selected = video; this.videos = this.videos.map((v) => v.uuid === video.uuid ? video : v); };
     @action onDeleted = () => { const id = this.selected.uuid; this.selected = null; this.videos = this.videos.filter((v) => v.uuid !== id); };
+
+    // Opens the native file dialog from the toolbar button (a real user gesture, so allowed).
+    triggerFileDialog = () => {
+        if (this.fileInputRef.current) {
+            this.fileInputRef.current.click();
+        }
+    };
+
+    handleFileChange = (event: SyntheticInputEvent<HTMLInputElement>) => {
+        const file = event.target.files && event.target.files[0];
+        if (!file || !this.activeLibraryId) {
+            return;
+        }
+        // Reset the input so re-picking the same file fires change again after an error/retry.
+        event.target.value = '';
+        this.startUpload(file);
+    };
+
+    // Presigned multipart upload: token stays server-side, parts go straight to storage, then we
+    // poll until processing finishes. Mirrors the field-overlay upload flow.
+    @action startUpload = (file: File) => {
+        const libraryId = this.activeLibraryId;
+        this.uploading = true;
+        this.error = null;
+        this.uploadStatus = translate('scale_videooptimizer.uploading');
+
+        initiateUpload({
+            libraryId,
+            filename: file.name,
+            contentType: file.type || 'application/octet-stream',
+            fileSize: file.size,
+        })
+            .then((upload) => uploadParts(file, upload.parts || [], upload.partSize)
+                .then((parts) => completeUpload({
+                    libraryId,
+                    uuid: upload.uuid,
+                    key: upload.key,
+                    uploadId: upload.uploadId,
+                    title: file.name,
+                    parts,
+                }))
+                .then(action(() => { this.uploadStatus = translate('scale_videooptimizer.processing'); }))
+                .then(() => pollVideo(upload.uuid, (v) => v.status === 'ready' || v.status === 'failed'))
+                .then(action((video) => {
+                    this.uploading = false;
+                    this.uploadStatus = null;
+                    if (video.status === 'failed') {
+                        this.error = translate('scale_videooptimizer.test_failed', {message: 'processing failed'});
+                        return;
+                    }
+                    this.reloadVideos();
+                    this.open(video);
+                })))
+            .catch(action((e) => {
+                this.uploading = false;
+                this.uploadStatus = null;
+                this.error = e.message || String(e);
+            }));
+    };
 
     @action handleIngestUrlChange = (event: SyntheticInputEvent<HTMLInputElement>) => {
         this.ingestSourceUrl = event.target.value;
@@ -189,6 +264,14 @@ class Videos extends React.Component<*> {
 
         return (
             <div className="vo-page vo-page--wide">
+                {/* Hidden input driven by the toolbar upload button. */}
+                <input
+                    ref={this.fileInputRef}
+                    type="file"
+                    accept="video/*"
+                    style={{display: 'none'}}
+                    onChange={this.handleFileChange}
+                />
                 {this.selected ? (
                     <React.Fragment>
                         <button type="button" className="vo-back" onClick={this.back}>← {translate('scale_videooptimizer.back')}</button>
@@ -207,6 +290,8 @@ class Videos extends React.Component<*> {
                             )}
                         </div>
 
+                        {this.uploadStatus && <div className="vo-upload-status">{this.uploadStatus}</div>}
+
                         {activeLibrary && this.renderIngestForm()}
 
                         {this.loadingVideos ? <Loader /> : this.renderVideoGrid()}
@@ -219,4 +304,19 @@ class Videos extends React.Component<*> {
     }
 }
 
-export default Videos;
+// Adds the Sulu-style "upload file" button to the top view toolbar. It's enabled only inside a
+// library (an upload needs a target) and not while viewing a single video's detail.
+export default withToolbar(Videos, function() {
+    return {
+        items: [
+            {
+                type: 'button',
+                label: translate('scale_videooptimizer.upload_file'),
+                icon: 'su-upload',
+                loading: this.uploading,
+                disabled: !this.activeLibraryId || !!this.selected,
+                onClick: this.triggerFileDialog,
+            },
+        ],
+    };
+});

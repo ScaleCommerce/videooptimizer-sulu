@@ -81,5 +81,15 @@
     "scale_videooptimizer.all_videos": "All videos",
     "scale_videooptimizer.show_all": "Show all",
     "scale_videooptimizer.no_videos_anywhere": "There are no videos yet.",
-    "scale_videooptimizer.select_library_hint": "Please select a library above to upload or ingest a video."
+    "scale_videooptimizer.select_library_hint": "Please select a library above to upload or ingest a video.",
+    "scale_videooptimizer.codecs": "Codecs",
+    "scale_videooptimizer.resolutions": "Resolutions",
+    "scale_videooptimizer.videos_label": "Videos",
+    "scale_videooptimizer.addon": "Add-on",
+    "scale_videooptimizer.addon_hint": "Paid add-on — not yet unlocked for your organization.",
+    "scale_videooptimizer.delivery_only": "Delivery only",
+    "scale_videooptimizer.delivery_only_hint": "This library is delivery-only. Encoding ladder, upload and poster are unavailable.",
+    "scale_videooptimizer.ladder_reprocess_hint": "After saving, use \"Reprocess\" so the changed encoding ladder takes effect.",
+    "scale_videooptimizer.select_or_create_hint": "Select a library above or create a new one.",
+    "scale_videooptimizer.upload_file": "Upload file"
 }
