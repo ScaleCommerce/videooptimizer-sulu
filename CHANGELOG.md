@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-07-17
+
 ### Fixed
 - `scale:videooptimizer:install` no longer clears the cache itself. Doing so from inside the running
   process deleted the cache that process was still using and crashed on shutdown
