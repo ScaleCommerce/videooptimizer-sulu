@@ -1,0 +1,63 @@
+<?xml version="1.0" ?>
+<template xmlns="http://schemas.sulu.io/template/template"
+          xmlns:xi="http://www.w3.org/2001/XInclude"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://schemas.sulu.io/template/template http://schemas.sulu.io/template/template-1.0.xsd">
+
+    <key>videooptimizer_showcase</key>
+
+    <view>@ScaleVideoOptimizer/pages/videooptimizer_showcase</view>
+    <controller>Sulu\Content\UserInterface\Controller\Website\ContentController::indexAction</controller>
+    <cacheLifetime>86400</cacheLifetime>
+
+    <meta>
+        <title lang="en">VideoOptimizer showcase</title>
+        <title lang="de">VideoOptimizer-Showcase</title>
+    </meta>
+
+    <properties>
+        <property name="title" type="text_line" mandatory="true">
+            <meta>
+                <title lang="en">Title</title>
+                <title lang="de">Titel</title>
+            </meta>
+            <tag name="sulu.rlp.part"/>
+        </property>
+
+        <property name="url" type="route" mandatory="true">
+            <meta>
+                <title lang="en">Resourcelocator</title>
+                <title lang="de">Adresse</title>
+            </meta>
+            <tag name="sulu.rlp"/>
+        </property>
+
+        <block name="blocks" default-type="intro" minOccurs="0">
+            <meta>
+                <title lang="en">Content blocks</title>
+                <title lang="de">Inhaltsblöcke</title>
+            </meta>
+
+            <types>
+                <type name="intro">
+                    <meta>
+                        <title lang="en">Intro text</title>
+                        <title lang="de">Einleitungstext</title>
+                    </meta>
+                    <properties>
+                        <property name="text" type="text_editor">
+                            <meta>
+                                <title lang="en">Text</title>
+                                <title lang="de">Text</title>
+                            </meta>
+                        </property>
+                    </properties>
+                </type>
+                <xi:include href="../blocks/media_split.xml"/>
+                <xi:include href="../blocks/background_hero.xml"/>
+                <xi:include href="../blocks/spotlight.xml"/>
+                <xi:include href="../blocks/video_grid.xml"/>
+            </types>
+        </block>
+    </properties>
+</template>

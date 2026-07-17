@@ -174,8 +174,12 @@ token. It's stored encrypted and never returned to the browser. Done — editors
 
 </div>
 
+**7. See the blocks in action (optional).** Run `bin/console assets:install`, then create a page with the
+**"VideoOptimizer showcase"** template (shipped by the bundle, no setup) — it already has all four
+content blocks wired up and renders them on a self-contained page. See [Content blocks](#-content-blocks).
+
 > **Once the [Symfony Flex recipe](#zero-config-install-with-symfony-flex) is published,** steps 2 and 3
-> (bundle registration and route import) are applied automatically — you only do steps 4–6.
+> (bundle registration and route import) are applied automatically — you only do steps 4–7.
 
 ## Zero-config install with Symfony Flex
 
@@ -199,6 +203,22 @@ See [`.recipe/README.md`](.recipe/README.md) for how to submit the recipe.
 | Views open but show **"…admin API is not reachable (404)"** | The proxy routes are not imported (step 3) | Add the route import to `config/routes/sulu_admin.yaml`, then `bin/adminconsole cache:clear` |
 | A view says **"No VideoOptimizer token is configured yet"** | No API token stored | Open **Settings → VideoOptimizer** and save your `vp_…` token |
 | Settings shows an error but the form is still usable | Expected on a fresh/misconfigured install — the form never blocks so you can always enter the token | Enter the token and save; fix routes if the error mentions 404 |
+
+## Upgrading
+
+```bash
+composer update scalecommerce/videooptimizer-sulu
+```
+
+Then, because the admin is compiled and its translations are cached, refresh both:
+
+```bash
+cd assets/admin && npm run build          # rebuild so new admin views/labels ship
+bin/adminconsole cache:clear              # pick up new translations
+```
+
+Hard-reload the admin afterwards (the build hash changes). Because this package follows semantic
+versioning, `^1.0` receives every 1.x feature and fix automatically.
 
 ## Usage
 
@@ -236,8 +256,21 @@ nothing to copy-paste.
 | `vo_spotlight`       | Poster that opens the video in a lightbox         | `blocks/vo_spotlight.html.twig`        |
 | `vo_video_grid`      | Repeatable grid of videos, each opening a lightbox | `blocks/vo_video_grid.html.twig`       |
 
+### Fastest path: the shipped showcase template
+
+The bundle ships a ready-to-use **"VideoOptimizer showcase"** page template with all four blocks already
+wired in and a self-contained view. It is **registered automatically** — nothing to copy. After
+`bin/console assets:install`, pick it when creating a page, add blocks, publish, and you're done.
+
+Use this to explore the blocks immediately, or as a reference for wiring them into your own templates
+(below).
+
+### Wiring blocks into your own templates
+
+Prefer your own theme/template? Pull the block fragments in via XInclude:
+
 <details>
-<summary><b>Pulling the blocks into a template</b></summary>
+<summary><b>Show the XInclude setup</b></summary>
 
 The template fragments live under `src/Resources/config/templates/blocks/` and are pulled into a host
 page/snippet template via **XInclude** — no copy-paste. The root `<template>` element needs the

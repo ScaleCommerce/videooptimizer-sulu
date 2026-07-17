@@ -6,6 +6,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-17
+
+First stable release — the public API (field type, block types, Twig helpers, stored value shape) is
+considered stable, so `^1.0` receives all future features and fixes.
+
+### Added
+- Ready-to-use **"VideoOptimizer showcase" page template**, shipped by the bundle and registered
+  automatically (no file copying): it comes with all four content blocks pre-wired and a self-contained
+  view that pulls in the bundle assets, so a project can create a page, add blocks and immediately see
+  what they do. Run `bin/console assets:install` once beforehand.
+
 ## [0.3.0] - 2026-07-17
 
 ### Added
