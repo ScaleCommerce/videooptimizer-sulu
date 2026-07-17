@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-17
+
 ### Added
 - Console command **`scale:videooptimizer:uninstall`** — the counterpart to install: drops the
   `vo_settings` table (confirmation-gated, or `--force`) and removes the route import and admin-JS
