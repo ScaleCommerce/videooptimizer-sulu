@@ -3,6 +3,9 @@
     skeleton and pulls in the bundle's published assets, so it renders without depending on the host
     theme — drop the template on a page, add blocks, publish, and see what the blocks can do.
     Run `bin/console assets:install` once so the bundle assets are available under /bundles.
+
+    The editable region is wrapped in `{% block content %}` because Sulu's live preview replaces that
+    block while editing; without it the preview renderer fails.
 #}
 <!DOCTYPE html>
 <html lang="{{ app.request.locale|default('en') }}">
@@ -13,24 +16,26 @@
     <link rel="stylesheet" href="{{ asset('bundles/scalevideooptimizer/css/vo-blocks.css') }}">
 </head>
 <body>
-    <main class="vo-blocks" data-vo-base="{{ asset('bundles/scalevideooptimizer/') }}">
-        {% if content.title %}
-            <header class="vo-block vo-reveal">
-                <div class="vo-container"><h1>{{ content.title }}</h1></div>
-            </header>
-        {% endif %}
-
-        {% for block in content.blocks %}
-            {% if block.type == 'intro' %}
-                <section class="vo-block vo-reveal">
-                    <div class="vo-container">{{ block.text|raw }}</div>
-                </section>
-            {% else %}
-                {% include '@ScaleVideoOptimizer/blocks/' ~ block.type ~ '.html.twig'
-                    with { block: block } only %}
+    {% block content %}
+        <main class="vo-blocks" data-vo-base="{{ asset('bundles/scalevideooptimizer/') }}">
+            {% if content.title %}
+                <header class="vo-block vo-reveal">
+                    <div class="vo-container"><h1>{{ content.title }}</h1></div>
+                </header>
             {% endif %}
-        {% endfor %}
-    </main>
+
+            {% for block in content.blocks %}
+                {% if block.type == 'intro' %}
+                    <section class="vo-block vo-reveal">
+                        <div class="vo-container">{{ block.text|raw }}</div>
+                    </section>
+                {% else %}
+                    {% include '@ScaleVideoOptimizer/blocks/' ~ block.type ~ '.html.twig'
+                        with { block: block } only %}
+                {% endif %}
+            {% endfor %}
+        </main>
+    {% endblock %}
 
     <script src="{{ asset('bundles/scalevideooptimizer/js/vo-blocks.js') }}" defer></script>
 </body>

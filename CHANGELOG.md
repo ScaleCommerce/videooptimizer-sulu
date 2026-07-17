@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-17
+
+### Fixed
+- The showcase page template broke Sulu's live preview with "The `{% block content %}`
+  could not be found in the twig template." Its editable region is now wrapped in a
+  `{% block content %}`, which the preview renderer replaces while editing. Blocks render
+  correctly in both preview and the published page.
+
 ## [1.0.0] - 2026-07-17
 
 First stable release — the public API (field type, block types, Twig helpers, stored value shape) is
