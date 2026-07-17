@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-07-17
+
 ### Fixed
 - `scale:videooptimizer:install` now clears the cache after writing the route file, so the admin API is
   reachable immediately. Previously the freshly imported routes stayed invisible to the already-warmed
