@@ -1,83 +1,114 @@
-# scalecommerce/videooptimizer-sulu
+<div align="center">
 
-> Part of the ScaleCommerce VideoOptimizer plugin family (`scalecommerce/videooptimizer-<platform>`, e.g. `videooptimizer-shopware`).
+# 🎬 VideoOptimizer for Sulu
 
-Integrate **[VideoOptimizer](https://videooptimizer.eu/)** into the [Sulu CMS 3.0](https://sulu.io/) admin.
-Editors pick, upload and manage videos directly inside Sulu — without ever logging in to VideoOptimizer.
-The organization-wide API token stays on the server (encrypted at rest), so the editorial team never handles credentials.
+**Pick, upload and manage CDN-delivered videos — right inside the Sulu admin.**
+No separate VideoOptimizer login. No credentials in the browser. Just video.
 
-Published and owned by **ScaleCommerce GmbH** ([scale.sc](https://scale.sc/), [videooptimizer.eu](https://videooptimizer.eu/)).
+[![CI](https://github.com/ScaleCommerce/videooptimizer-sulu/actions/workflows/ci.yml/badge.svg)](https://github.com/ScaleCommerce/videooptimizer-sulu/actions/workflows/ci.yml)
+[![Latest Version](https://img.shields.io/packagist/v/scalecommerce/videooptimizer-sulu.svg)](https://packagist.org/packages/scalecommerce/videooptimizer-sulu)
+[![PHP](https://img.shields.io/badge/php-%E2%89%A5%208.2-777bb4.svg?logo=php&logoColor=white)](https://www.php.net/)
+[![Sulu](https://img.shields.io/badge/Sulu-3.0-52b1e8.svg)](https://sulu.io/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-- Product: **https://videooptimizer.eu/**
-- API & developer docs: **https://api.videooptimizer.eu/**
+[Product](https://videooptimizer.eu/) · [API & docs](https://api.videooptimizer.eu/) · [Report a bug](https://github.com/ScaleCommerce/videooptimizer-sulu/issues)
 
-## Why VideoOptimizer? Video delivery via CDN
+</div>
 
-VideoOptimizer hosts your videos and delivers them through a global **content delivery network (CDN)** with
-adaptive streaming. Compared to serving `.mp4` files from your own origin, this is a big win:
+---
 
-- **Fast, global playback** — videos are cached on edge servers near each viewer, so streams start quickly
-  (low time-to-first-frame) with minimal buffering, worldwide.
-- **Adaptive bitrate (HLS)** — every upload is transcoded into a resolution ladder; the player automatically
-  serves the right quality for the viewer's connection and device.
-- **Scales under load** — the CDN absorbs traffic spikes, so campaigns or viral pages never overload your CMS origin
-  and you avoid origin bandwidth costs on every view.
+Give your editorial team adaptive, CDN-streamed video without ever leaving Sulu. This bundle adds a
+**`video_optimizer` content field**, a **selection & upload dialog**, **library management**, and four
+**ready-to-use content blocks** to the Sulu 3.0 admin — while the organization's API token stays on the
+server, encrypted at rest. Editors just pick a video and hit publish.
+
+> Built and maintained by **[ScaleCommerce GmbH](https://scale.sc/)**, the team behind
+> [VideoOptimizer](https://videooptimizer.eu/). Part of the `scalecommerce/videooptimizer-<platform>`
+> plugin family.
+
+<div align="center">
+
+![Videos view in the Sulu admin — libraries as folder tiles and videos as a thumbnail grid](https://raw.githubusercontent.com/ScaleCommerce/videooptimizer-sulu/main/docs/screenshots/videos-grid.jpg)
+
+<sub>Browse videos right inside Sulu — libraries as folder tiles, videos as a thumbnail grid. <i>(Thumbnails and titles blurred/renamed for the demo.)</i></sub>
+
+</div>
+
+## ✨ Highlights
+
+- 🎥 **`video_optimizer` field type** — drop it into any page, snippet or article template.
+- 🗂️ **Media-style admin** — browse libraries as folder tiles, videos as a thumbnail grid, with title search and a "ready only" filter.
+- ⬆️ **Big-file uploads** — presigned multipart upload straight from the browser to storage, with live processing status. Or ingest from a remote URL.
+- 🖼️ **Full asset control** — pick auto-generated thumbnails, upload a custom poster (from disk or the Sulu media library), edit titles and player options, delete videos.
+- 🧱 **Four content blocks** — `media split`, `background hero`, `spotlight` and a `video grid`, with facade / lightbox / direct presentation modes.
+- 🔐 **Token never touches the browser** — stored server-side, encrypted with libsodium; all API calls are proxied.
+- ⚡ **Core-Web-Vitals friendly** — lazy poster loading, `IntersectionObserver`-gated players, `above-the-fold` priority hint, and a single lightweight embed per video.
+- 🌍 **Global CDN delivery** — adaptive-bitrate HLS, edge-cached worldwide, resilient under traffic spikes.
+
+<details>
+<summary><b>Why deliver video through VideoOptimizer's CDN?</b></summary>
+
+Compared to serving `.mp4` files from your own origin:
+
+- **Fast, global playback** — cached on edge servers near each viewer, so streams start quickly with minimal buffering, worldwide.
+- **Adaptive bitrate (HLS)** — every upload is transcoded into a resolution ladder; the player serves the right quality for the connection and device.
+- **Scales under load** — the CDN absorbs traffic spikes, so campaigns or viral pages never overload your CMS origin, and you avoid origin bandwidth costs on every view.
 - **Resilient** — multiple edge locations mean high availability; one node or origin outage doesn't break playback.
-- **Effortless for editors** — upload once and posters, thumbnails and renditions are generated automatically; embedding
-  is a single lightweight iframe that keeps heavy media off the page's critical path (better Core Web Vitals & SEO).
+- **Effortless for editors** — upload once and posters, thumbnails and renditions are generated automatically; embedding is a single lightweight iframe that keeps heavy media off the page's critical path (better Core Web Vitals & SEO).
 
-## Features
+</details>
 
-- **Content field type `video_optimizer`** for page/snippet/article templates.
-- **Selection dialog** in the admin: choose a library, browse videos with thumbnails, and pick one.
-- **Upload** from the dialog to VideoOptimizer via presigned multipart (large-file friendly; parts go
-  straight to storage from the browser), with automatic processing-status polling.
-- **Library management** admin view (create / list / delete).
-- **Settings page** to store the organization API token (write-only, encrypted with libsodium).
-- **Twig helpers** `video_optimizer_embed()` / `video_optimizer_embed_url()` to render the CDN player.
+<div align="center">
 
-## Installation
+![Library cockpit with the encoding ladder as codec and resolution chips](https://raw.githubusercontent.com/ScaleCommerce/videooptimizer-sulu/main/docs/screenshots/library-cockpit.jpg)
+
+<sub>Library cockpit: manage the encoding ladder as codec/resolution chips, with paid add-ons clearly flagged.</sub>
+
+</div>
+
+## Requirements
+
+| | |
+|---|---|
+| PHP | ≥ 8.2 with `ext-sodium` |
+| Sulu | ^3.0 |
+| Symfony | ^6.4 \|\| ^7.0 |
+| A VideoOptimizer account | grab an API token at [videooptimizer.eu](https://videooptimizer.eu/) → Account → API Tokens |
+
+## 🚀 Quick start
+
+**1. Install**
 
 ```bash
 composer require scalecommerce/videooptimizer-sulu
 ```
 
-> **Interim: installing from a private GitLab (before the Packagist release).** Add a VCS repository to
-> the target project's `composer.json`:
->
-> ```json
-> "repositories": [
->     { "type": "vcs", "url": "https://gitlab.scale.sc/<group>/videooptimizer-sulu.git" }
-> ]
-> ```
->
-> Create an `auth.json` next to the project's `composer.json` with a GitLab **deploy token**
-> (read-only, scope `read_repository`). Never commit it — add `auth.json` to `.gitignore`:
->
-> ```json
-> {
->     "http-basic": {
->         "gitlab.scale.sc": {
->             "username": "<deploy-token-name>",
->             "password": "<deploy-token>"
->         }
->     }
-> }
-> ```
->
-> Then install:
->
-> ```bash
-> composer require scalecommerce/videooptimizer-sulu:^0.1
-> ```
+<details>
+<summary>Installing before the Packagist release (from GitHub)</summary>
 
-Register the bundle (if not auto-registered by Symfony Flex) in `config/bundles.php`:
+The repository is public, so no authentication is needed — add it as a VCS repository to your project's `composer.json`:
+
+```json
+"repositories": [
+    { "type": "vcs", "url": "https://github.com/ScaleCommerce/videooptimizer-sulu.git" }
+]
+```
+
+Then:
+
+```bash
+composer require scalecommerce/videooptimizer-sulu:^0.2
+```
+
+</details>
+
+**2. Register the bundle** (skip if Symfony Flex did it) in `config/bundles.php`:
 
 ```php
 Scale\VideoOptimizerBundle\ScaleVideoOptimizerBundle::class => ['all' => true],
 ```
 
-Import the admin API routes in `config/routes/sulu_admin.yaml`:
+**3. Import the admin API routes** in `config/routes/sulu_admin.yaml`:
 
 ```yaml
 scale_videooptimizer_api:
@@ -85,18 +116,40 @@ scale_videooptimizer_api:
     prefix: /admin/api
 ```
 
-Create the settings table and build the admin frontend:
+**4. Create the settings table.** The bundle ships the `VideoOptimizerSettings` entity but no
+migration — per the Sulu/Symfony convention, migrations belong to the application. Generate one against
+your schema and apply it:
 
 ```bash
-bin/adminconsole doctrine:migrations:migrate
+bin/adminconsole doctrine:migrations:diff      # generate a migration from the entity
+bin/adminconsole doctrine:migrations:migrate   # apply it
+```
+
+<details>
+<summary>Prefer a one-liner for local dev?</summary>
+
+```bash
+bin/adminconsole doctrine:schema:update --force   # no migration file, dev only
+```
+
+</details>
+
+**5. Build the admin frontend:**
+
+```bash
 cd assets/admin && npm install && npm run build
 ```
 
-## Configuration
+**6. Add your token.** In the Sulu admin, open **Settings → VideoOptimizer** and paste your `vp_…` API
+token. It's stored encrypted and never returned to the browser. Done — editors can now pick videos. 🎉
 
-In the Sulu admin, open **Settings → VideoOptimizer** and paste your `vp_…` API token
-(create one in your VideoOptimizer account under Account → API Tokens at https://videooptimizer.eu/).
-The token is stored encrypted and never returned to the browser.
+<div align="center">
+
+![VideoOptimizer settings page with the write-only, encrypted API token field](https://raw.githubusercontent.com/ScaleCommerce/videooptimizer-sulu/main/docs/screenshots/settings.jpg)
+
+<sub>One organization-wide token, stored encrypted server-side — the write-only field never echoes it back.</sub>
+
+</div>
 
 ## Usage
 
@@ -121,24 +174,25 @@ Render the CDN player in Twig:
 The stored value is `{ uuid, libraryId, title, posterUrl }`; the embed points at
 `https://videooptimizer.eu/embed/<uuid>`.
 
-## Content blocks
+## 🧱 Content blocks
 
-Beyond the single `video_optimizer` field, the bundle ships four ready-to-use **Sulu content blocks**
-for building richer video-driven pages, each delivered as an XML template fragment plus a matching Twig view:
+Beyond the single field, the bundle ships four ready-to-use **Sulu content blocks** for richer
+video-driven pages — each delivered as an XML template fragment plus a matching Twig view, so there's
+nothing to copy-paste.
 
-| Block type          | Purpose                                              | Twig view                          |
-|----------------------|-------------------------------------------------------|-------------------------------------|
-| `vo_media_split`     | Video beside text, `side` left/right                  | `blocks/vo_media_split.html.twig`   |
-| `vo_background_hero` | Full-bleed native `<video>` HLS background            | `blocks/vo_background_hero.html.twig` |
-| `vo_spotlight`       | Poster image that opens the video in a lightbox        | `blocks/vo_spotlight.html.twig`     |
-| `vo_video_grid`      | Repeatable grid of videos, each opening a lightbox      | `blocks/vo_video_grid.html.twig`    |
+| Block type          | Purpose                                          | Twig view                             |
+|----------------------|--------------------------------------------------|----------------------------------------|
+| `vo_media_split`     | Video beside text, `side` left/right             | `blocks/vo_media_split.html.twig`      |
+| `vo_background_hero` | Full-bleed native `<video>` HLS background        | `blocks/vo_background_hero.html.twig`  |
+| `vo_spotlight`       | Poster that opens the video in a lightbox         | `blocks/vo_spotlight.html.twig`        |
+| `vo_video_grid`      | Repeatable grid of videos, each opening a lightbox | `blocks/vo_video_grid.html.twig`       |
 
-### Pulling the blocks into a template
+<details>
+<summary><b>Pulling the blocks into a template</b></summary>
 
 The template fragments live under `src/Resources/config/templates/blocks/` and are pulled into a host
-page/snippet template via **XInclude** — no copy-paste needed. The root `<template>` element needs the
-`xmlns:xi` namespace declaration; each block type is then a one-line include. From the demo's
-`config/templates/pages/showcase.xml`:
+page/snippet template via **XInclude** — no copy-paste. The root `<template>` element needs the
+`xmlns:xi` namespace declaration; each block type is then a one-line include:
 
 ```xml
 <template xmlns="http://schemas.sulu.io/template/template"
@@ -160,78 +214,78 @@ page/snippet template via **XInclude** — no copy-paste needed. The root `<temp
 
 The `href` paths are relative to the host template file — adjust the `../../../vendor/...` prefix if your
 template lives at a different depth. Symfony's XML config loader resolves the includes at template-parse
-time, so the merged schema is validated as a whole (confirmed via `sulu:build dev` schema validation — no
-fallback to copy-pasted `<type>` blocks was needed).
+time, so the merged schema is validated as a whole.
 
-### Registering assets
+</details>
 
-The block views need bundle CSS/JS that Sulu publishes like any other bundle asset:
+<details>
+<summary><b>Registering assets & Twig dispatch</b></summary>
+
+Publish the bundle's CSS/JS like any other bundle asset:
 
 ```bash
 bin/console assets:install
 ```
 
-Then reference the published files in the site's base layout:
+Reference the published files in your base layout, and wrap the blocks in a container with `data-vo-base`
+(`vo-blocks.js` reads it to locate the bundled `hls.light.min.js`, loaded once per page):
 
 ```twig
 <link rel="stylesheet" href="{{ asset('bundles/scalevideooptimizer/css/vo-blocks.css') }}">
 <script src="{{ asset('bundles/scalevideooptimizer/js/vo-blocks.js') }}" defer></script>
-```
 
-Wrap the rendered blocks in a container with `data-vo-base` — `vo-blocks.js` reads this attribute to
-locate the bundled `hls.light.min.js` (only loaded once, even with several `vo_background_hero` blocks
-on the same page):
-
-```twig
 <div class="vo-blocks" data-vo-base="{{ asset('bundles/scalevideooptimizer/') }}">
-    {# ...blocks... #}
+    {% for block in content.blocks %}
+        {% include '@ScaleVideoOptimizer/blocks/' ~ block.type ~ '.html.twig' with { block: block } only %}
+    {% endfor %}
 </div>
 ```
 
-### Website Twig dispatch
+</details>
 
-Each block in `content.blocks` carries its `type`; dispatch to the matching view from the
-`@ScaleVideoOptimizer` Twig namespace (auto-registered from the bundle's `Resources/views`):
-
-```twig
-{% for block in content.blocks %}
-    {% include '@ScaleVideoOptimizer/blocks/' ~ block.type ~ '.html.twig' with { block: block } only %}
-{% endfor %}
-```
-
-### Theme customization
+<details>
+<summary><b>Theming</b></summary>
 
 `vo-blocks.css` scopes all block styling under `.vo-blocks` via CSS custom properties, so a host theme
-can override the look without touching the bundle's CSS:
+can restyle everything without touching the bundle's CSS:
 
-| Property           | Purpose                          |
-|---------------------|-----------------------------------|
-| `--vo-accent`       | Accent color (links, controls)    |
-| `--vo-text`         | Primary text color                |
-| `--vo-muted`        | Secondary/muted text color        |
-| `--vo-bg`           | Block background color            |
-| `--vo-surface`      | Card/surface background color     |
-| `--vo-radius`       | Corner radius for cards/media     |
-| `--vo-gap`          | Vertical rhythm between sections  |
-| `--vo-max-width`    | Max content width                 |
-| `--vo-overlay`      | Gradient overlay on media/hero    |
-| `--vo-shadow`       | Drop shadow for cards/media       |
-| `--vo-font`         | Font family (defaults to `inherit`) |
+| Property         | Purpose                          |
+|-------------------|----------------------------------|
+| `--vo-accent`     | Accent color (links, controls)   |
+| `--vo-text`       | Primary text color               |
+| `--vo-muted`      | Secondary/muted text color       |
+| `--vo-bg`         | Block background color           |
+| `--vo-surface`    | Card/surface background color    |
+| `--vo-radius`     | Corner radius for cards/media    |
+| `--vo-gap`        | Vertical rhythm between sections |
+| `--vo-max-width`  | Max content width                |
+| `--vo-overlay`    | Gradient overlay on media/hero   |
+| `--vo-shadow`     | Drop shadow for cards/media      |
+| `--vo-font`       | Font family (defaults to `inherit`) |
+
+</details>
+
+## 🔐 How it works
+
+The API token is stored **once**, organization-wide, encrypted with libsodium's `secretbox`. Editors
+never see or handle it. Every call to VideoOptimizer is proxied through the bundle's admin controllers
+so the token stays server-side — the browser only ever receives short-lived **presigned URLs** for the
+direct-to-storage part uploads. List endpoints are cursor-paginated and resolved server-side into a flat
+array; rate limits (`429`) are retried once, honoring `Retry-After`.
 
 ## Development
-
-### Tests
 
 ```bash
 composer install
 vendor/bin/phpunit
 ```
 
-### Admin UI
+<details>
+<summary><b>Working on the admin UI</b></summary>
 
-The admin UI lives under `src/Resources/js` (React 17 + MobX, built by Sulu's webpack in the host project).
-When developing the bundle inside a host project via a Composer **path repository**, npm copies that JS into
-the host's `node_modules` rather than symlinking it — so after editing, refresh the copy before rebuilding:
+The admin UI lives under `src/Resources/js` (React 17 + MobX, built by Sulu's webpack in the host
+project). When developing via a Composer **path repository**, npm *copies* that JS into the host's
+`node_modules` rather than symlinking it — so after editing, refresh the copy before rebuilding:
 
 ```bash
 rm -rf assets/admin/node_modules/videooptimizer-sulu \
@@ -239,4 +293,20 @@ rm -rf assets/admin/node_modules/videooptimizer-sulu \
   && (cd assets/admin && npm run build)
 ```
 
-State mutations in admin field/view handlers must be wrapped in MobX `@action` (the Sulu production build enforces actions).
+State mutations in admin field/view handlers must be wrapped in MobX `@action` (the Sulu production
+build enforces actions).
+
+</details>
+
+## Contributing
+
+Issues and pull requests are welcome at
+[github.com/ScaleCommerce/videooptimizer-sulu](https://github.com/ScaleCommerce/videooptimizer-sulu).
+Please run `vendor/bin/phpunit` before opening a PR.
+
+## License
+
+Released under the [MIT License](LICENSE), © ScaleCommerce GmbH.
+
+Ships [hls.js](https://github.com/video-dev/hls.js) (Apache License 2.0) for HLS playback in the content
+blocks — see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

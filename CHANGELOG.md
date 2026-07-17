@@ -6,7 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-17
+
 ### Added
+- Encoding options endpoint (`GET /encodings`) in the client and admin: the
+  library cockpit presents codecs and resolutions as labelled chips sourced
+  from the endpoint, constrained to each library's `available_codecs` /
+  `available_resolutions`, with locked paid add-ons shown greyed and badged.
+- Upload a video file directly from the Videos view through a Sulu-style
+  "upload file" toolbar button (enabled once a library folder is selected);
+  the URL ingest stays available inline.
 - Video management from the admin: pick a thumbnail from the auto-generated
   options, upload a custom poster, edit title and player options, or delete
   a video — via a shared management panel reused across views.
@@ -29,6 +38,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   VideoOptimizer), in addition to uploading a file from disk.
 
 ### Changed
+- Libraries admin view redesigned to match the Sulu media layout: libraries as
+  a folder-tile rail on top (with a "new library" tile), a full-width divider,
+  then the selected library's cockpit below. Create and edit happen inline;
+  delivery-only libraries (`media_managed: false`) show their ladder read-only
+  and hide reprocess/upload. Free-text codec/resolution inputs replaced by the
+  chip pickers.
 - Load videos through the consolidated `GET /videos` endpoint (server-resolved
   cursor pagination, optional `library_id` filter) instead of a per-library
   fan-out.

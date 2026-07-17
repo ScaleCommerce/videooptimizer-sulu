@@ -1,7 +1,7 @@
 {
     "name": "videooptimizer-sulu",
-    "version": "0.1.0",
-    "license": "proprietary",
+    "version": "0.2.0",
+    "license": "MIT",
     "main": "index.js",
     "peerDependencies": {
         "sulu-admin-bundle": "*",
