@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-17
+
 ### Added
 - Remove the stored API token from the admin: a "Remove token" action on the
   Settings page (with a confirmation dialog) clears it server-side.
