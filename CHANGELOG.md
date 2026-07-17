@@ -6,6 +6,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Documentation
+- README quick-start: added a TL;DR command block, clarified that Symfony Flex registers the bundle
+  automatically, and noted the installer clears the cache itself.
+
 ## [1.3.1] - 2026-07-17
 
 ### Fixed
