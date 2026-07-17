@@ -6,6 +6,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- The bundle now passes PHPStan at level max; static analysis runs in CI. No runtime behaviour change.
+
 ## [1.0.1] - 2026-07-17
 
 ### Fixed
