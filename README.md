@@ -188,6 +188,28 @@ bin/adminconsole cache:clear              # pick up new translations
 Hard-reload the admin afterwards (the build hash changes). Because this package follows semantic
 versioning, `^1.0` receives every 1.x feature and fix automatically.
 
+## Configuration (optional)
+
+The API and embed base URLs default to VideoOptimizer's production hosts. Override them (e.g. to point
+at a staging API) under the `scale_video_optimizer` key:
+
+```yaml
+# config/packages/scale_video_optimizer.yaml
+scale_video_optimizer:
+    api_base_url: 'https://api.videooptimizer.eu/api/v1'
+    embed_base_url: 'https://videooptimizer.eu'
+```
+
+## Uninstalling
+
+```bash
+bin/adminconsole scale:videooptimizer:uninstall   # add --force to skip the drop-table confirmation
+```
+
+Removes the route import and admin-JS wiring and drops the `vo_settings` table (which holds the
+encrypted token, so it asks for confirmation first; `--dry-run` previews). Afterwards remove the bundle
+from `config/bundles.php` and run `composer remove scalecommerce/videooptimizer-sulu`.
+
 ## Usage
 
 Add the field to a template (`config/templates/pages/*.xml`):

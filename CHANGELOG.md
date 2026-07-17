@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Console command **`scale:videooptimizer:uninstall`** — the counterpart to install: drops the
+  `vo_settings` table (confirmation-gated, or `--force`) and removes the route import and admin-JS
+  wiring. Supports `--dry-run`.
+- **Bundle configuration**: `api_base_url` and `embed_base_url` can be overridden under the
+  `scale_video_optimizer` config key (e.g. to point at a staging API) instead of being hard-coded.
+- Tests for the token cipher, the settings manager and the install command (71 tests total).
+- `SECURITY.md` and `CONTRIBUTING.md`.
+
 ## [1.2.0] - 2026-07-17
 
 ### Added
