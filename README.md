@@ -83,25 +83,6 @@ Compared to serving `.mp4` files from your own origin:
 composer require scalecommerce/videooptimizer-sulu
 ```
 
-<details>
-<summary>Installing before the Packagist release (from GitHub)</summary>
-
-The repository is public, so no authentication is needed — add it as a VCS repository to your project's `composer.json`:
-
-```json
-"repositories": [
-    { "type": "vcs", "url": "https://github.com/ScaleCommerce/videooptimizer-sulu.git" }
-]
-```
-
-Then:
-
-```bash
-composer require scalecommerce/videooptimizer-sulu:^0.2
-```
-
-</details>
-
 **2. Register the bundle** (skip if Symfony Flex did it) in `config/bundles.php`:
 
 ```php
