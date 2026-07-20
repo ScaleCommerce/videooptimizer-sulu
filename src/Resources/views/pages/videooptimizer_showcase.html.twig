@@ -13,7 +13,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ content.title|default('VideoOptimizer showcase') }}</title>
-    <link rel="stylesheet" href="{{ asset('bundles/scalevideooptimizer/css/vo-blocks.css') }}">
+    {{ include('@ScaleVideoOptimizer/partials/assets.html.twig') }}
 </head>
 <body>
     {% block content %}
@@ -36,7 +36,5 @@
             {% endfor %}
         </main>
     {% endblock %}
-
-    <script src="{{ asset('bundles/scalevideooptimizer/js/vo-blocks.js') }}" defer></script>
 </body>
 </html>

@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-20
+
+### Added
+- Frontend asset loading is now a bundle feature: include `@ScaleVideoOptimizer/partials/assets.html.twig`
+  from a page view's `{% block stylesheets %}` instead of hardcoding the CSS/JS paths in the host theme.
+  The bundle owns the asset paths, so a future change to its asset structure no longer silently breaks
+  consumers. Pass `blocks` (e.g. `{ blocks: content.content }`) to emit the assets only when the page
+  actually renders a `vo_*` block; omit it to always emit them. The shipped showcase template now uses
+  this partial itself.
+
 ## [1.4.0] - 2026-07-20
 
 ### Added

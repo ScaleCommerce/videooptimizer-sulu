@@ -319,15 +319,26 @@ Publish the bundle's CSS/JS like any other bundle asset:
 bin/console assets:install
 ```
 
-Reference the published files in your base layout, and wrap the blocks in a container with `data-vo-base`
-(`vo-blocks.js` reads it to locate the bundled `hls.light.min.js`, loaded once per page):
+**Load the assets via the bundle's own partial** — the bundle owns the asset paths, so you never hardcode
+them (if the bundle changes its asset structure, nothing on your side breaks). Include it from your page
+view's `{% block stylesheets %}` and pass your block list to load the scoped CSS + tiny deferred JS **only
+when the page actually renders a `vo_*` block**:
 
 ```twig
-<link rel="stylesheet" href="{{ asset('bundles/scalevideooptimizer/css/vo-blocks.css') }}">
-<script src="{{ asset('bundles/scalevideooptimizer/js/vo-blocks.js') }}" defer></script>
+{% block stylesheets %}{{ parent() }}
+    {{ include('@ScaleVideoOptimizer/partials/assets.html.twig', { blocks: content.content }) }}
+{% endblock %}
+```
 
+Omit the `blocks` argument to always emit the tags (e.g. on a template guaranteed to show the blocks).
+
+Then dispatch the blocks to the bundle's views. Wrap them in a container with `data-vo-base` so
+`vo-blocks.js` can locate the bundled `hls.light.min.js` (it otherwise falls back to
+`/bundles/scalevideooptimizer/`):
+
+```twig
 <div class="vo-blocks" data-vo-base="{{ asset('bundles/scalevideooptimizer/') }}">
-    {% for block in content.blocks %}
+    {% for block in content.content %}
         {% include '@ScaleVideoOptimizer/blocks/' ~ block.type ~ '.html.twig' with { block: block } only %}
     {% endfor %}
 </div>

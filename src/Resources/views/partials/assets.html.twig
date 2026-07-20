@@ -1,0 +1,19 @@
+{#
+    Emits the VideoOptimizer content-block assets: the scoped CSS (everything lives under `.vo-*`) plus a
+    tiny deferred JS for facade/lightbox/reveal and lazy HLS. Include this from a page view's
+    {% block stylesheets %} (or <head>) so the bundle — not the consumer — owns the asset paths; if the
+    bundle ever changes its asset structure, only this file changes.
+
+    Pass `blocks` (the page's block list) to emit the assets only when it actually contains a vo_* block,
+    so pages without one stay untouched:
+
+        {{ include('@ScaleVideoOptimizer/partials/assets.html.twig', { blocks: content.content }) }}
+
+    Omit `blocks` to always emit them (e.g. a page/template that is guaranteed to render VideoOptimizer
+    blocks, such as the shipped showcase).
+#}
+{% set _vo_emit = (blocks is not defined) or (blocks|filter(b => (b.type|default('')) starts with 'vo_')|length > 0) %}
+{% if _vo_emit %}
+    <link rel="stylesheet" href="{{ asset('bundles/scalevideooptimizer/css/vo-blocks.css') }}">
+    <script src="{{ asset('bundles/scalevideooptimizer/js/vo-blocks.js') }}" defer></script>
+{% endif %}
