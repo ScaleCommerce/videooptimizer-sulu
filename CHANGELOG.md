@@ -7,8 +7,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Documentation
-- Clarify in the README that the `npm run build` step is Sulu's standard admin build, how it relates to
-  `sulu:admin:update-build`, and that `sulu:build` is unrelated (data layer, not the admin JS).
+- Clarify in the README that the `npm run build` step is Sulu's standard admin build, and that
+  `sulu:build` is unrelated (data layer, not the admin JS).
+- Warn that `sulu:admin:update-build` must not be used to install the bundle — it syncs `assets/admin`
+  with the Sulu skeleton and its `package.json` default overwrite would strip the `videooptimizer-sulu`
+  dependency added by `scale:videooptimizer:install`.
 
 ## [1.3.2] - 2026-07-17
 

@@ -150,10 +150,15 @@ cd assets/admin && npm install && npm run build
 ```
 
 This is Sulu's standard admin build — the admin is a webpack app compiled in your project, so it's a
-plain `npm run build` (use `npm run watch` while developing). It's exactly what `sulu:admin:update-build`
-runs under the hood for a customized project; that command is for syncing `assets/admin` with the Sulu
-skeleton on upgrades, not a routine build. `bin/console sulu:build` is unrelated — it builds the data
-layer (database/content), not the admin JS.
+plain `npm run build` (use `npm run watch` while developing). `bin/console sulu:build` is unrelated — it
+builds the data layer (database/content), not the admin JS.
+
+> **Do not use `sulu:admin:update-build` to install this bundle.** That command syncs `assets/admin`
+> with the official Sulu skeleton (it either downloads the pre-built skeleton assets — which do *not*
+> include this bundle's JS — or offers to overwrite your `assets/admin` files). Its default for
+> `package.json` is to overwrite, which would strip the `videooptimizer-sulu` dependency that
+> `scale:videooptimizer:install` added. Always build the admin JS with `cd assets/admin && npm install
+> && npm run build`.
 
 > After updating the bundle, hard-reload the admin (the build hash changes) so the browser doesn't run
 > the stale bundle.
