@@ -1,8 +1,11 @@
 <?xml version="1.0" ?>
-<type xmlns="http://schemas.sulu.io/template/template" name="vo_background_hero">
+<template xmlns="http://schemas.sulu.io/template/template"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://schemas.sulu.io/template/template http://schemas.sulu.io/template/template-1.0.xsd">
+    <key>vo_background_hero</key>
     <meta>
-        <title lang="en">Cinematic background hero</title>
-        <title lang="de">Cinematic Background-Hero</title>
+        <title lang="en">[VO] Cinematic background hero</title>
+        <title lang="de">[VO] Cinematic Background-Hero</title>
     </meta>
     <properties>
         <property name="video" type="video_optimizer">
@@ -60,4 +63,4 @@
             </meta>
         </property>
     </properties>
-</type>
+</template>

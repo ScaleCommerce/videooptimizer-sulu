@@ -6,6 +6,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- The four content blocks are now registered as **global, referenceable block types** via the bundle's
+  DI `prepend()` (`sulu_admin.templates.block.directories`). Any page or snippet template can offer them
+  with a single `<type ref="vo_media_split"/>` line (also `vo_background_hero`, `vo_spotlight`,
+  `vo_video_grid`) — no XInclude and no vendor paths.
+
+### Changed
+- Block titles now carry a visible `[VO]` prefix in the admin block picker so editors can recognize
+  blocks that come from this bundle.
+- **Breaking (template authoring):** the four block XML files moved from `<type name="…">` XInclude
+  fragments to standalone `<template>` files with a `<key>`. Templates that previously pulled them in
+  via `xi:include` must switch to `<type ref="…"/>`. The bundle's shipped showcase template was updated
+  accordingly. (No stored content changes — the block type keys stay `vo_*`.)
+
 ### Documentation
 - Clarify in the README that the `npm run build` step is Sulu's standard admin build, and that
   `sulu:build` is unrelated (data layer, not the admin JS).

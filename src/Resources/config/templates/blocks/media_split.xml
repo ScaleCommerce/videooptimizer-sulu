@@ -1,8 +1,11 @@
 <?xml version="1.0" ?>
-<type xmlns="http://schemas.sulu.io/template/template" name="vo_media_split">
+<template xmlns="http://schemas.sulu.io/template/template"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://schemas.sulu.io/template/template http://schemas.sulu.io/template/template-1.0.xsd">
+    <key>vo_media_split</key>
     <meta>
-        <title lang="en">Media split (video + text)</title>
-        <title lang="de">Media-Split (Video + Text)</title>
+        <title lang="en">[VO] Media split (video + text)</title>
+        <title lang="de">[VO] Media-Split (Video + Text)</title>
     </meta>
     <properties>
         <property name="video" type="video_optimizer">
@@ -114,4 +117,4 @@
             </meta>
         </property>
     </properties>
-</type>
+</template>

@@ -1,8 +1,11 @@
 <?xml version="1.0" ?>
-<type xmlns="http://schemas.sulu.io/template/template" name="vo_spotlight">
+<template xmlns="http://schemas.sulu.io/template/template"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://schemas.sulu.io/template/template http://schemas.sulu.io/template/template-1.0.xsd">
+    <key>vo_spotlight</key>
     <meta>
-        <title lang="en">Video spotlight (lightbox)</title>
-        <title lang="de">Video-Spotlight (Lightbox)</title>
+        <title lang="en">[VO] Video spotlight (lightbox)</title>
+        <title lang="de">[VO] Video-Spotlight (Lightbox)</title>
     </meta>
     <properties>
         <property name="video" type="video_optimizer">
@@ -92,4 +95,4 @@
             </meta>
         </property>
     </properties>
-</type>
+</template>

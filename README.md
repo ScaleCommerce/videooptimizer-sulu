@@ -285,38 +285,30 @@ Use this to explore the blocks immediately, or as a reference for wiring them in
 
 ### Wiring blocks into your own templates
 
-Prefer your own theme/template? Pull the block fragments in via XInclude:
-
-<details>
-<summary><b>Show the XInclude setup</b></summary>
-
-The template fragments live under `src/Resources/config/templates/blocks/` and are pulled into a host
-page/snippet template via **XInclude** — no copy-paste. The root `<template>` element needs the
-`xmlns:xi` namespace declaration; each block type is then a one-line include:
+Prefer your own theme/template? The bundle registers its block directory globally, so all four blocks
+are available as **referenceable block types** in every page and snippet template — no XInclude, no
+file paths to juggle. Add one `<type ref="…"/>` line per block wherever you define a block property:
 
 ```xml
-<template xmlns="http://schemas.sulu.io/template/template"
-          xmlns:xi="http://www.w3.org/2001/XInclude"
-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:schemaLocation="http://schemas.sulu.io/template/template http://schemas.sulu.io/template/template-1.0.xsd">
-    ...
-    <block name="blocks" default-type="intro" minOccurs="0">
-        <types>
-            <type name="intro">...</type>
-            <xi:include href="../../../vendor/scalecommerce/videooptimizer-sulu/src/Resources/config/templates/blocks/media_split.xml"/>
-            <xi:include href="../../../vendor/scalecommerce/videooptimizer-sulu/src/Resources/config/templates/blocks/background_hero.xml"/>
-            <xi:include href="../../../vendor/scalecommerce/videooptimizer-sulu/src/Resources/config/templates/blocks/spotlight.xml"/>
-            <xi:include href="../../../vendor/scalecommerce/videooptimizer-sulu/src/Resources/config/templates/blocks/video_grid.xml"/>
-        </types>
-    </block>
-</template>
+<block name="content" default-type="intro" minOccurs="0">
+    <types>
+        <type name="intro">...</type>
+        <type ref="vo_media_split"/>
+        <type ref="vo_background_hero"/>
+        <type ref="vo_spotlight"/>
+        <type ref="vo_video_grid"/>
+    </types>
+</block>
 ```
 
-The `href` paths are relative to the host template file — adjust the `../../../vendor/...` prefix if your
-template lives at a different depth. Symfony's XML config loader resolves the includes at template-parse
-time, so the merged schema is validated as a whole.
+The `ref` keys (`vo_media_split`, `vo_background_hero`, `vo_spotlight`, `vo_video_grid`) match the
+blocks' `<key>` values. In the admin block picker they show up prefixed with `[VO]` so editors can tell
+they come from this bundle. Because the block types are registered globally (via the bundle's DI
+`prepend()`), there is nothing to copy and the same `ref` works in any template.
 
-</details>
+> Want the blocks available in **all** templates? Sulu has no single switch for that — each template
+> lists its own block types. Add the four `<type ref="…"/>` lines to every page/snippet template that
+> should offer the VideoOptimizer blocks.
 
 <details>
 <summary><b>Registering assets & Twig dispatch</b></summary>

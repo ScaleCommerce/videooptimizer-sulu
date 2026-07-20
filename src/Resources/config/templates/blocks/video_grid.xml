@@ -1,8 +1,11 @@
 <?xml version="1.0" ?>
-<type xmlns="http://schemas.sulu.io/template/template" name="vo_video_grid">
+<template xmlns="http://schemas.sulu.io/template/template"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://schemas.sulu.io/template/template http://schemas.sulu.io/template/template-1.0.xsd">
+    <key>vo_video_grid</key>
     <meta>
-        <title lang="en">Video grid</title>
-        <title lang="de">Video-Grid</title>
+        <title lang="en">[VO] Video grid</title>
+        <title lang="de">[VO] Video-Grid</title>
     </meta>
     <properties>
         <property name="headline" type="text_line">
@@ -105,4 +108,4 @@
             </meta>
         </property>
     </properties>
-</type>
+</template>

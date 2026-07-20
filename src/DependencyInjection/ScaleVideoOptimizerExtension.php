@@ -25,8 +25,10 @@ class ScaleVideoOptimizerExtension extends Extension implements PrependExtension
     }
 
     /**
-     * Registers the bundle's page-template directory with Sulu so the "VideoOptimizer showcase"
-     * template appears in the admin template dropdown without the project copying any files.
+     * Registers the bundle's template directories with Sulu so consumers get everything without
+     * copying files: the "VideoOptimizer showcase" page template appears in the admin dropdown, and
+     * the four content blocks become globally referenceable from any template via
+     * `<type ref="vo_media_split"/>` (and the other vo_* keys).
      */
     public function prepend(ContainerBuilder $container): void
     {
@@ -34,11 +36,18 @@ class ScaleVideoOptimizerExtension extends Extension implements PrependExtension
             return;
         }
 
+        $templatesDir = \dirname(__DIR__) . '/Resources/config/templates';
+
         $container->prependExtensionConfig('sulu_admin', [
             'templates' => [
                 'page' => [
                     'directories' => [
-                        'videooptimizer' => \dirname(__DIR__) . '/Resources/config/templates/pages',
+                        'videooptimizer' => $templatesDir . '/pages',
+                    ],
+                ],
+                'block' => [
+                    'directories' => [
+                        'videooptimizer' => $templatesDir . '/blocks',
                     ],
                 ],
             ],
