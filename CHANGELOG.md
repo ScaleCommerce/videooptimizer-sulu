@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-07-20
+
 ### Added
 - The four content blocks are now registered as **global, referenceable block types** via the bundle's
   DI `prepend()` (`sulu_admin.templates.block.directories`). Any page or snippet template can offer them
