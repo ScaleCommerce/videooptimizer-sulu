@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-07-23
+
+### Fixed
+- When asynchronous encoding of an uploaded or URL-ingested video ends in `failed`, the Videos view
+  now shows a dedicated "processing failed" message instead of reusing the connection-test string
+  (which rendered the misleading "Connection failed: processing failed"). New translation key
+  `scale_videooptimizer.processing_failed` (de/en).
+
 ## [1.5.0] - 2026-07-20
 
 ### Added

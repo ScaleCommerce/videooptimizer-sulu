@@ -499,9 +499,7 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
           _this11.uploading = false;
           _this11.uploadStatus = null;
           if (video.status === 'failed') {
-            _this11.error = (0, _utils.translate)('scale_videooptimizer.test_failed', {
-              message: 'processing failed'
-            });
+            _this11.error = (0, _utils.translate)('scale_videooptimizer.processing_failed');
             return;
           }
           _this11.reloadVideos();
@@ -558,9 +556,7 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
           _this14.ingesting = false;
           _this14.ingestStatus = null;
           if (video.status === 'failed') {
-            _this14.error = (0, _utils.translate)('scale_videooptimizer.test_failed', {
-              message: 'processing failed'
-            });
+            _this14.error = (0, _utils.translate)('scale_videooptimizer.processing_failed');
             return;
           }
           _this14.ingestSourceUrl = '';

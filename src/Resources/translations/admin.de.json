@@ -32,6 +32,7 @@
     "scale_videooptimizer.upload_hint": "Videodatei auswählen und hochladen. Die Verarbeitung kann einige Minuten dauern.",
     "scale_videooptimizer.uploading": "Wird hochgeladen …",
     "scale_videooptimizer.processing": "Wird verarbeitet …",
+    "scale_videooptimizer.processing_failed": "Verarbeitung fehlgeschlagen – das Video konnte nicht enkodiert werden.",
     "scale_videooptimizer.ingest_from_url": "Von URL einziehen",
     "scale_videooptimizer.source_url": "Video-URL",
     "scale_videooptimizer.ingest": "Einziehen",

@@ -134,7 +134,7 @@ class Videos extends React.Component<*> {
                     this.uploading = false;
                     this.uploadStatus = null;
                     if (video.status === 'failed') {
-                        this.error = translate('scale_videooptimizer.test_failed', {message: 'processing failed'});
+                        this.error = translate('scale_videooptimizer.processing_failed');
                         return;
                     }
                     this.reloadVideos();
@@ -173,7 +173,7 @@ class Videos extends React.Component<*> {
                     this.ingesting = false;
                     this.ingestStatus = null;
                     if (video.status === 'failed') {
-                        this.error = translate('scale_videooptimizer.test_failed', {message: 'processing failed'});
+                        this.error = translate('scale_videooptimizer.processing_failed');
                         return;
                     }
                     this.ingestSourceUrl = '';
