@@ -14,6 +14,6 @@
 #}
 {% set _vo_emit = (blocks is not defined) or (blocks|filter(b => (b.type|default('')) starts with 'vo_')|length > 0) %}
 {% if _vo_emit %}
-    <link rel="stylesheet" href="{{ asset('bundles/scalevideooptimizer/css/vo-blocks.css') }}">
-    <script src="{{ asset('bundles/scalevideooptimizer/js/vo-blocks.js') }}" defer></script>
+    {{ include('@ScaleVideoOptimizer/partials/_assets_css.html.twig') }}
+    {{ include('@ScaleVideoOptimizer/partials/_assets_js.html.twig') }}
 {% endif %}

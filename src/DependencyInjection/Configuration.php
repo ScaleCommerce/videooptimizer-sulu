@@ -28,6 +28,10 @@ class Configuration implements ConfigurationInterface
                     ->defaultValue(self::DEFAULT_EMBED_BASE_URL)
                     ->cannotBeEmpty()
                 ->end()
+                ->booleanNode('auto_inject_assets')
+                    ->info('Automatically inject the frontend CSS/JS into pages that render a VideoOptimizer surface. Disable to wire the assets manually via the @ScaleVideoOptimizer/partials/assets.html.twig partial.')
+                    ->defaultTrue()
+                ->end()
             ->end();
 
         return $treeBuilder;

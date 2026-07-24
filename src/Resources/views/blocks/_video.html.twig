@@ -32,6 +32,8 @@
 {% set isPriority = priority|default(false) %}
 {% set player = player|default('hosted') %}
 {% set posterImg %}{% if video.posterUrl %}<img class="vo-poster__img" src="{{ video.posterUrl }}"{% if srcset %} srcset="{{ srcset }}" sizes="{{ sizes|default('100vw') }}"{% endif %}{% if dim.width and dim.height %} width="{{ dim.width }}" height="{{ dim.height }}"{% endif %} alt="" loading="{{ isPriority ? 'eager' : 'lazy' }}"{% if isPriority %} fetchpriority="high"{% endif %}>{% endif %}{% endset %}
+{# Sentinel picked up by AssetInjectionListener to auto-load the bundle's frontend CSS/JS (removed after injection). #}
+<!--vo-assets-->
 <div class="vo-frame{% if dim.orientation %} vo-frame--{{ dim.orientation }}{% endif %}"{% if dim.width and dim.height %} style="aspect-ratio: {{ dim.width }} / {{ dim.height }}"{% endif %}{% if presentation == 'direct' and not isPriority and player == 'hosted' %} data-vo-autoload="{{ url }}"{% endif %} data-vo-player="{{ player }}">
     {% if presentation == 'direct' %}
         {% if player == 'native' %}

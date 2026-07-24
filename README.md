@@ -202,19 +202,32 @@ admin JS wiring and the settings table.
 
 ## Upgrading
 
+Because this package follows semantic versioning, the `^1.0` constraint written by `composer require`
+receives every 1.x feature and fix automatically — updating is a one-liner plus a rebuild:
+
 ```bash
+# 1. Pull the latest 1.x release
 composer update scalecommerce/videooptimizer-sulu
+
+# 2. Republish the bundle's frontend assets (new/changed CSS/JS land in public/)
+bin/console assets:install
+
+# 3. Rebuild the compiled admin UI so new views/labels ship
+cd assets/admin && npm run build
+
+# 4. Clear the caches (admin translations + website container/routes)
+bin/adminconsole cache:clear
+bin/console cache:clear
 ```
 
-Then, because the admin is compiled and its translations are cached, refresh both:
+Then **hard-reload the admin** in your browser (the build hash changes, so a normal reload may serve
+the old bundle). Skipping step 2 leaves stale frontend assets in `public/`; skipping step 3 or 4 makes
+new admin labels show their raw translation key.
 
-```bash
-cd assets/admin && npm run build          # rebuild so new admin views/labels ship
-bin/adminconsole cache:clear              # pick up new translations
-```
-
-Hard-reload the admin afterwards (the build hash changes). Because this package follows semantic
-versioning, `^1.0` receives every 1.x feature and fix automatically.
+> **Check the [CHANGELOG](CHANGELOG.md)** before upgrading across a minor version — it lists every
+> notable change, and any manual follow-up (e.g. a new config option or a migration) is called out there.
+> To pin a specific version instead of tracking `^1.0`, set the exact constraint in your `composer.json`
+> (e.g. `"scalecommerce/videooptimizer-sulu": "1.5.2"`).
 
 ## Configuration (optional)
 
@@ -226,6 +239,23 @@ at a staging API) under the `scale_video_optimizer` key:
 scale_video_optimizer:
     api_base_url: 'https://api.videooptimizer.eu/api/v1'
     embed_base_url: 'https://videooptimizer.eu'
+    auto_inject_assets: true   # default; set false to load the frontend CSS/JS manually (see below)
+```
+
+### Frontend assets load automatically
+
+Once the bundle assets are published (`bin/console assets:install`), the frontend CSS/JS load
+automatically on any page that renders a VideoOptimizer surface — **no template edit required**. A
+`kernel.response` listener injects the stylesheet before `</head>` and the deferred script before
+`</body>`, only when the page actually contains a VideoOptimizer block or embed, and never twice.
+
+Set `auto_inject_assets: false` to opt out (e.g. strict CSP or ESI setups where you need full control
+over the `<head>`), then load the assets yourself from a page view's `{% block stylesheets %}`:
+
+```twig
+{% block stylesheets %}{{ parent() }}
+    {{ include('@ScaleVideoOptimizer/partials/assets.html.twig', { blocks: content.content }) }}
+{% endblock %}
 ```
 
 ## Uninstalling
@@ -319,10 +349,12 @@ Publish the bundle's CSS/JS like any other bundle asset:
 bin/console assets:install
 ```
 
-**Load the assets via the bundle's own partial** — the bundle owns the asset paths, so you never hardcode
-them (if the bundle changes its asset structure, nothing on your side breaks). Include it from your page
-view's `{% block stylesheets %}` and pass your block list to load the scoped CSS + tiny deferred JS **only
-when the page actually renders a `vo_*` block**:
+**That's it — the assets load automatically.** The bundle's `AssetInjectionListener` injects the
+stylesheet before `</head>` and the deferred script before `</body>` on any page that renders a
+VideoOptimizer surface, and never twice. You don't hardcode asset paths or include a partial.
+
+To opt out (`scale_video_optimizer.auto_inject_assets: false`), load them yourself from a page view's
+`{% block stylesheets %}` — the bundle still owns the paths, so you never hardcode them:
 
 ```twig
 {% block stylesheets %}{{ parent() }}

@@ -6,6 +6,7 @@ namespace Scale\VideoOptimizerBundle\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
+use Scale\VideoOptimizerBundle\EventListener\AssetInjectionListener;
 use Scale\VideoOptimizerBundle\Service\SettingsManager;
 use Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver;
 use Scale\VideoOptimizerBundle\Twig\VideoOptimizerExtension;
@@ -32,6 +33,18 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
         self::assertStringContainsString('muted', $html);
         self::assertStringContainsString('loop', $html);
         self::assertStringContainsString('playsinline', $html);
+    }
+
+    public function testRenderBackgroundEmitsAssetSentinel(): void
+    {
+        $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
+        $resolver->getSources('abc')->willReturn(['poster' => null, 'hlsUrl' => null]);
+
+        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
+
+        $html = $ext->renderBackground(['uuid' => 'abc']);
+
+        self::assertStringContainsString(AssetInjectionListener::SENTINEL, $html);
     }
 
     public function testFallsBackToStoredPosterWhenResolverHasNone(): void

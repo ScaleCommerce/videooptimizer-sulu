@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Scale\VideoOptimizerBundle\Twig;
 
+use Scale\VideoOptimizerBundle\EventListener\AssetInjectionListener;
 use Scale\VideoOptimizerBundle\Service\SettingsManager;
 use Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver;
 use Twig\Extension\AbstractExtension;
@@ -202,7 +203,7 @@ class VideoOptimizerExtension extends AbstractExtension
             return '';
         }
 
-        return \sprintf(
+        return AssetInjectionListener::SENTINEL . \sprintf(
             '<iframe src="%s" title="%s" loading="%s" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen style="border:0;width:100%%;height:100%%;aspect-ratio:16/9"></iframe>',
             htmlspecialchars($url, \ENT_QUOTES),
             htmlspecialchars(self::str($video['title'] ?? $title), \ENT_QUOTES),
@@ -228,7 +229,7 @@ class VideoOptimizerExtension extends AbstractExtension
         $poster = $sources['poster'] ?? ($video['posterUrl'] ?? null);
         $hlsUrl = $sources['hlsUrl'] ?? null;
 
-        return \sprintf(
+        return AssetInjectionListener::SENTINEL . \sprintf(
             '<video class="vo-bg-hero__video" muted autoplay loop playsinline preload="%s"%s%s></video>',
             $priority ? 'auto' : 'metadata',
             null !== $poster ? \sprintf(' poster="%s"', htmlspecialchars(self::str($poster), \ENT_QUOTES)) : '',
@@ -302,7 +303,7 @@ class VideoOptimizerExtension extends AbstractExtension
         $accent = $playable['theme']['accentColor'] ?? null;
         $style = \is_string($accent) && '' !== $accent ? ' style="--vo-player-accent:' . htmlspecialchars($accent, \ENT_QUOTES) . '"' : '';
 
-        return \sprintf('<video %s%s>%s</video>', $attrs, $style, $sourceTags);
+        return AssetInjectionListener::SENTINEL . \sprintf('<video %s%s>%s</video>', $attrs, $style, $sourceTags);
     }
 
     /**

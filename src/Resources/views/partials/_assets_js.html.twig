@@ -1,0 +1,6 @@
+{#
+    The tiny deferred VideoOptimizer frontend script (facade/lightbox/reveal + lazy HLS). Single
+    source of the JS asset path — the AssetInjectionListener renders this in before </body>, and
+    assets.html.twig includes it for the manual/opt-out path.
+#}
+<script src="{{ asset('bundles/scalevideooptimizer/js/vo-blocks.js') }}" defer></script>

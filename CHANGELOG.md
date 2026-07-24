@@ -6,6 +6,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-07-24
+
+### Added
+- **Automatic frontend asset injection.** The bundle now loads its frontend CSS/JS on pages that
+  render a VideoOptimizer surface without any template edit — consumers no longer include a partial
+  or hardcode asset paths. A `kernel.response` listener (`AssetInjectionListener`) inserts the
+  stylesheet before `</head>` and the deferred script before `</body>` (for performance), gated on an
+  invisible sentinel the frontend Twig emits, so pages without a VideoOptimizer surface stay
+  untouched. Pages that already reference the assets (manual partial) are not double-loaded. Enabled
+  by default; disable with `scale_video_optimizer.auto_inject_assets: false` to wire the assets
+  manually via `@ScaleVideoOptimizer/partials/assets.html.twig` (e.g. for strict CSP or ESI setups).
+  Requires the bundle assets to be published (`bin/console assets:install`).
+
 ## [1.5.1] - 2026-07-23
 
 ### Fixed

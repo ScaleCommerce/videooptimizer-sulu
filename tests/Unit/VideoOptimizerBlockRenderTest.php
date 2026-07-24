@@ -7,6 +7,7 @@ namespace Scale\VideoOptimizerBundle\Tests\Unit;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
 use Prophecy\Prophecy\ObjectProphecy;
+use Scale\VideoOptimizerBundle\EventListener\AssetInjectionListener;
 use Scale\VideoOptimizerBundle\Service\SettingsManager;
 use Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver;
 use Scale\VideoOptimizerBundle\Twig\VideoOptimizerExtension;
@@ -460,6 +461,41 @@ class VideoOptimizerBlockRenderTest extends TestCase
         self::assertStringNotContainsString('autoplay', $html);
         self::assertStringNotContainsString('muted', $html);
         self::assertStringContainsString('loop', $html); // loop is allowed regardless of eager
+    }
+
+    public function testBlockRenderEmitsAssetSentinel(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getDimensions('abc')->willReturn(['width' => 1920, 'height' => 1080, 'orientation' => 'landscape']);
+        $resolver->getPosterSrcset('abc')->willReturn(null);
+        $resolver->getSources('abc')->willReturn($this->sources());
+
+        $html = $this->render($resolver, 'vo_media_split.html.twig', [
+            'block' => ['video' => ['uuid' => 'abc', 'posterUrl' => 'https://cdn.example.net/poster.jpg']],
+        ]);
+
+        self::assertStringContainsString(AssetInjectionListener::SENTINEL, $html);
+    }
+
+    public function testRenderEmbedEmitsAssetSentinel(): void
+    {
+        $resolver = $this->resolver();
+        $extension = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
+
+        $html = $extension->renderEmbed(['uuid' => 'abc']);
+
+        self::assertStringContainsString(AssetInjectionListener::SENTINEL, $html);
+    }
+
+    public function testRenderNativeEmitsAssetSentinel(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getPlayable('abc')->willReturn($this->playable());
+        $extension = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
+
+        $html = $extension->renderNative(['uuid' => 'abc']);
+
+        self::assertStringContainsString(AssetInjectionListener::SENTINEL, $html);
     }
 
     public function testRenderNativeReturnsEmptyStringWithoutVideo(): void

@@ -19,6 +19,7 @@ class ScaleVideoOptimizerExtension extends Extension implements PrependExtension
         $embedBaseUrl = \is_string($config['embed_base_url'] ?? null) ? $config['embed_base_url'] : Configuration::DEFAULT_EMBED_BASE_URL;
         $container->setParameter('scale_video_optimizer.api_base_url', $apiBaseUrl);
         $container->setParameter('scale_video_optimizer.embed_base_url', $embedBaseUrl);
+        $container->setParameter('scale_video_optimizer.auto_inject_assets', (bool) ($config['auto_inject_assets'] ?? true));
 
         $loader = new XmlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config'));
         $loader->load('services.xml');
