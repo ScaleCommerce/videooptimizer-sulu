@@ -44,7 +44,27 @@
             // Leave the <video> unwired so the browser shows its poster and never plays.
             return;
         }
-        document.querySelectorAll('.vo-bg-hero__video[data-hls]').forEach(function (video) {
+        // `[data-vo-hls]` is the opt-in hook for consumers that render their own markup — the very
+        // consumers `video_optimizer_sources()` exists for. Without it the HLS wiring only ever
+        // found the bundle's own class, so a consumer's background video stayed silent: the poster
+        // showed, nothing played, and nothing said why. Loading the assets and being wired are two
+        // different questions.
+        //
+        // Four things this selector deliberately does NOT do:
+        //   * it does not key on a class — a class is design-bound, a data attribute is markup-neutral;
+        //   * it does not widen to `video[data-hls]` — initNativePlayers() excludes
+        //     `.vo-native-holder` children and `[data-vo-native-autoload]` on purpose (facade and
+        //     lazy paths). A blanket selector would lift those exclusions and change behaviour for
+        //     existing consumers;
+        //   * it does not live in a new function — staying here means foreign markup inherits the
+        //     prefers-reduced-motion early exit above;
+        //   * it does not carry a value: `data-hls` remains the URL, `data-vo-hls` is a bare marker.
+        //
+        // The markup that follows from this is what renderBackground() already emits:
+        // `<video muted autoplay loop playsinline preload poster data-hls>` with no `<source>`
+        // children — which is what makes the reduced-motion case work. The inherited price is that
+        // there is no MP4 fallback.
+        document.querySelectorAll('.vo-bg-hero__video[data-hls], video[data-vo-hls][data-hls]').forEach(function (video) {
             attachHls(video, baseUrl);
         });
     }

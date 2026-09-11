@@ -299,7 +299,8 @@ markup is bound to a design of its own, ask for the **data** instead and render 
 ```twig
 {% set vo = video_optimizer_sources(content.video) %}
 {% if vo %}
-    <video class="my-hero__video" muted autoplay loop playsinline poster="{{ vo.poster }}">
+    <video class="my-hero__video" muted autoplay loop playsinline poster="{{ vo.poster }}"
+           {% if vo.hlsUrl %}data-vo-hls data-hls="{{ vo.hlsUrl }}"{% endif %}>
         {% for source in vo.sources if source.type == 'video/mp4' %}
             <source src="{{ source.src }}" type="{{ source.type }}">
         {% endfor %}
@@ -321,11 +322,22 @@ Returns `null` when no video is selected, otherwise:
 The entries keep the resolver's own key names — the vocabulary of an HTML `<source>` element. The
 function passes data through; it does not adapt it to any particular consumer's field names.
 
-> **⚠️ Assets are not injected for this path.** Automatic injection is gated on a sentinel that the
-> *rendering* functions emit; a data payload cannot carry one. If your own markup needs the bundle's
-> frontend JS — HLS playback does, since `vo-blocks.js` wires `data-hls` — include
-> `@ScaleVideoOptimizer/partials/assets.html.twig` from your `{% block stylesheets %}`. Markup that
-> only uses the MP4 sources natively needs neither the CSS nor the JS.
+> **⚠️ HLS on this path needs two things, and one of them is not the assets.** Automatic injection is
+> gated on a sentinel that the *rendering* functions emit; a data payload cannot carry one. So for
+> HLS playback in your own markup:
+>
+> 1. **Include the assets yourself** — `@ScaleVideoOptimizer/partials/assets.html.twig` from your
+>    `{% block stylesheets %}`.
+> 2. **Mark the element with `data-vo-hls`**, alongside `data-hls="{{ vo.hlsUrl }}"`.
+>
+> The second step is not optional. `vo-blocks.js` reads the playlist URL from `data-hls`, but it only
+> *looks* at elements it has been pointed at: its own block class, and any `<video>` carrying the
+> `data-vo-hls` opt-in marker. It deliberately does not wire every `<video>` with a `data-hls`
+> attribute, because the native player path excludes facade and lazy-loading videos on purpose.
+> Assets without the marker is the silent failure: the script loads, nothing claims the element, and
+> the video simply never plays — with no console error.
+>
+> Markup that only uses the MP4 sources natively needs neither the CSS nor the JS, and no marker.
 
 ### Developing against a consuming project
 
