@@ -4,6 +4,9 @@
 
     var hlsPromise = null;
 
+    // Obergrenze fuer das Warten auf `load`, siehe afterPageLoad().
+    var HINTERGRUND_FRIST_MS = 6000;
+
     // Lazily loads the vendored hls.js only when needed (non-Safari background video).
     function loadHls(baseUrl) {
         if (hlsPromise) {
@@ -94,7 +97,32 @@
             fn();
             return;
         }
-        window.addEventListener('load', fn, {once: true});
+        var erledigt = false;
+        var los = function () {
+            if (erledigt) {
+                return;
+            }
+            erledigt = true;
+            fn();
+        };
+        window.addEventListener('load', los, {once: true});
+        // ⚠️ DIE FRIST HAENGT AM AUFRUFZEITPUNKT, NICHT AN `load` — und das ist der ganze Punkt.
+        // `load` feuert nie, wenn eine einzige Subressource haengt: ein blockierendes
+        // Analytics-Skript, ein nicht antwortender Embed. Ein daran verankertes Warten waere
+        // dann selbst tot, und das Hintergrundvideo bliebe dauerhaft stumm — vorhanden, Poster
+        // da, keine Meldung. Diese Frist laeuft ab hier und gewinnt, wenn `load` ausbleibt: aus
+        // dem Totalausfall wird eine begrenzte Verzoegerung.
+        //
+        // ⚠️ Die falsche Bauform sieht fast gleich aus und rettet nichts:
+        //     window.addEventListener('load', function () { setTimeout(fn, FRIST); });
+        // Sie verlaengert das Warten, statt es zu begrenzen, und stirbt mit `load`.
+        //
+        // Der Wert ist NICHT mit dem Zeitabstand begruendet — gemessen liegt `load` auf einer
+        // echten Seite nur 148 ms (schnelle Mobilverbindung) bis 378 ms (langsame) nach dem
+        // groessten Inhaltselement, die Frist greift dort also gar nicht. Er ist allein mit dem
+        // Totalausfall begruendet und liegt bewusst UEBER dem ueblichen LCP dieser Messung
+        // (rund 5 s auf der langsamen Verbindung), damit er den Regelfall nicht abschneidet.
+        window.setTimeout(los, HINTERGRUND_FRIST_MS);
     }
 
     // Is this element rendered at all? An element that is `display:none` — on itself or on any

@@ -241,6 +241,35 @@ final class VoBlocksJsContractTest extends TestCase
             . 'geloest und bliebe haengen.');
     }
 
+    public function testDieFristHaengtAmAufrufzeitpunktUndNichtAnLoad(): void
+    {
+        $rumpf = self::funktion(self::script(), 'afterPageLoad');
+
+        // `load` feuert nie, wenn eine einzige Subressource haengt. Eine Frist, die daran
+        // verankert ist, ist dann selbst tot — und das Video bliebe dauerhaft stumm. Die
+        // richtige Bauform startet die Frist beim Aufruf und laesst sie GEGEN `load` laufen.
+        self::assertStringContainsString('setTimeout(', $rumpf, 'Es gibt keine Frist — ein '
+            . 'haengendes `load` friert das Hintergrundvideo dauerhaft ein.');
+        self::assertStringContainsString('HINTERGRUND_FRIST_MS', $rumpf);
+
+        // ⚠️ Die falsche Bauform sieht fast gleich aus: setTimeout INNERHALB des load-Zuhoerers.
+        // Dann verlaengert die Frist das Warten, statt es zu begrenzen, und stirbt mit `load`.
+        // Beide Wege benutzen dieselben zwei Aufrufe — nur die Reihenfolge unterscheidet sie.
+        $zuhoerer = \strpos($rumpf, "addEventListener('load'");
+        $frist = \strpos($rumpf, 'setTimeout(');
+        self::assertNotFalse($zuhoerer);
+        self::assertNotFalse($frist);
+        self::assertGreaterThan($zuhoerer, $frist, 'Die Frist steht vor dem load-Zuhoerer — '
+            . 'pruefe, ob sie noch am Aufrufzeitpunkt haengt.');
+        self::assertStringNotContainsString("addEventListener('load', function", $rumpf,
+            'Der load-Zuhoerer ist eine eigene Funktion statt des gemeinsamen Ausloesers — '
+            . 'dann kann die Frist nicht dieselbe Handlung ausloesen.');
+
+        // Und beide Wege duerfen die Verdrahtung nur EINMAL ausloesen.
+        self::assertStringContainsString('erledigt', $rumpf, 'Ohne Einmal-Sperre wuerde die '
+            . 'Verdrahtung zweimal laufen, wenn `load` nach der Frist noch feuert.');
+    }
+
     public function testDieDreiBedingungenStehenInDerRichtigenReihenfolge(): void
     {
         $rumpf = self::funktion(self::script(), 'initBackgroundVideos');
