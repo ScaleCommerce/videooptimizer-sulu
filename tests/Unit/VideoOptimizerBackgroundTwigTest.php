@@ -65,6 +65,28 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
         self::assertStringNotContainsString('tabindex', $html);
     }
 
+    public function testBackgroundIsDeferredByDefaultAndEagerOnlyWhenAsked(): void
+    {
+        $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
+        $resolver->getSources('abc')->willReturn([
+            'poster' => 'https://cdn.example.net/poster.jpg',
+            'hlsUrl' => 'https://cdn.example.net/master.m3u8',
+        ]);
+        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
+
+        // Absence is the default, and the default is deferred. An existing consumer that never
+        // passes the new argument gets the safer behaviour without touching anything — which is
+        // the entire point of encoding the exception rather than the rule.
+        self::assertStringNotContainsString('data-vo-hls-eager', $ext->renderBackground(['uuid' => 'abc']));
+        self::assertStringNotContainsString('data-vo-hls-eager', $ext->renderBackground(['uuid' => 'abc'], true));
+        self::assertStringContainsString('data-vo-hls-eager', $ext->renderBackground(['uuid' => 'abc'], false, true));
+
+        // And the new flag must not be confused with the old one: priority still only moves
+        // preload, which is what its corrected help text now says.
+        self::assertStringContainsString('preload="auto"', $ext->renderBackground(['uuid' => 'abc'], true));
+        self::assertStringContainsString('preload="metadata"', $ext->renderBackground(['uuid' => 'abc'], false, true));
+    }
+
     public function testRenderBackgroundEmitsAssetSentinel(): void
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);

@@ -58,8 +58,16 @@
             <meta>
                 <title lang="en">Prioritize loading (above the fold)</title>
                 <title lang="de">Bevorzugt laden (above the fold)</title>
-                <info_text lang="en">Enable when this hero is the topmost/LCP element so its video preloads sooner.</info_text>
-                <info_text lang="de">Aktivieren, wenn dieser Hero das oberste/LCP-Element ist, damit sein Video früher vorlädt.</info_text>
+                <info_text lang="en">Sets preload="auto" on the video element. Note this does NOT make the stream start sooner: the stream is fetched by hls.js, which does not consult preload. To start the video before the page has finished loading, use "Load video immediately" below.</info_text>
+                <info_text lang="de">Setzt preload="auto" am Video-Element. Das laesst den Stream NICHT frueher beginnen: den holt hls.js, und das fragt preload nicht. Wer das Video vor dem Seitenende starten will, nutzt "Video sofort laden" darunter.</info_text>
+            </meta>
+        </property>
+        <property name="videoEager" type="checkbox">
+            <meta>
+                <title lang="en">Load video immediately</title>
+                <title lang="de">Video sofort laden</title>
+                <info_text lang="en">Off by default: the background video starts loading only once the page has finished loading, so it does not compete with page content for bandwidth. Measured on a real site, loading it right away delayed the Largest Contentful Paint by 0.36 s on a fast mobile connection and 1.5 s on a slow one. A background video is decoration; enable this only if it carries information the visitor needs immediately.</info_text>
+                <info_text lang="de">Standardmaessig aus: Das Hintergrundvideo laedt erst, wenn die Seite fertig geladen ist, und konkurriert so nicht mit dem Seiteninhalt um Bandbreite. An einer echten Seite gemessen verzoegerte sofortiges Laden das groesste Inhaltselement (LCP) um 0,36 s bei schneller und 1,5 s bei langsamer Mobilverbindung. Ein Hintergrundvideo ist Dekoration; nur einschalten, wenn es Information traegt, die sofort gebraucht wird.</info_text>
             </meta>
         </property>
     </properties>

@@ -4,6 +4,39 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-09-11
+
+### Added
+- **Background videos load after the page, and editors can override it per video.** A background
+  video is decoration — it is why the element carries `aria-hidden` since 1.6.1 — and loading
+  decoration after the content is the defensible default. Until now the HLS stream started at
+  `DOMContentLoaded` and competed with the page for bandwidth. Measured on a real site with four
+  background videos, 8 runs per condition at 1440 px, wiring on/off as the only difference and the
+  Largest Contentful Paint element verified identical in every run (an image, not a video frame):
+  the ranges do not overlap in either network profile — LCP **1992–2256 ms** without wiring against
+  **2376–3912 ms** with it on a fast mobile connection, and **3852–4488 ms** against
+  **5048–6412 ms** on a slow one. Loading the videos immediately cost **0.36 s** and **1.5 s** of
+  LCP respectively.
+  The new block checkbox **"Load video immediately"** turns the deferral off for a single video.
+  ⚠️ **Absence of the marker is the new default**, not its presence: existing content and consumers
+  rendering their own markup (`video_optimizer_sources()` + `data-vo-hls`) inherit the deferred
+  behaviour without changing anything. `video_optimizer_background()` takes a third argument
+  `eager` (default `false`) and emits `data-vo-hls-eager` only when it is true.
+  ⚠️ **`load` may already have fired** by the time the script runs — deferred injection, a slow
+  stylesheet, a consumer wiring the assets by hand. A listener registered after the event never
+  fires, and the result would be a background video with a poster that silently never plays. The
+  deferral therefore asks `document.readyState === 'complete'` first and wires immediately in that
+  case. Same failure mode 1.6.2 was built against, one layer up.
+  Order of the three conditions is fixed and asserted: `prefers-reduced-motion` first, then the
+  deferral, then the rendered check — the last one has to run *after* the wait, because a video
+  that is `display:none` at `DOMContentLoaded` may well be rendered by the time `load` fires.
+
+### Changed
+- **The help text of "Prioritize loading (above the fold)" was wrong about what it does.** It
+  suggested the video would preload sooner; in fact it only sets `preload="auto"`, and the stream
+  is fetched by hls.js, which does not consult `preload`. It never touched the cause. The text now
+  says what the checkbox does and points at the new setting for what editors actually wanted.
+
 ## [1.6.2] - 2026-09-11
 
 ### Fixed

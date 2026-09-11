@@ -222,7 +222,7 @@ class VideoOptimizerExtension extends AbstractExtension
      *
      * @param array<string, mixed>|null $video
      */
-    public function renderBackground(?array $video, bool $priority = false): string
+    public function renderBackground(?array $video, bool $priority = false, bool $eager = false): string
     {
         if (null === $video || empty($video['uuid'])) {
             return '';
@@ -233,10 +233,14 @@ class VideoOptimizerExtension extends AbstractExtension
         $hlsUrl = $sources['hlsUrl'] ?? null;
 
         return AssetInjectionListener::SENTINEL . \sprintf(
-            '<video class="vo-bg-hero__video" muted autoplay loop playsinline aria-hidden="true" preload="%s"%s%s></video>',
+            '<video class="vo-bg-hero__video" muted autoplay loop playsinline aria-hidden="true" preload="%s"%s%s%s></video>',
             $priority ? 'auto' : 'metadata',
             null !== $poster ? \sprintf(' poster="%s"', htmlspecialchars(self::str($poster), \ENT_QUOTES)) : '',
             null !== $hlsUrl ? \sprintf(' data-hls="%s"', htmlspecialchars($hlsUrl, \ENT_QUOTES)) : '',
+            // ABSENCE is the new default (deferred); the attribute marks the exception. That way
+            // consumers rendering their own markup inherit the safer behaviour without touching
+            // anything, and existing content changes behaviour without a migration.
+            $eager ? ' data-vo-hls-eager' : '',
         );
     }
 

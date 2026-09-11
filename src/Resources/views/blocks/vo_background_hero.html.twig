@@ -8,7 +8,7 @@
 {% endif %}
 <section class="vo-block vo-bg-hero vo-bg-hero--{{ block.height|default('large') }} vo-bg-hero--overlay-{{ block.overlay|default('gradient') }}"{% if heroStyles %} style="{{ heroStyles|join('; ') }}"{% endif %}>
     {% if block.video and block.video.uuid %}
-        {{ video_optimizer_background(block.video, block.priority|default(false)) }}
+        {{ video_optimizer_background(block.video, block.priority|default(false), block.videoEager is defined ? block.videoEager : false) }}
         {{ video_optimizer_schema(block.video, block.headline|default('')) }}
     {% endif %}
     <div class="vo-bg-hero__overlay"></div>

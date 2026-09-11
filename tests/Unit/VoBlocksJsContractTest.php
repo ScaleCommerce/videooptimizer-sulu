@@ -201,6 +201,66 @@ final class VoBlocksJsContractTest extends TestCase
             . 'eine verlorene Byte-Ersparnis ist der kleinere Schaden als ein totes Video.');
     }
 
+    public function testHintergrundvideosLadenStandardmaessigVERZOEGERT(): void
+    {
+        $rumpf = self::funktion(self::script(), 'initBackgroundVideos');
+
+        // Positivanker am echten Bestand: beide Selektorformen muessen weiterhin gefunden
+        // werden, sonst sichert der Test nur das Wegfallen ab.
+        self::assertStringContainsString(self::KLASSE, $rumpf);
+        self::assertStringContainsString(self::HAKEN, $rumpf);
+
+        self::assertStringContainsString('afterPageLoad(', $rumpf, 'Die Verzoegerung fehlt — '
+            . 'Hintergrundvideos konkurrieren dann wieder mit dem Seiteninhalt um Bandbreite.');
+        self::assertStringContainsString("hasAttribute('data-vo-hls-eager')", $rumpf,
+            'Die Ausnahme wird nicht mehr am Attribut erkannt.');
+
+        // ⚠️ ABWESENHEIT ist der Standard. Waere die Bedingung umgedreht — Attribut = warten —
+        // bekaemen bestehende Inhalte und fremde Consumer das ALTE Verhalten, und die Aenderung
+        // ginge an genau denen vorbei, fuer die sie gebaut ist.
+        $sofort = \strpos($rumpf, "hasAttribute('data-vo-hls-eager')");
+        $warten = \strpos($rumpf, 'afterPageLoad(');
+        self::assertNotFalse($sofort);
+        self::assertNotFalse($warten);
+        self::assertLessThan($warten, $sofort, 'Die Ausnahme wird nicht VOR dem Warten geprueft '
+            . '— dann waere das Attribut nicht die Ausnahme, sondern der Regelfall.');
+    }
+
+    public function testDieVerzoegerungKannNichtInEinStummesVideoMuenden(): void
+    {
+        $rumpf = self::funktion(self::script(), 'afterPageLoad');
+
+        // `load` kann laengst gefeuert haben, wenn dieses Skript laeuft — ein danach
+        // registrierter Zuhoerer feuert NIE. Das Ergebnis waere ein Video mit Poster, das
+        // lautlos nicht spielt: dieselbe Bauform, gegen die 1.6.2 gebaut wurde, eine Ebene
+        // hoeher.
+        self::assertStringContainsString("readyState === 'complete'", $rumpf, 'Der Fall '
+            . '"load ist schon gefeuert" wird nicht geprueft — das Video bliebe stumm.');
+        self::assertStringContainsString("window.addEventListener('load'", $rumpf);
+        self::assertStringContainsString('{once: true}', $rumpf, 'Der Zuhoerer wird nicht '
+            . 'geloest und bliebe haengen.');
+    }
+
+    public function testDieDreiBedingungenStehenInDerRichtigenReihenfolge(): void
+    {
+        $rumpf = self::funktion(self::script(), 'initBackgroundVideos');
+
+        $motion = \strpos($rumpf, 'prefers-reduced-motion');
+        $warten = \strpos($rumpf, 'afterPageLoad(');
+        $gerendert = \strpos($rumpf, 'wireWhenRendered(');
+
+        // reduced-motion zuerst (fuer die ganze Funktion), dann die Verzoegerung, und die
+        // Sichtbarkeitspruefung ZULETZT: ein Video, das bei DOMContentLoaded display:none ist,
+        // kann beim load-Ereignis laengst gerendert sein. Wer vor dem Warten prueft,
+        // entscheidet ueber einen Zustand, der dann nicht mehr gilt.
+        self::assertNotFalse($motion);
+        self::assertNotFalse($warten);
+        self::assertNotFalse($gerendert);
+        self::assertLessThan($warten, $motion, 'reduced-motion steht nicht mehr vor der Verzoegerung.');
+        self::assertLessThan(\strrpos($rumpf, 'wireWhenRendered('), $warten, 'Die '
+            . 'Sichtbarkeitspruefung laeuft nicht nach dem Warten.');
+    }
+
     public function testDasMessgeraetKannROTWerden(): void
     {
         // ⚠️ Der Anker nimmt den ECHTEN Funktionsrumpf und mutiert ihn — er baut sich keine

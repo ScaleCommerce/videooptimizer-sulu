@@ -65,8 +65,36 @@
         // children — which is what makes the reduced-motion case work. The inherited price is that
         // there is no MP4 fallback.
         document.querySelectorAll('.vo-bg-hero__video[data-hls], video[data-vo-hls][data-hls]').forEach(function (video) {
-            wireWhenRendered(video, baseUrl);
+            // ⚠️ ORDER MATTERS, AND IT IS: reduced motion (the early return above, for the whole
+            // function) → deferral → rendered check. The rendered check has to run LAST, after
+            // the wait: a video that is `display:none` at DOMContentLoaded may well be rendered
+            // by the time `load` fires, and checking before the wait would decide on a state
+            // that is no longer current.
+            if (video.hasAttribute('data-vo-hls-eager')) {
+                wireWhenRendered(video, baseUrl);
+                return;
+            }
+            afterPageLoad(function () {
+                wireWhenRendered(video, baseUrl);
+            });
         });
+    }
+
+    // Runs fn once the page has finished loading — or right away if it already has.
+    //
+    // ⚠️ THE SECOND HALF IS THE POINT. `load` may have fired long before this code runs: the
+    // script is injected deferred, but a slow stylesheet, an ESI include or a consumer wiring
+    // the assets by hand can push it past that. An `addEventListener('load')` registered after
+    // the event never fires, and the result would be a background video that is present, has a
+    // poster, and silently never plays — the exact failure mode 1.6.2 was built to avoid, one
+    // layer up. `readyState === 'complete'` is the question "has load already happened", and it
+    // is the only reliable way to ask it after the fact.
+    function afterPageLoad(fn) {
+        if (document.readyState === 'complete') {
+            fn();
+            return;
+        }
+        window.addEventListener('load', fn, {once: true});
     }
 
     // Is this element rendered at all? An element that is `display:none` — on itself or on any

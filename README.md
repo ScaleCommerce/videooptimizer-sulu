@@ -343,6 +343,11 @@ function passes data through; it does not adapt it to any particular consumer's 
 > it (`display:none`, e.g. below a breakpoint), it does not stream. It is wired as soon as it becomes
 > rendered, so a viewport change still starts playback. Being *below the fold* does not count as
 > hidden — such a video is wired immediately, exactly as before.
+>
+> Since 1.7.0 a background video is also wired only **after the page has finished loading**, so it
+> does not compete with page content for bandwidth (measured: loading it right away cost 0.36 s of
+> LCP on a fast mobile connection, 1.5 s on a slow one). Add `data-vo-hls-eager` to opt a single
+> video out of the deferral; its absence is the default.
 
 ### Developing against a consuming project
 
