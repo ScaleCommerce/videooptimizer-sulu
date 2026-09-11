@@ -31,6 +31,23 @@ final class VoBlocksJsContractTest extends TestCase
 {
     private const MARKER = 'data-vo-hls';
 
+    /** Der Klassen-Selektor des Bundles — der Pfad, den bestehende Consumer schon haben. */
+    private const KLASSE = '.vo-bg-hero__video[data-hls]';
+
+    /** Der Opt-in-Haken fuer fremdes Markup. */
+    private const HAKEN = 'video[' . self::MARKER . '][data-hls]';
+
+    /**
+     * Das Kriterium fuer "auf alle Videos verbreitert" — ein Element-Selektor, dem KEIN
+     * Klassen-/ID-/Bezeichnerzeichen vorangeht. Es steht hier genau einmal, damit die
+     * Zusicherung und ihr Anker nachweislich dasselbe pruefen; zwei Kopien koennten
+     * auseinanderlaufen, und dann bezeugt der Anker ein Kriterium, das niemand faehrt.
+     */
+    private static function verbreitert(string $rumpf): int
+    {
+        return \preg_match('/(?<![\w.#-])video\[data-hls\]/', $rumpf);
+    }
+
     private static function script(): string
     {
         $pfad = \dirname(__DIR__, 2) . '/src/Resources/public/js/vo-blocks.js';
@@ -73,12 +90,12 @@ final class VoBlocksJsContractTest extends TestCase
         $rumpf = self::funktion(self::script(), 'initBackgroundVideos');
 
         self::assertStringContainsString(
-            ".vo-bg-hero__video[data-hls]",
+            self::KLASSE,
             $rumpf,
             'Der eigene Block-Pfad des Bundles fehlt — das waere eine Regression fuer bestehende Consumer.'
         );
         self::assertStringContainsString(
-            'video[' . self::MARKER . '][data-hls]',
+            self::HAKEN,
             $rumpf,
             'Der Opt-in-Haken fuer fremdes Markup fehlt. Ohne ihn findet die HLS-Verdrahtung nur die '
             . 'Klasse des Bundles, und ein Consumer mit eigenem Markup bekommt ein Video, das '
@@ -98,8 +115,7 @@ final class VoBlocksJsContractTest extends TestCase
         // (…__video, gefolgt vom Attribut), also meldet eine nackte Teilstring-Suche den
         // Normalfall als Defekt. Gemessen: sie war rot am heilen Stand. Der Defekt ist ein
         // Element-Selektor, dem KEIN Klassen-/ID-/Bezeichnerzeichen vorangeht.
-        $treffer = \preg_match('/(?<![\w.#-])video\[data-hls\]/', $rumpf);
-        self::assertSame(0, $treffer, 'Der Selektor wurde auf alle Videos verbreitert. Damit greift '
+        self::assertSame(0, self::verbreitert($rumpf), 'Der Selektor wurde auf alle Videos verbreitert. Damit greift '
             . 'die Hintergrund-Verdrahtung auch auf Facade- und Lazy-Videos zu, die der native '
             . 'Pfad ausnimmt.');
     }
@@ -137,17 +153,47 @@ final class VoBlocksJsContractTest extends TestCase
 
     public function testDasMessgeraetKannROTWerden(): void
     {
-        // Ohne diesen Anker koennte das Gruen oben auch heissen, dass die Ausdruecke nie greifen.
-        $ohneHaken = "function initBackgroundVideos(baseUrl) {\n"
-            . "        if (prefers-reduced-motion) { return; }\n"
-            . "        document.querySelectorAll('.vo-bg-hero__video[data-hls]').forEach(f);\n"
-            . "\n    }";
-        self::assertStringNotContainsString('video[' . self::MARKER . '][data-hls]', $ohneHaken);
+        // ⚠️ Der Anker nimmt den ECHTEN Funktionsrumpf und mutiert ihn — er baut sich keine
+        // Beispielzeile aus der Regel. Eine aus der Regel abgeleitete Zeile vergleicht zwei
+        // gleich blinde Mengen: sie kann nur bestaetigen, was die Regel ohnehin sagt, und
+        // ueberlebt jede Verengung des Kriteriums, die den echten Bestand durchfallen liesse.
+        // Genau so ist die erste Fassung dieses Tests entstanden: sie prueft mit einer
+        // Teilstring-Suche, waehrend die Zusicherung eine Wortgrenze fuehrt — der Lookbehind
+        // wurde nie ausgeuebt.
+        $rumpf = self::funktion(self::script(), 'initBackgroundVideos');
 
-        $verbreitert = "document.querySelectorAll('video[data-hls]')";
-        self::assertStringContainsString('video[data-hls]', $verbreitert);
+        // Kontrolle vor der Kontrolle: eine Mutation, die nichts aendert, beweist nichts.
+        $ohneHaken = \str_replace(', ' . self::HAKEN, '', $rumpf);
+        self::assertNotSame($rumpf, $ohneHaken, 'Der Haken liess sich nicht entfernen — dann '
+            . 'steht er nicht in der erwarteten Form im Selektor, und der Anker misst nichts.');
 
-        $ohneAusnahmen = "function initNativePlayers(baseUrl) {\n        nichts\n    }";
-        self::assertStringNotContainsString('.vo-native-holder', $ohneAusnahmen);
+        $verbreitert = \str_replace(self::KLASSE . ', ' . self::HAKEN, 'video[data-hls]', $rumpf);
+        self::assertNotSame($rumpf, $verbreitert, 'Der Selektor liess sich nicht verbreitern — '
+            . 'dann steht das Selektor-Paar nicht in der erwarteten Form, und der Anker misst nichts.');
+
+        // Dasselbe Kriterium wie die Zusicherungen, auf den mutierten Bestand.
+        self::assertStringNotContainsString(self::HAKEN, $ohneHaken, 'Ohne Haken meldet die '
+            . 'Zusicherung trotzdem einen Haken — sie kann nicht rot werden.');
+        self::assertSame(1, self::verbreitert($verbreitert), 'Der verbreiterte Selektor loest '
+            . 'das Kriterium nicht aus — die Zusicherung kann nicht rot werden.');
+
+        // Und die Gegenrichtung am heilen Bestand: das Kriterium darf den Normalfall NICHT
+        // anklagen. Der Klassen-Selektor endet auf derselben Zeichenfolge; eine Teilstring-
+        // Suche war hier am heilen Stand rot.
+        self::assertSame(0, self::verbreitert($rumpf), 'Das Kriterium klagt den heilen Stand an.');
+        self::assertSame(1, \preg_match('/video\[data-hls\]/', self::KLASSE), 'Der Klassen-'
+            . 'Selektor enthaelt die Zeichenfolge nicht mehr — dann ist die Wortgrenze im '
+            . 'Kriterium gegenstandslos geworden und gehoert geprueft.');
+
+        // Dritte Zusicherung, gleiche Bauform: die Ausnahmen des nativen Pfades.
+        $nativ = self::funktion(self::script(), 'initNativePlayers');
+        foreach (['.vo-native-holder', 'data-vo-native-autoload'] as $ausnahme) {
+            $ohne = \str_replace($ausnahme, 'weg', $nativ);
+            self::assertNotSame($nativ, $ohne, \sprintf('%s liess sich nicht entfernen.', $ausnahme));
+            self::assertStringNotContainsString($ausnahme, $ohne, \sprintf(
+                'Die Zusicherung fuer %s kann nicht rot werden.',
+                $ausnahme
+            ));
+        }
     }
 }
