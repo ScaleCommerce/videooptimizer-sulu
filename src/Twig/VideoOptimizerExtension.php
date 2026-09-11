@@ -233,7 +233,7 @@ class VideoOptimizerExtension extends AbstractExtension
         $hlsUrl = $sources['hlsUrl'] ?? null;
 
         return AssetInjectionListener::SENTINEL . \sprintf(
-            '<video class="vo-bg-hero__video" muted autoplay loop playsinline preload="%s"%s%s></video>',
+            '<video class="vo-bg-hero__video" muted autoplay loop playsinline aria-hidden="true" preload="%s"%s%s></video>',
             $priority ? 'auto' : 'metadata',
             null !== $poster ? \sprintf(' poster="%s"', htmlspecialchars(self::str($poster), \ENT_QUOTES)) : '',
             null !== $hlsUrl ? \sprintf(' data-hls="%s"', htmlspecialchars($hlsUrl, \ENT_QUOTES)) : '',

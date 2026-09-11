@@ -35,6 +35,36 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
         self::assertStringContainsString('playsinline', $html);
     }
 
+    /**
+     * A background video is decoration: it carries no information a screen reader could use, and
+     * it has no accessible name to give one. Without `aria-hidden` it still lands in the
+     * accessibility tree as an unlabelled media element — "video" and nothing else — which is a
+     * defect in the rendering function rather than a matter of taste, since it reaches every
+     * consumer of this function.
+     *
+     * ⚠️ `tabindex="-1"` is deliberately NOT added alongside it. Measured in headless Chrome with
+     * real Tab key events: for `<a>`, `<video>` (no controls), `<video tabindex="-1">` and
+     * `<video controls>` in document order, the focus chain is a → video[controls] → a. A
+     * `<video>` without `controls` is not in the tab order to begin with, so the attribute would
+     * change nothing and only look like it does. Its `tabIndex` IDL property reports 0, which is
+     * why reading the property instead of pressing the key suggests the opposite.
+     */
+    public function testBackgroundVideoIsHiddenFromAssistiveTechnology(): void
+    {
+        $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
+        $resolver->getSources('abc')->willReturn([
+            'poster' => 'https://cdn.example.net/poster.jpg',
+            'hlsUrl' => 'https://cdn.example.net/master.m3u8',
+        ]);
+
+        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
+
+        $html = $ext->renderBackground(['uuid' => 'abc']);
+
+        self::assertStringContainsString('aria-hidden="true"', $html);
+        self::assertStringNotContainsString('tabindex', $html);
+    }
+
     public function testRenderBackgroundEmitsAssetSentinel(): void
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);

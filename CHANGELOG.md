@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2026-09-11
+
+### Fixed
+- **`video_optimizer_background()` hides its `<video>` from assistive technology.** The rendered
+  element is decoration: it carries no information a screen reader could convey, and it has no
+  accessible name to give one. Without `aria-hidden="true"` it still appeared in the accessibility
+  tree as an unlabelled media element. That is a defect in the rendering function rather than a
+  consumer's styling preference, since it reached every consumer of the function.
+  `tabindex="-1"` was considered and deliberately left out: measured in headless Chrome with real
+  Tab key events, a `<video>` without `controls` is not in the tab order at all (chain over
+  `<a>`, `<video>`, `<video tabindex="-1">`, `<video controls>`, `<a>` is a → video[controls] → a),
+  so the attribute would change nothing while looking as though it did. Its `tabIndex` IDL property
+  reports `0`, which is why reading the property rather than pressing the key suggests otherwise.
+
 ## [1.6.0] - 2026-09-11
 
 ### Added
