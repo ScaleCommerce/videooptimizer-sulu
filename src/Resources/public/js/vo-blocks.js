@@ -65,8 +65,52 @@
         // children — which is what makes the reduced-motion case work. The inherited price is that
         // there is no MP4 fallback.
         document.querySelectorAll('.vo-bg-hero__video[data-hls], video[data-vo-hls][data-hls]').forEach(function (video) {
+            wireWhenRendered(video, baseUrl);
+        });
+    }
+
+    // Is this element rendered at all? An element that is `display:none` — on itself or on any
+    // ancestor — generates no boxes, so it has no client rects. That is exactly the question we
+    // want answered: a background video a stylesheet has switched off should not stream.
+    //
+    // ⚠️ THIS IS NOT A VIEWPORT TEST, and the difference is the whole point. A background video
+    // further down the page IS rendered; it simply is not on screen yet. Keying on the viewport
+    // would quietly turn a bug fix into lazy loading for every consumer — a behaviour change
+    // nobody asked for, shipped in a patch release. `getClientRects()` answers "would this be
+    // painted if you scrolled there", `IntersectionObserver` answers "is it on screen now".
+    function isRendered(video) {
+        return video.getClientRects().length > 0;
+    }
+
+    // Wire now if the video is rendered; otherwise wait until it becomes rendered.
+    //
+    // ⚠️ THE SECOND HALF IS NOT OPTIONAL. A check that runs once at wiring time turns a byte
+    // saving into a dead video the moment the element becomes visible later — a viewport dragged
+    // from 640 to 1440, a `<details>` opened, a tab switched. The element would sit there,
+    // present and silent, with nothing in the console to say why. A ResizeObserver reports a
+    // zero-sized box for a `display:none` element and fires once it gets a real one, which is
+    // precisely the transition we need; it does not fire on scrolling, so it cannot drift into
+    // being a viewport test.
+    //
+    // Without ResizeObserver we wire immediately — the pre-1.6.2 behaviour. Losing a byte saving
+    // on an old browser is the smaller harm; a video that never plays is the larger one.
+    function wireWhenRendered(video, baseUrl) {
+        if (isRendered(video)) {
+            attachHls(video, baseUrl);
+            return;
+        }
+        if (typeof ResizeObserver !== 'function') {
+            attachHls(video, baseUrl);
+            return;
+        }
+        var observer = new ResizeObserver(function () {
+            if (!isRendered(video)) {
+                return;
+            }
+            observer.disconnect();
             attachHls(video, baseUrl);
         });
+        observer.observe(video);
     }
 
     // Native <video> players rendered eager (direct + priority, above the fold) are visible from

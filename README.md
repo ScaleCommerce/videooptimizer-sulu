@@ -338,6 +338,11 @@ function passes data through; it does not adapt it to any particular consumer's 
 > the video simply never plays — with no console error.
 >
 > Markup that only uses the MP4 sources natively needs neither the CSS nor the JS, and no marker.
+>
+> Since 1.6.2 a background video is wired only when it is actually rendered: if your stylesheet hides
+> it (`display:none`, e.g. below a breakpoint), it does not stream. It is wired as soon as it becomes
+> rendered, so a viewport change still starts playback. Being *below the fold* does not count as
+> hidden — such a video is wired immediately, exactly as before.
 
 ### Developing against a consuming project
 

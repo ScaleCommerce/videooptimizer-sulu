@@ -151,6 +151,56 @@ final class VoBlocksJsContractTest extends TestCase
         ));
     }
 
+    public function testEinUnsichtbaresHintergrundvideoWirdNichtVerdrahtet(): void
+    {
+        $rumpf = self::funktion(self::script(), 'initBackgroundVideos');
+
+        // Positivanker am echten Bestand: der Selektor MUSS weiterhin beide Formen finden —
+        // ohne ihn sichert der Test nur das Wegfallen ab und wuerde auch gruen bleiben, wenn
+        // gar nichts mehr verdrahtet wird.
+        self::assertStringContainsString(self::KLASSE, $rumpf, 'Der eigene Block-Pfad ist weg.');
+        self::assertStringContainsString(self::HAKEN, $rumpf, 'Der Opt-in-Haken ist weg.');
+
+        self::assertStringContainsString('wireWhenRendered(', $rumpf, 'Die Verdrahtung laeuft '
+            . 'nicht mehr ueber die Sichtbarkeitspruefung — ein per CSS abgeschaltetes '
+            . 'Hintergrundvideo wuerde wieder streamen, ohne je angezeigt zu werden.');
+        self::assertStringNotContainsString('attachHls(', $rumpf, 'initBackgroundVideos() haengt '
+            . 'HLS wieder unmittelbar an und umgeht die Pruefung.');
+    }
+
+    public function testDieSichtbarkeitspruefungIstKeineViewportPruefung(): void
+    {
+        $pruefung = self::funktion(self::script(), 'isRendered');
+
+        // "Wird ueberhaupt gerendert" ist etwas anderes als "ist gerade auf dem Schirm". Ein
+        // Hintergrundvideo weiter unten auf der Seite IST angezeigt. Wer auf den Viewport
+        // abstellt, macht aus einem Bugfix stillschweigend eine Lazy-Loading-Aenderung fuer
+        // jeden Consumer — eine Verhaltensaenderung in einem Patch-Release.
+        self::assertStringContainsString('getClientRects()', $pruefung);
+        foreach (['IntersectionObserver', 'getBoundingClientRect', 'innerHeight', 'scrollY'] as $verboten) {
+            self::assertStringNotContainsString($verboten, $pruefung, \sprintf(
+                'Die Pruefung benutzt %s — das beantwortet "ist es auf dem Schirm", nicht '
+                . '"wird es gerendert".',
+                $verboten
+            ));
+        }
+    }
+
+    public function testEinSpaeterSichtbaresVideoWirdNachtraeglichVerdrahtet(): void
+    {
+        $rumpf = self::funktion(self::script(), 'wireWhenRendered');
+
+        // Eine Pruefung, die nur einmal greift, macht aus der Byte-Ersparnis ein totes Video,
+        // sobald jemand das Fenster aufzieht: vorhanden, stumm, keine Meldung.
+        self::assertStringContainsString('ResizeObserver', $rumpf, 'Es gibt keinen Beobachter '
+            . 'fuer das Sichtbarwerden — ein spaeter eingeblendetes Video bliebe stumm.');
+        self::assertStringContainsString('observer.disconnect()', $rumpf, 'Der Beobachter wird '
+            . 'nach dem Verdrahten nicht geloest und liefe weiter.');
+        self::assertStringContainsString("typeof ResizeObserver !== 'function'", $rumpf,
+            'Ohne Rueckfall wuerde ein Browser ohne ResizeObserver gar nichts mehr abspielen — '
+            . 'eine verlorene Byte-Ersparnis ist der kleinere Schaden als ein totes Video.');
+    }
+
     public function testDasMessgeraetKannROTWerden(): void
     {
         // ⚠️ Der Anker nimmt den ECHTEN Funktionsrumpf und mutiert ihn — er baut sich keine

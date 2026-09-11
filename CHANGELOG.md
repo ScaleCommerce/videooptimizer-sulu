@@ -4,6 +4,31 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2] - 2026-09-11
+
+### Fixed
+- **Background videos that are not rendered are no longer wired.** `initBackgroundVideos()` attached
+  the HLS stream to every matching `<video>`, including ones a stylesheet had switched off with
+  `display:none` — a common pattern for hiding decorative background video on small screens. Those
+  videos streamed their full ladder while never being shown: measured on a consuming site, a phone
+  viewport pulled **2.03 MB** for four background videos of which three were hidden; with the check
+  it pulls **764 KB**, the one video actually on the page. The gate sits next to the existing
+  `prefers-reduced-motion` early return, in the same shape: what is not going to be seen is not
+  wired.
+  ⚠️ **The criterion is "would this be rendered at all", not "is this in the viewport".**
+  `getClientRects()` is empty only when the element or an ancestor is `display:none`; a background
+  video further down a long page still has rects and is still wired immediately. Keying on the
+  viewport would have turned a bug fix into lazy loading for every consumer — a behaviour change
+  nobody asked for, in a patch release.
+  ⚠️ **Becoming visible later is handled.** A check that ran once would turn the saving into a dead
+  video the moment the element appears — a window dragged from 640 to 1440, a `<details>` opened, a
+  tab switched: present, silent, nothing in the console. A `ResizeObserver` reports a zero-sized box
+  for a `display:none` element and fires when it gets a real one, so the video is wired at that
+  point and the observer disconnects. Verified with a real resize in headless Chrome: at 640 px one
+  of four videos wired (the one actually rendered), after resizing to 1440 px without reloading all
+  four wired and the hero playing. Browsers without `ResizeObserver` wire immediately, as before —
+  a lost byte saving is the smaller harm, a video that never plays the larger one.
+
 ## [1.6.1] - 2026-09-11
 
 ### Fixed
