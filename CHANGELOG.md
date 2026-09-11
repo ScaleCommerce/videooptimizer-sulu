@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.6.0] - 2026-09-11
 
 ### Added
 - **`video_optimizer_sources(video)` — the resolved sources as data.** The nine existing Twig
@@ -19,7 +19,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ⚠️ It carries **no asset sentinel**: automatic asset injection is gated on a sentinel that the
   rendering functions emit, and a data payload cannot carry one. Consumers rendering their own
   markup include `@ScaleVideoOptimizer/partials/assets.html.twig` themselves when they need the
-  frontend JS (HLS playback does; plain MP4 playback does not).
+  frontend JS (HLS playback does; plain MP4 playback does not) — **and, for HLS, mark the element
+  with `data-vo-hls`** (see below). Including the assets alone is not enough.
+- **`data-vo-hls` — an opt-in marker that wires HLS on foreign markup.** `vo-blocks.js` wired the
+  HLS playlist only onto its own block class, so a consumer following the documented path above got
+  a video that silently never played: the script loaded, nothing claimed the element, no console
+  error. `initBackgroundVideos()` now also picks up any `<video data-vo-hls data-hls="…">`.
+  The marker is deliberately an attribute opt-in rather than a widening to every `<video>` carrying `data-hls`:
+  the native player path excludes facade holders and lazy-loading videos on purpose, and a blanket
+  selector would reach into both. The hook sits inside `initBackgroundVideos()` so that foreign
+  markup inherits its `prefers-reduced-motion` early exit; `data-hls` stays the URL carrier,
+  `data-vo-hls` is a bare marker. Asserted in `tests/Unit/VoBlocksJsContractTest.php` — a source
+  contract, not a behaviour proof; the bundle has no JS test environment.
 
 ## [1.5.2] - 2026-07-24
 
