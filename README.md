@@ -291,6 +291,51 @@ Render the CDN player in Twig:
 The stored value is `{ uuid, libraryId, title, posterUrl }`; the embed points at
 `https://videooptimizer.eu/embed/<uuid>`.
 
+### Rendering your own markup: `video_optimizer_sources()`
+
+The rendering functions above emit finished markup with fixed bundle classes. When your theme's
+markup is bound to a design of its own, ask for the **data** instead and render it yourself:
+
+```twig
+{% set vo = video_optimizer_sources(content.video) %}
+{% if vo %}
+    <video class="my-hero__video" muted autoplay loop playsinline poster="{{ vo.poster }}">
+        {% for source in vo.sources if source.type == 'video/mp4' %}
+            <source src="{{ source.src }}" type="{{ source.type }}">
+        {% endfor %}
+    </video>
+{% endif %}
+```
+
+Returns `null` when no video is selected, otherwise:
+
+| Key | Type | Notes |
+|---|---|---|
+| `poster` | `string\|null` | falls back to the stored `posterUrl` |
+| `srcset` | `string\|null` | responsive poster srcset |
+| `hlsUrl` | `string\|null` | HLS master playlist |
+| `sources` | `list` | each `{ src, type, label }` — HLS plus the MP4 renditions |
+| `width` / `height` / `duration` | `int\|null` | native dimensions, seconds |
+| `theme` | `array\|null` | the library's player theme overrides |
+
+The entries keep the resolver's own key names — the vocabulary of an HTML `<source>` element. The
+function passes data through; it does not adapt it to any particular consumer's field names.
+
+> **⚠️ Assets are not injected for this path.** Automatic injection is gated on a sentinel that the
+> *rendering* functions emit; a data payload cannot carry one. If your own markup needs the bundle's
+> frontend JS — HLS playback does, since `vo-blocks.js` wires `data-hls` — include
+> `@ScaleVideoOptimizer/partials/assets.html.twig` from your `{% block stylesheets %}`. Markup that
+> only uses the MP4 sources natively needs neither the CSS nor the JS.
+
+### Developing against a consuming project
+
+A Composer **path repository** pointing at a sibling checkout does not work from inside a
+containerised project (ddev, Docker Compose and the like): the container mounts the project
+directory, not its parent, so `../videooptimizer-sulu` does not exist there. Either place the
+checkout inside the project tree (and gitignore it) or run Composer on the host. Measured on
+2026-09-11 while developing this function — the failed attempt still left the consuming project's
+`vendor/` upgraded, so restore `composer.json`, `composer.lock` **and** `vendor/` afterwards.
+
 ## 🧱 Content blocks
 
 Beyond the single field, the bundle ships four ready-to-use **Sulu content blocks** for richer

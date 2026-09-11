@@ -6,6 +6,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- **`video_optimizer_sources(video)` — the resolved sources as data.** The nine existing Twig
+  functions all emit finished markup with fixed bundle classes (`vo-bg-hero__video`, `vo-native`,
+  `vo-frame`). A consumer whose markup is bound to a design of its own could not use them without
+  replacing that markup, and would have had to rebuild the resolver lookup itself. This function
+  hands over what `VideoOptimizerEmbedResolver::getSources()` already knows — `poster`, `srcset`,
+  `hlsUrl`, `sources` (each `{ src, type, label }`), `width`/`height`/`duration`, `theme` — and
+  `null` when no video is selected. The entries keep the resolver's own key names: the function
+  passes data through and does not adapt it to a consumer's field names. It is registered without
+  `is_safe`, since it returns an array rather than markup.
+  ⚠️ It carries **no asset sentinel**: automatic asset injection is gated on a sentinel that the
+  rendering functions emit, and a data payload cannot carry one. Consumers rendering their own
+  markup include `@ScaleVideoOptimizer/partials/assets.html.twig` themselves when they need the
+  frontend JS (HLS playback does; plain MP4 playback does not).
+
 ## [1.5.2] - 2026-07-24
 
 ### Added

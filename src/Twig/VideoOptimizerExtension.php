@@ -40,6 +40,9 @@ class VideoOptimizerExtension extends AbstractExtension
             new TwigFunction('video_optimizer_player', [$this, 'player']),
             new TwigFunction('video_optimizer_srcset', [$this, 'srcset']),
             new TwigFunction('video_optimizer_native', [$this, 'renderNative'], ['is_safe' => ['html']]),
+            // No 'is_safe': this returns data, not markup. See sources() for why a consumer
+            // that renders its own markup must wire the frontend assets itself.
+            new TwigFunction('video_optimizer_sources', [$this, 'sources']),
         ];
     }
 
@@ -310,6 +313,64 @@ class VideoOptimizerExtension extends AbstractExtension
      * Casts a value read from the (mixed-typed) stored video/block property to a string,
      * defaulting to '' for non-scalars.
      */
+    /**
+     * Returns the resolved sources of a stored video as DATA, so a consumer can render its own
+     * markup instead of the bundle's.
+     *
+     * Why this exists: the nine rendering functions above all emit finished markup with fixed
+     * bundle classes (`vo-bg-hero__video`, `vo-native`, `vo-frame`). A consumer whose markup is
+     * pixel-bound to a design of its own cannot use them without replacing that markup — so it
+     * would otherwise have to rebuild the resolver lookup itself. This function hands over what
+     * `VideoOptimizerEmbedResolver::getSources()` already knows and nothing else.
+     *
+     * Key names are the resolver's own: each source entry stays `{ src, type, label }`, the
+     * vocabulary of an HTML `<source>` element. A first draft renamed them to Sulu's media wording
+     * (`url`, `mimeType`) so that one particular consumer could swap a media object for a
+     * VideoOptimizer source without touching its template. That was rejected on purpose: it would
+     * put a translation layer for a single consumer's convenience inside the bundle, and a
+     * consumer that wants that mapping can do it in two lines of Twig. The bundle stays faithful
+     * to the data it already holds — this function passes through, it does not adapt.
+     *
+     * The poster falls back to the stored `posterUrl` when the API has none — the same behaviour
+     * as renderBackground()/renderNative(), so all four paths agree on the poster.
+     *
+     * ⚠️ NO ASSET SENTINEL, and that is not an omission. The rendering functions prepend
+     * AssetInjectionListener::SENTINEL so the bundle's CSS/JS get injected automatically. This
+     * function returns an array; there is no markup to carry a sentinel. A consumer that renders
+     * its own `<video>` from this data therefore gets NO automatic asset injection, and must
+     * either include `@ScaleVideoOptimizer/partials/assets.html.twig` itself or emit the sentinel
+     * in its own template. Without that, HLS playback stays silent: the `data-hls` wiring lives in
+     * `vo-blocks.js`. (A consumer that only uses MP4 sources natively needs neither.)
+     *
+     * @param array<string, mixed>|null $video the stored video property (needs `uuid`)
+     *
+     * @return array{poster: ?string, srcset: ?string, hlsUrl: ?string, sources: array<int, array{src: string, type: string, label: string}>, width: ?int, height: ?int, duration: ?int, theme: ?array<int|string, mixed>}|null
+     *                                  null when no video is selected — same null behaviour as the
+     *                                  rendering functions, which return an empty string there
+     */
+    public function sources(?array $video): ?array
+    {
+        if (null === $video || empty($video['uuid'])) {
+            return null;
+        }
+
+        $resolved = $this->embedResolver->getSources(self::str($video['uuid']));
+
+        return [
+            'poster' => $resolved['poster'] ?? (\is_string($video['posterUrl'] ?? null) ? $video['posterUrl'] : null),
+            'srcset' => $resolved['srcset'] ?? null,
+            'hlsUrl' => $resolved['hlsUrl'] ?? null,
+            // Handed over unchanged, including the key names. extractSources() already drops any
+            // entry without a usable `src`, so there is nothing left to filter here — a second
+            // guard would be dead code, which phpstan flagged in the first draft of this method.
+            'sources' => $resolved['sources'],
+            'width' => $resolved['width'] ?? null,
+            'height' => $resolved['height'] ?? null,
+            'duration' => $resolved['duration'] ?? null,
+            'theme' => $resolved['theme'] ?? null,
+        ];
+    }
+
     private static function str(mixed $value): string
     {
         return \is_scalar($value) ? (string) $value : '';
