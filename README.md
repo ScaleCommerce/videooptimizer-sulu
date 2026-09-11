@@ -344,10 +344,14 @@ function passes data through; it does not adapt it to any particular consumer's 
 > rendered, so a viewport change still starts playback. Being *below the fold* does not count as
 > hidden — such a video is wired immediately, exactly as before.
 >
-> Since 1.7.0 a background video is also wired only **after the page has finished loading**, so it
-> does not compete with page content for bandwidth (measured: loading it right away cost 0.36 s of
-> LCP on a fast mobile connection, 1.5 s on a slow one). Add `data-vo-hls-eager` to opt a single
-> video out of the deferral; its absence is the default.
+> Since 1.7.0 a background video is also wired only **after the page has finished loading** (or
+> after 6 seconds, whichever comes first — see the changelog for why the ceiling exists), so it
+> does not compete with page content for bandwidth. Measured across two runs on a real page,
+> loading it right away made the LCP later in all four estimates (+0.34 s to +1.5 s), but the
+> ranges overlapped in one of the two runs, so treat the direction as established and the size as
+> not resolvable. The price is measured clearly: the video starts 0.8 s (fast mobile) to 2.6 s
+> (slow mobile) later. Add `data-vo-hls-eager` to opt a single video out of the deferral; its
+> absence is the default.
 
 ### Developing against a consuming project
 

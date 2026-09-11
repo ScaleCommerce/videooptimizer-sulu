@@ -10,26 +10,49 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Background videos load after the page, and editors can override it per video.** A background
   video is decoration — it is why the element carries `aria-hidden` since 1.6.1 — and loading
   decoration after the content is the defensible default. Until now the HLS stream started at
-  `DOMContentLoaded` and competed with the page for bandwidth. Measured on a real site with four
-  background videos, 8 runs per condition at 1440 px, wiring on/off as the only difference and the
-  Largest Contentful Paint element verified identical in every run (an image, not a video frame):
-  the ranges do not overlap in either network profile — LCP **1992–2256 ms** without wiring against
-  **2376–3912 ms** with it on a fast mobile connection, and **3852–4488 ms** against
-  **5048–6412 ms** on a slow one. Loading the videos immediately cost **0.36 s** and **1.5 s** of
-  LCP respectively.
+  `DOMContentLoaded` and competed with the page for bandwidth.
+
+  **What the measurements support, and what they do not.** Two runs on a real site with four
+  background videos, 8 runs per condition at 1440 px, wiring on/off as the only difference, with
+  the Largest Contentful Paint element verified identical in every single run (an image, not a
+  video frame). Loading immediately produced a *later* LCP in all four estimates — +1492 ms and
+  +358 ms in the first run, +1086 ms and +338 ms in the second (slow and fast mobile profiles).
+  ⚠️ **The direction is consistent; the size is not resolvable on that measurement rig.** In the
+  first run the ranges did not overlap; in the second they did, because the spread of the
+  reference condition grew from 636 ms to 2156 ms between runs — same page, same conditions. The
+  rule for reading this was fixed before the data was seen: overlapping ranges mean *not
+  demonstrable*, which is not the same as *no effect*. Quoting only the run that separated would
+  be picking the favourable result after the fact.
+
+  **The price, and it is clearly measured.** The video starts later by **+2561 ms** on a slow
+  mobile connection and **+796 ms** on a fast one (medians). That is the trade: a background video
+  that appears later, against page content that is not slowed by it.
+
+  **A side effect worth knowing.** Deferring also moves the page's own `load` event much earlier —
+  from 10511 ms to 4926 ms (slow) and 4630 ms to 2146 ms (fast) — because the videos are
+  subresources. ⚠️ This number is true but definitional: with deferral the videos start *after*
+  `load` by construction, so they cannot delay it. It says the page signals "finished" sooner, not
+  that less is transferred.
+
   The new block checkbox **"Load video immediately"** turns the deferral off for a single video.
   ⚠️ **Absence of the marker is the new default**, not its presence: existing content and consumers
   rendering their own markup (`video_optimizer_sources()` + `data-vo-hls`) inherit the deferred
   behaviour without changing anything. `video_optimizer_background()` takes a third argument
   `eager` (default `false`) and emits `data-vo-hls-eager` only when it is true.
-  ⚠️ **`load` may already have fired** by the time the script runs — deferred injection, a slow
-  stylesheet, a consumer wiring the assets by hand. A listener registered after the event never
-  fires, and the result would be a background video with a poster that silently never plays. The
-  deferral therefore asks `document.readyState === 'complete'` first and wires immediately in that
-  case. Same failure mode 1.6.2 was built against, one layer up.
-  Order of the three conditions is fixed and asserted: `prefers-reduced-motion` first, then the
-  deferral, then the rendered check — the last one has to run *after* the wait, because a video
-  that is `display:none` at `DOMContentLoaded` may well be rendered by the time `load` fires.
+
+- **A 6-second ceiling on that wait, so a stalled page cannot silence the video.** `load` never
+  fires if a single subresource hangs — a blocking analytics script, an unresponsive embed. A wait
+  bound to `load` would then be dead too, and the background video would stay silent forever:
+  present, poster showing, nothing in the console. The timer therefore starts **when the deferral
+  is set up**, not when `load` fires, and races it — whichever comes first wires the video, once.
+  ⚠️ The near-identical wrong shape is `addEventListener('load', () => setTimeout(fn, N))`: it
+  lengthens the wait instead of bounding it and dies with `load`.
+  ⚠️ **The value is not justified by the wait being long.** Measured, `load` trails the LCP by only
+  148 ms (fast) to 378 ms (slow) on a real page, so the ceiling does not normally apply at all. It
+  exists solely for the stalled case, and sits deliberately above the observed LCP (~5 s on the
+  slow profile) so it never truncates the normal path. Verified by hanging a subresource in
+  headless Chrome: `document.readyState` stayed `interactive`, `load` never fired, and all four
+  videos were wired regardless.
 
 ### Changed
 - **The help text of "Prioritize loading (above the fold)" was wrong about what it does.** It
