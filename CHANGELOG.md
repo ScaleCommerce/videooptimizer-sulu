@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.7.1] - 2026-09-29
+
+### Fixed
+- **Background heroes saved before 1.7.0 no longer break the page.** Sulu resolves a block property
+  that is missing from the stored data as `null`, so the template's `block.videoEager is defined`
+  check was always true and passed `null` to `video_optimizer_background()`'s `bool $eager`
+  parameter — a `TypeError` (HTTP 500) on every page with such a hero. The template now falls back
+  with `|default(false)`, so these heroes render deferred, as intended. Covered by a render
+  regression test.
+- The `video_optimizer_sources` registration test no longer instantiates `Twig\Node\Node`
+  directly (deprecated since Twig 3.15), so the suite passes in projects that fail on deprecations.
+
+### Changed
+- `extra.branch-alias` now points `dev-main` to `1.7.x-dev` (was still `1.5.x-dev`).
+
 ## [1.7.0] - 2026-09-11
 
 ### Added

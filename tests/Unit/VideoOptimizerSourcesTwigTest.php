@@ -121,7 +121,7 @@ class VideoOptimizerSourcesTwigTest extends TestCase
 
         // No 'is_safe': the return value is an array. Marking it html-safe would be meaningless
         // and would invite `{{ video_optimizer_sources(v) }}` to print an array unescaped.
-        self::assertEmpty($funktionen['video_optimizer_sources']->getSafe(new Node()));
+        self::assertEmpty($funktionen['video_optimizer_sources']->getSafe($this->createStub(Node::class)));
 
         // And it must NOT carry the asset sentinel: there is no markup to carry one. A consumer
         // rendering its own <video> from this data wires the assets itself — this assertion is
