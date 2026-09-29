@@ -15,6 +15,8 @@ use Symfony\Contracts\Cache\ItemInterface;
  */
 class VideoOptimizerEmbedResolver
 {
+    public const HLS_MIME = 'application/vnd.apple.mpegurl';
+
     public function __construct(
         private VideoOptimizerClient $client,
         private CacheInterface $cache,
@@ -80,7 +82,7 @@ class VideoOptimizerEmbedResolver
                 continue;
             }
 
-            if (null === $hlsUrl && 'application/vnd.apple.mpegurl' === ($source['type'] ?? '')) {
+            if (null === $hlsUrl && self::HLS_MIME === ($source['type'] ?? '')) {
                 $hlsUrl = $source['src'];
             }
 

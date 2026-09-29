@@ -6,6 +6,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-09-29
+
+### Fixed
+- **"Prioritize loading (above the fold)" on the background hero now does what it says.** It used to
+  only set `preload="auto"`, which has no effect on a `<video>` whose stream is attached later by
+  JavaScript. It now implies "Load video immediately" (`data-vo-hls-eager`) and preloads the poster
+  with `<link rel="preload" as="image" fetchpriority="high">`, so an above-the-fold hero gets its
+  LCP image early and starts playing without waiting for `load`. `video_optimizer_background()`
+  follows the same rule: `priority: true` implies `eager`.
+- German help texts of the background hero showed transliterations ("laedt", "Standardmaessig")
+  instead of umlauts in the admin; both texts are also shorter and editor-oriented now.
+- `vo-blocks.js` now also initialises when it runs after `DOMContentLoaded` (e.g. loaded `async` or
+  added late); previously nothing was wired in that case.
+
+### Changed
+- Internal cleanup without behaviour change: shared `uuidOf()`/`posterFor()` helpers in the Twig
+  extension (the poster fallback was duplicated in four places), `VideoOptimizerEmbedResolver::HLS_MIME`,
+  shared `prefersReducedMotion()`/`whenNearViewport()` helpers and one shared page-load promise in
+  `vo-blocks.js`, English comments and identifiers, a leaner JS contract test.
+- README: removed a note that only applied to one consuming project's setup.
+
 ## [1.7.1] - 2026-09-29
 
 ### Fixed

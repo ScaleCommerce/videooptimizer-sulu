@@ -3,9 +3,32 @@
     'use strict';
 
     var hlsPromise = null;
+    var pageLoadPromise = null;
 
-    // Obergrenze fuer das Warten auf `load`, siehe afterPageLoad().
-    var HINTERGRUND_FRIST_MS = 6000;
+    // Upper bound for waiting on `load`, see afterPageLoad().
+    var BACKGROUND_LOAD_TIMEOUT_MS = 6000;
+
+    function prefersReducedMotion() {
+        return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+
+    // Calls fn(element) once each element comes near the viewport (or right away without
+    // IntersectionObserver). rootMargin starts slightly early so playback is ready in time.
+    function whenNearViewport(elements, fn) {
+        if (!('IntersectionObserver' in window)) {
+            elements.forEach(fn);
+            return;
+        }
+        var io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    io.unobserve(entry.target);
+                    fn(entry.target);
+                }
+            });
+        }, { rootMargin: '200px 0px' });
+        elements.forEach(function (el) { io.observe(el); });
+    }
 
     // Lazily loads the vendored hls.js only when needed (non-Safari background video).
     function loadHls(baseUrl) {
@@ -43,36 +66,16 @@
     }
 
     function initBackgroundVideos(baseUrl) {
-        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        if (prefersReducedMotion()) {
             // Leave the <video> unwired so the browser shows its poster and never plays.
             return;
         }
-        // `[data-vo-hls]` is the opt-in hook for consumers that render their own markup — the very
-        // consumers `video_optimizer_sources()` exists for. Without it the HLS wiring only ever
-        // found the bundle's own class, so a consumer's background video stayed silent: the poster
-        // showed, nothing played, and nothing said why. Loading the assets and being wired are two
-        // different questions.
-        //
-        // Four things this selector deliberately does NOT do:
-        //   * it does not key on a class — a class is design-bound, a data attribute is markup-neutral;
-        //   * it does not widen to `video[data-hls]` — initNativePlayers() excludes
-        //     `.vo-native-holder` children and `[data-vo-native-autoload]` on purpose (facade and
-        //     lazy paths). A blanket selector would lift those exclusions and change behaviour for
-        //     existing consumers;
-        //   * it does not live in a new function — staying here means foreign markup inherits the
-        //     prefers-reduced-motion early exit above;
-        //   * it does not carry a value: `data-hls` remains the URL, `data-vo-hls` is a bare marker.
-        //
-        // The markup that follows from this is what renderBackground() already emits:
-        // `<video muted autoplay loop playsinline preload poster data-hls>` with no `<source>`
-        // children — which is what makes the reduced-motion case work. The inherited price is that
-        // there is no MP4 fallback.
+        // `[data-vo-hls]` is the opt-in for custom markup (see video_optimizer_sources()). It is
+        // deliberately not widened to every `video[data-hls]`: initNativePlayers() excludes facade
+        // and lazy videos, and a blanket selector would wire those too.
         document.querySelectorAll('.vo-bg-hero__video[data-hls], video[data-vo-hls][data-hls]').forEach(function (video) {
-            // ⚠️ ORDER MATTERS, AND IT IS: reduced motion (the early return above, for the whole
-            // function) → deferral → rendered check. The rendered check has to run LAST, after
-            // the wait: a video that is `display:none` at DOMContentLoaded may well be rendered
-            // by the time `load` fires, and checking before the wait would decide on a state
-            // that is no longer current.
+            // Order: reduced motion (above) → deferral → rendered check. The rendered check must
+            // run after the wait, since visibility may have changed by then.
             if (video.hasAttribute('data-vo-hls-eager')) {
                 wireWhenRendered(video, baseUrl);
                 return;
@@ -83,73 +86,33 @@
         });
     }
 
-    // Runs fn once the page has finished loading — or right away if it already has.
-    //
-    // ⚠️ THE SECOND HALF IS THE POINT. `load` may have fired long before this code runs: the
-    // script is injected deferred, but a slow stylesheet, an ESI include or a consumer wiring
-    // the assets by hand can push it past that. An `addEventListener('load')` registered after
-    // the event never fires, and the result would be a background video that is present, has a
-    // poster, and silently never plays — the exact failure mode 1.6.2 was built to avoid, one
-    // layer up. `readyState === 'complete'` is the question "has load already happened", and it
-    // is the only reliable way to ask it after the fact.
+    // Runs fn once the page has finished loading, right away if it already has. `load` never fires
+    // when a single subresource hangs, so a timeout started here (not inside the load listener)
+    // races it; the shared promise settles once, whichever comes first.
     function afterPageLoad(fn) {
         if (document.readyState === 'complete') {
             fn();
             return;
         }
-        var erledigt = false;
-        var los = function () {
-            if (erledigt) {
-                return;
-            }
-            erledigt = true;
-            fn();
-        };
-        window.addEventListener('load', los, {once: true});
-        // ⚠️ DIE FRIST HAENGT AM AUFRUFZEITPUNKT, NICHT AN `load` — und das ist der ganze Punkt.
-        // `load` feuert nie, wenn eine einzige Subressource haengt: ein blockierendes
-        // Analytics-Skript, ein nicht antwortender Embed. Ein daran verankertes Warten waere
-        // dann selbst tot, und das Hintergrundvideo bliebe dauerhaft stumm — vorhanden, Poster
-        // da, keine Meldung. Diese Frist laeuft ab hier und gewinnt, wenn `load` ausbleibt: aus
-        // dem Totalausfall wird eine begrenzte Verzoegerung.
-        //
-        // ⚠️ Die falsche Bauform sieht fast gleich aus und rettet nichts:
-        //     window.addEventListener('load', function () { setTimeout(fn, FRIST); });
-        // Sie verlaengert das Warten, statt es zu begrenzen, und stirbt mit `load`.
-        //
-        // Der Wert ist NICHT mit dem Zeitabstand begruendet — gemessen liegt `load` auf einer
-        // echten Seite nur 148 ms (schnelle Mobilverbindung) bis 378 ms (langsame) nach dem
-        // groessten Inhaltselement, die Frist greift dort also gar nicht. Er ist allein mit dem
-        // Totalausfall begruendet und liegt bewusst UEBER dem ueblichen LCP dieser Messung
-        // (rund 5 s auf der langsamen Verbindung), damit er den Regelfall nicht abschneidet.
-        window.setTimeout(los, HINTERGRUND_FRIST_MS);
+        if (!pageLoadPromise) {
+            pageLoadPromise = new Promise(function (resolve) {
+                window.addEventListener('load', resolve, {once: true});
+                window.setTimeout(resolve, BACKGROUND_LOAD_TIMEOUT_MS);
+            });
+        }
+        pageLoadPromise.then(fn);
     }
 
-    // Is this element rendered at all? An element that is `display:none` — on itself or on any
-    // ancestor — generates no boxes, so it has no client rects. That is exactly the question we
-    // want answered: a background video a stylesheet has switched off should not stream.
-    //
-    // ⚠️ THIS IS NOT A VIEWPORT TEST, and the difference is the whole point. A background video
-    // further down the page IS rendered; it simply is not on screen yet. Keying on the viewport
-    // would quietly turn a bug fix into lazy loading for every consumer — a behaviour change
-    // nobody asked for, shipped in a patch release. `getClientRects()` answers "would this be
-    // painted if you scrolled there", `IntersectionObserver` answers "is it on screen now".
+    // Is this element rendered at all? `display:none` (on itself or an ancestor) leaves it without
+    // client rects. This is NOT a viewport test: a video further down the page is rendered and
+    // gets wired right away.
     function isRendered(video) {
         return video.getClientRects().length > 0;
     }
 
-    // Wire now if the video is rendered; otherwise wait until it becomes rendered.
-    //
-    // ⚠️ THE SECOND HALF IS NOT OPTIONAL. A check that runs once at wiring time turns a byte
-    // saving into a dead video the moment the element becomes visible later — a viewport dragged
-    // from 640 to 1440, a `<details>` opened, a tab switched. The element would sit there,
-    // present and silent, with nothing in the console to say why. A ResizeObserver reports a
-    // zero-sized box for a `display:none` element and fires once it gets a real one, which is
-    // precisely the transition we need; it does not fire on scrolling, so it cannot drift into
-    // being a viewport test.
-    //
-    // Without ResizeObserver we wire immediately — the pre-1.6.2 behaviour. Losing a byte saving
-    // on an old browser is the smaller harm; a video that never plays is the larger one.
+    // Wire now if the video is rendered, otherwise as soon as it becomes rendered (viewport resize,
+    // <details> opened …). ResizeObserver fires on that transition but not on scroll. Without it,
+    // wire immediately: a lost byte saving beats a video that never plays.
     function wireWhenRendered(video, baseUrl) {
         if (isRendered(video)) {
             attachHls(video, baseUrl);
@@ -177,7 +140,7 @@
     // Respects prefers-reduced-motion exactly like initBackgroundVideos()/initNativeAutoload():
     // when set, autoplay is stripped and playback stopped, leaving only poster + controls.
     function initNativePlayers(baseUrl) {
-        var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var reducedMotion = prefersReducedMotion();
         document.querySelectorAll('.vo-native[data-hls]').forEach(function (video) {
             if (video.closest('.vo-native-holder') || video.hasAttribute('data-vo-native-autoload')) {
                 return;
@@ -199,35 +162,15 @@
     // native controls, never auto-playing.
     function initNativeAutoload(baseUrl) {
         var videos = document.querySelectorAll('.vo-native[data-vo-native-autoload]');
-        if (!videos.length) {
-            return;
-        }
-        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        if (!videos.length || prefersReducedMotion()) {
             return;
         }
 
-        var load = function (video) {
+        whenNearViewport(videos, function (video) {
             video.removeAttribute('data-vo-native-autoload');
             attachHls(video, baseUrl);
             video.play().catch(function () {}); // autoplay-policy rejections are expected/harmless
-        };
-
-        if (!('IntersectionObserver' in window)) {
-            videos.forEach(load);
-            return;
-        }
-
-        // rootMargin preloads slightly before the video is visible so playback is ready in time.
-        var io = new IntersectionObserver(function (entries) {
-            entries.forEach(function (entry) {
-                if (entry.isIntersecting) {
-                    io.unobserve(entry.target);
-                    load(entry.target);
-                }
-            });
-        }, { rootMargin: '200px 0px' });
-
-        videos.forEach(function (video) { io.observe(video); });
+        });
     }
 
     // Reveals a hidden native <video> (facade/lightbox click), wiring HLS on first reveal only.
@@ -363,31 +306,14 @@
             return;
         }
 
-        var load = function (frame) {
+        whenNearViewport(frames, function (frame) {
             var url = frame.getAttribute('data-vo-autoload');
             if (!url) {
                 return;
             }
             frame.removeAttribute('data-vo-autoload');
             frame.replaceChildren(embedIframe(url));
-        };
-
-        if (!('IntersectionObserver' in window)) {
-            frames.forEach(load);
-            return;
-        }
-
-        // rootMargin preloads slightly before the frame is visible so the player is ready in time.
-        var io = new IntersectionObserver(function (entries) {
-            entries.forEach(function (entry) {
-                if (entry.isIntersecting) {
-                    io.unobserve(entry.target);
-                    load(entry.target);
-                }
-            });
-        }, { rootMargin: '200px 0px' });
-
-        frames.forEach(function (frame) { io.observe(frame); });
+        });
     }
 
     // Facade: replace a clicked poster with the player in place, keeping the frame layout. For the
@@ -414,8 +340,7 @@
 
     function initReveal() {
         var els = document.querySelectorAll('.vo-reveal');
-        var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (!els.length || !('IntersectionObserver' in window) || reducedMotion) {
+        if (!els.length || !('IntersectionObserver' in window) || prefersReducedMotion()) {
             els.forEach(function (el) { el.classList.add('vo-in'); });
             return;
         }
@@ -430,7 +355,7 @@
         els.forEach(function (el) { io.observe(el); });
     }
 
-    document.addEventListener('DOMContentLoaded', function () {
+    function init() {
         document.querySelectorAll('.vo-blocks').forEach(function (el) { el.classList.add('vo-js'); });
         var root = document.querySelector('[data-vo-base]');
         var baseUrl = root ? root.getAttribute('data-vo-base') : '/bundles/scalevideooptimizer/';
@@ -441,5 +366,13 @@
         initFacades(baseUrl);
         initAutoload();
         initReveal();
-    });
+    }
+
+    // The script is normally loaded with `defer`, but may also be added async or after the DOM is
+    // ready, when DOMContentLoaded has already fired.
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();

@@ -58,16 +58,16 @@
             <meta>
                 <title lang="en">Prioritize loading (above the fold)</title>
                 <title lang="de">Bevorzugt laden (above the fold)</title>
-                <info_text lang="en">Sets preload="auto" on the video element. Note this does NOT make the stream start sooner: the stream is fetched by hls.js, which does not consult preload. To start the video before the page has finished loading, use "Load video immediately" below.</info_text>
-                <info_text lang="de">Setzt preload="auto" am Video-Element. Das laesst den Stream NICHT frueher beginnen: den holt hls.js, und das fragt preload nicht. Wer das Video vor dem Seitenende starten will, nutzt "Video sofort laden" darunter.</info_text>
+                <info_text lang="en">Enable when this hero is the first thing visitors see. Its poster image is loaded with high priority and the video starts right away instead of after the page has loaded (includes "Load video immediately").</info_text>
+                <info_text lang="de">Aktivieren, wenn dieser Hero das Erste ist, was Besucher sehen. Das Posterbild wird mit hoher Priorität geladen und das Video startet sofort statt erst nach dem Laden der Seite (schließt „Video sofort laden“ ein).</info_text>
             </meta>
         </property>
         <property name="videoEager" type="checkbox">
             <meta>
                 <title lang="en">Load video immediately</title>
                 <title lang="de">Video sofort laden</title>
-                <info_text lang="en">Off by default: the background video starts loading only once the page has finished loading, so it does not compete with page content for bandwidth. Measured on a real page, loading it right away consistently delayed the largest content element, though the exact size could not be pinned down (estimates ranged from 0.3 to 1.5 seconds). The cost of deferring is that the video starts about 0.8 s (fast mobile) to 2.6 s (slow mobile) later. A background video is decoration; enable this only if it carries information the visitor needs immediately.</info_text>
-                <info_text lang="de">Standardmaessig aus: Das Hintergrundvideo laedt erst, wenn die Seite fertig geladen ist, und konkurriert so nicht mit dem Seiteninhalt um Bandbreite. An einer echten Seite gemessen verzoegerte sofortiges Laden das groesste Inhaltselement durchgaengig, die genaue Groesse liess sich nicht festlegen (Schaetzungen zwischen 0,3 und 1,5 Sekunden). Der Preis der Verzoegerung: das Video beginnt rund 0,8 s (schnelle) bis 2,6 s (langsame Mobilverbindung) spaeter. Ein Hintergrundvideo ist Dekoration; nur einschalten, wenn es Information traegt, die sofort gebraucht wird.</info_text>
+                <info_text lang="en">Off by default: the background video starts once the page has finished loading, so it does not slow down the page content. Enable only if the video must play as early as possible; this makes the rest of the page load slower. Already included in "Prioritize loading".</info_text>
+                <info_text lang="de">Standardmäßig aus: Das Hintergrundvideo startet erst, wenn die Seite fertig geladen ist, und bremst so den Seiteninhalt nicht. Nur aktivieren, wenn das Video so früh wie möglich laufen muss; der Rest der Seite lädt dann langsamer. In „Bevorzugt laden“ bereits enthalten.</info_text>
             </meta>
         </property>
     </properties>

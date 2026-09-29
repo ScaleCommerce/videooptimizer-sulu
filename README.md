@@ -345,22 +345,12 @@ function passes data through; it does not adapt it to any particular consumer's 
 > hidden — such a video is wired immediately, exactly as before.
 >
 > Since 1.7.0 a background video is also wired only **after the page has finished loading** (or
-> after 6 seconds, whichever comes first — see the changelog for why the ceiling exists), so it
-> does not compete with page content for bandwidth. Measured across two runs on a real page,
-> loading it right away made the LCP later in all four estimates (+0.34 s to +1.5 s), but the
-> ranges overlapped in one of the two runs, so treat the direction as established and the size as
-> not resolvable. The price is measured clearly: the video starts 0.8 s (fast mobile) to 2.6 s
-> (slow mobile) later. Add `data-vo-hls-eager` to opt a single video out of the deferral; its
-> absence is the default.
-
-### Developing against a consuming project
-
-A Composer **path repository** pointing at a sibling checkout does not work from inside a
-containerised project (ddev, Docker Compose and the like): the container mounts the project
-directory, not its parent, so `../videooptimizer-sulu` does not exist there. Either place the
-checkout inside the project tree (and gitignore it) or run Composer on the host. Measured on
-2026-09-11 while developing this function — the failed attempt still left the consuming project's
-`vendor/` upgraded, so restore `composer.json`, `composer.lock` **and** `vendor/` afterwards.
+> after 6 seconds, whichever comes first), so it does not compete with page content for bandwidth.
+> The video then starts roughly 0.8 s (fast mobile) to 2.6 s (slow mobile) later. Add
+> `data-vo-hls-eager` to start a single video right away; its absence is the default. In the
+> `vo_background_hero` block, **"Prioritize loading"** (for an above-the-fold hero) implies this and
+> additionally preloads the poster with `fetchpriority="high"`; **"Load video immediately"** only
+> removes the deferral.
 
 ## 🧱 Content blocks
 

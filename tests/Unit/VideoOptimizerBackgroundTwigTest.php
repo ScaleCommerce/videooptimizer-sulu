@@ -78,13 +78,39 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
         // passes the new argument gets the safer behaviour without touching anything — which is
         // the entire point of encoding the exception rather than the rule.
         self::assertStringNotContainsString('data-vo-hls-eager', $ext->renderBackground(['uuid' => 'abc']));
-        self::assertStringNotContainsString('data-vo-hls-eager', $ext->renderBackground(['uuid' => 'abc'], true));
         self::assertStringContainsString('data-vo-hls-eager', $ext->renderBackground(['uuid' => 'abc'], false, true));
 
-        // And the new flag must not be confused with the old one: priority still only moves
-        // preload, which is what its corrected help text now says.
-        self::assertStringContainsString('preload="auto"', $ext->renderBackground(['uuid' => 'abc'], true));
-        self::assertStringContainsString('preload="metadata"', $ext->renderBackground(['uuid' => 'abc'], false, true));
+        // eager alone does not touch preload or the poster priority.
+        $eager = $ext->renderBackground(['uuid' => 'abc'], false, true);
+        self::assertStringContainsString('preload="metadata"', $eager);
+        self::assertStringNotContainsString('rel="preload"', $eager);
+    }
+
+    public function testPriorityImpliesEagerAndPreloadsThePoster(): void
+    {
+        $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
+        $resolver->getSources('abc')->willReturn([
+            'poster' => 'https://cdn.example.net/poster.jpg',
+            'hlsUrl' => 'https://cdn.example.net/master.m3u8',
+        ]);
+        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
+
+        $html = $ext->renderBackground(['uuid' => 'abc'], true);
+
+        self::assertStringContainsString('data-vo-hls-eager', $html);
+        self::assertStringContainsString('preload="auto"', $html);
+        self::assertStringContainsString('<link rel="preload" as="image" href="https://cdn.example.net/poster.jpg" fetchpriority="high">', $html);
+        self::assertStringStartsWith(AssetInjectionListener::SENTINEL, $html);
+        self::assertStringNotContainsString('rel="preload"', $ext->renderBackground(['uuid' => 'abc']));
+    }
+
+    public function testPriorityWithoutPosterEmitsNoPreloadLink(): void
+    {
+        $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
+        $resolver->getSources('abc')->willReturn(['poster' => null, 'hlsUrl' => null]);
+        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
+
+        self::assertStringNotContainsString('rel="preload"', $ext->renderBackground(['uuid' => 'abc'], true));
     }
 
     public function testRenderBackgroundEmitsAssetSentinel(): void

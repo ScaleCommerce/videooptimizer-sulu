@@ -92,11 +92,9 @@ class VideoOptimizerExtension extends AbstractExtension
      */
     public function srcset(?array $video): ?string
     {
-        if (null === $video || empty($video['uuid'])) {
-            return null;
-        }
+        $uuid = self::uuidOf($video);
 
-        return $this->embedResolver->getPosterSrcset(self::str($video['uuid']));
+        return null === $uuid ? null : $this->embedResolver->getPosterSrcset($uuid);
     }
 
     /**
@@ -107,11 +105,12 @@ class VideoOptimizerExtension extends AbstractExtension
      */
     public function schema(?array $video, ?string $name = null): string
     {
-        if (null === $video || empty($video['uuid'])) {
+        $uuid = self::uuidOf($video);
+        if (null === $uuid) {
             return '';
         }
 
-        $sources = $this->embedResolver->getSources(self::str($video['uuid']));
+        $sources = $this->embedResolver->getSources($uuid);
 
         $data = ['@context' => 'https://schema.org', '@type' => 'VideoObject'];
 
@@ -120,8 +119,8 @@ class VideoOptimizerExtension extends AbstractExtension
             $data['name'] = $name;
         }
 
-        $poster = $sources['poster'] ?? ($video['posterUrl'] ?? null);
-        if (\is_string($poster) && '' !== $poster) {
+        $poster = self::posterFor($video, $sources['poster'] ?? null);
+        if (null !== $poster) {
             $data['thumbnailUrl'] = $poster;
         }
 
@@ -152,11 +151,12 @@ class VideoOptimizerExtension extends AbstractExtension
      */
     public function dimensions(?array $video): array
     {
-        if (null === $video || empty($video['uuid'])) {
+        $uuid = self::uuidOf($video);
+        if (null === $uuid) {
             return ['width' => null, 'height' => null, 'orientation' => null];
         }
 
-        return $this->embedResolver->getDimensions(self::str($video['uuid']));
+        return $this->embedResolver->getDimensions($uuid);
     }
 
     /**
@@ -168,11 +168,12 @@ class VideoOptimizerExtension extends AbstractExtension
      */
     public function embedUrl(?array $video, array $options = []): ?string
     {
-        if (null === $video || empty($video['uuid'])) {
+        $uuid = self::uuidOf($video);
+        if (null === $uuid) {
             return null;
         }
 
-        $url = rtrim($this->embedBaseUrl, '/') . '/embed/' . rawurlencode(self::str($video['uuid']));
+        $url = rtrim($this->embedBaseUrl, '/') . '/embed/' . rawurlencode($uuid);
 
         // Only append boolean player params that are explicitly on/off; any other value
         // (e.g. the "inherit" sentinel) is omitted so the embed theme decides.
@@ -215,32 +216,40 @@ class VideoOptimizerExtension extends AbstractExtension
     }
 
     /**
-     * Renders a silent, looping HLS background <video>. hls.js is wired client-side by vo-blocks.js;
-     * the poster covers the no-JS and reduced-motion cases. When $priority is true (above-the-fold
-     * hero) preload is hinted to "auto" (mainly affects the Safari-native path; hls.js manages its
-     * own buffering) — a mild LCP hint, not a guarantee.
+     * Renders a silent, looping, decorative HLS background <video>. hls.js is wired client-side by
+     * vo-blocks.js, by default only after the page has loaded; the poster covers the no-JS and
+     * reduced-motion cases.
+     *
+     * $eager marks the video with `data-vo-hls-eager` so vo-blocks.js starts the stream right away
+     * instead of after `load`. $priority is for an above-the-fold (LCP) hero and implies $eager; on
+     * top it preloads the poster with `fetchpriority="high"` (a `<link rel="preload">` is allowed in
+     * the body) and hints `preload="auto"`.
      *
      * @param array<string, mixed>|null $video
      */
     public function renderBackground(?array $video, bool $priority = false, bool $eager = false): string
     {
-        if (null === $video || empty($video['uuid'])) {
+        $uuid = self::uuidOf($video);
+        if (null === $uuid) {
             return '';
         }
 
-        $sources = $this->embedResolver->getSources(self::str($video['uuid']));
-        $poster = $sources['poster'] ?? ($video['posterUrl'] ?? null);
+        $sources = $this->embedResolver->getSources($uuid);
+        $poster = self::posterFor($video, $sources['poster'] ?? null);
         $hlsUrl = $sources['hlsUrl'] ?? null;
+        $posterAttr = null !== $poster ? htmlspecialchars($poster, \ENT_QUOTES) : null;
 
-        return AssetInjectionListener::SENTINEL . \sprintf(
+        $preload = $priority && null !== $posterAttr
+            ? \sprintf('<link rel="preload" as="image" href="%s" fetchpriority="high">', $posterAttr)
+            : '';
+
+        return AssetInjectionListener::SENTINEL . $preload . \sprintf(
             '<video class="vo-bg-hero__video" muted autoplay loop playsinline aria-hidden="true" preload="%s"%s%s%s></video>',
             $priority ? 'auto' : 'metadata',
-            null !== $poster ? \sprintf(' poster="%s"', htmlspecialchars(self::str($poster), \ENT_QUOTES)) : '',
+            null !== $posterAttr ? \sprintf(' poster="%s"', $posterAttr) : '',
             null !== $hlsUrl ? \sprintf(' data-hls="%s"', htmlspecialchars($hlsUrl, \ENT_QUOTES)) : '',
-            // ABSENCE is the new default (deferred); the attribute marks the exception. That way
-            // consumers rendering their own markup inherit the safer behaviour without touching
-            // anything, and existing content changes behaviour without a migration.
-            $eager ? ' data-vo-hls-eager' : '',
+            // Absence is the default (deferred), so custom markup inherits it without changes.
+            $eager || $priority ? ' data-vo-hls-eager' : '',
         );
     }
 
@@ -260,17 +269,18 @@ class VideoOptimizerExtension extends AbstractExtension
      */
     public function renderNative(?array $video, array $options = [], bool $eager = false, bool $autoload = false): string
     {
-        if (null === $video || empty($video['uuid'])) {
+        $uuid = self::uuidOf($video);
+        if (null === $uuid) {
             return '';
         }
 
-        $playable = $this->embedResolver->getPlayable(self::str($video['uuid']));
-        $poster = $playable['poster'] ?? ($video['posterUrl'] ?? null);
+        $playable = $this->embedResolver->getPlayable($uuid);
+        $poster = self::posterFor($video, $playable['poster'] ?? null);
 
         $hls = null;
         $fallback = [];
         foreach ($playable['sources'] as $source) {
-            if ('application/vnd.apple.mpegurl' === $source['type']) {
+            if (VideoOptimizerEmbedResolver::HLS_MIME === $source['type']) {
                 $hls = $source['src'];
             } else {
                 $fallback[] = $source;
@@ -296,7 +306,7 @@ class VideoOptimizerExtension extends AbstractExtension
             $attrs .= ' data-vo-native-autoload';
         }
         if (null !== $poster) {
-            $attrs .= ' poster="' . htmlspecialchars(self::str($poster), \ENT_QUOTES) . '"';
+            $attrs .= ' poster="' . htmlspecialchars($poster, \ENT_QUOTES) . '"';
         }
         if (null !== $hls) {
             $attrs .= ' data-hls="' . htmlspecialchars($hls, \ENT_QUOTES) . '"';
@@ -314,15 +324,11 @@ class VideoOptimizerExtension extends AbstractExtension
     }
 
     /**
-     * Casts a value read from the (mixed-typed) stored video/block property to a string,
-     * defaulting to '' for non-scalars.
-     */
-    /**
      * Returns the resolved sources of a stored video as DATA, so a consumer can render its own
      * markup instead of the bundle's.
      *
-     * Why this exists: the nine rendering functions above all emit finished markup with fixed
-     * bundle classes (`vo-bg-hero__video`, `vo-native`, `vo-frame`). A consumer whose markup is
+     * Why this exists: the rendering functions above (embed, background, native) emit finished
+     * markup with fixed bundle classes (`vo-bg-hero__video`, `vo-native`, `vo-frame`). A consumer whose markup is
      * pixel-bound to a design of its own cannot use them without replacing that markup — so it
      * would otherwise have to rebuild the resolver lookup itself. This function hands over what
      * `VideoOptimizerEmbedResolver::getSources()` already knows and nothing else.
@@ -335,8 +341,7 @@ class VideoOptimizerExtension extends AbstractExtension
      * consumer that wants that mapping can do it in two lines of Twig. The bundle stays faithful
      * to the data it already holds — this function passes through, it does not adapt.
      *
-     * The poster falls back to the stored `posterUrl` when the API has none — the same behaviour
-     * as renderBackground()/renderNative(), so all four paths agree on the poster.
+     * The poster falls back to the stored `posterUrl` via posterFor(), like every other path.
      *
      * ⚠️ NO ASSET SENTINEL, and that is not an omission. The rendering functions prepend
      * AssetInjectionListener::SENTINEL so the bundle's CSS/JS get injected automatically. This
@@ -354,19 +359,18 @@ class VideoOptimizerExtension extends AbstractExtension
      */
     public function sources(?array $video): ?array
     {
-        if (null === $video || empty($video['uuid'])) {
+        $uuid = self::uuidOf($video);
+        if (null === $uuid) {
             return null;
         }
 
-        $resolved = $this->embedResolver->getSources(self::str($video['uuid']));
+        $resolved = $this->embedResolver->getSources($uuid);
 
         return [
-            'poster' => $resolved['poster'] ?? (\is_string($video['posterUrl'] ?? null) ? $video['posterUrl'] : null),
+            'poster' => self::posterFor($video, $resolved['poster'] ?? null),
             'srcset' => $resolved['srcset'] ?? null,
             'hlsUrl' => $resolved['hlsUrl'] ?? null,
-            // Handed over unchanged, including the key names. extractSources() already drops any
-            // entry without a usable `src`, so there is nothing left to filter here — a second
-            // guard would be dead code, which phpstan flagged in the first draft of this method.
+            // Unchanged, key names included; extractSources() already dropped unusable entries.
             'sources' => $resolved['sources'],
             'width' => $resolved['width'] ?? null,
             'height' => $resolved['height'] ?? null,
@@ -375,6 +379,37 @@ class VideoOptimizerExtension extends AbstractExtension
         ];
     }
 
+    /**
+     * Returns the uuid of a stored video property, or null when no video is selected.
+     *
+     * @param array<string, mixed>|null $video
+     */
+    private static function uuidOf(?array $video): ?string
+    {
+        $uuid = self::str($video['uuid'] ?? null);
+
+        return '' === $uuid ? null : $uuid;
+    }
+
+    /**
+     * The poster shared by every render path: the API's active poster, else the stored `posterUrl`.
+     *
+     * @param array<string, mixed>|null $video
+     */
+    private static function posterFor(?array $video, ?string $resolved): ?string
+    {
+        if (null !== $resolved && '' !== $resolved) {
+            return $resolved;
+        }
+        $stored = $video['posterUrl'] ?? null;
+
+        return \is_string($stored) && '' !== $stored ? $stored : null;
+    }
+
+    /**
+     * Casts a value read from the (mixed-typed) stored video/block property to a string,
+     * defaulting to '' for non-scalars.
+     */
     private static function str(mixed $value): string
     {
         return \is_scalar($value) ? (string) $value : '';
