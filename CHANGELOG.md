@@ -2,7 +2,7 @@
 
 All notable changes to this package. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [2.1.0] - 2026-11-28
 
 ### Upgrade
 - Admin permissions: re-run `bin/adminconsole scale:videooptimizer:install` after the update. It grants the new contexts (videos, libraries, settings) with all permissions to every Sulu admin role, once: it is skipped as soon as any role holds one of the contexts, so roles created later stay without access until you grant it. Existing users keep working; then restrict roles under Settings > User roles > VideoOptimizer. Without the re-run, users lose access to the VideoOptimizer views and admin routes until a role is granted the contexts; rebuild the Sulu admin assets and clear both kernels' caches ([#29](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/29))
