@@ -29,12 +29,27 @@ class AdminControllersTest extends TestCase
         }), $this->prophesize(VideoOptimizerEmbedResolver::class)->reveal());
 
         $controller->reprocess(new Request(content: '{"force":true}'), 'lib-1');
-        $controller->reprocess(new Request(content: '{"force":"yes"}'), 'lib-1');
+        $controller->reprocess(new Request(content: '{"force":false}'), 'lib-1');
         $controller->reprocess(new Request(), 'lib-1');
 
         self::assertSame(['force' => true], json_decode((string) $bodies[0], true));
         self::assertStringNotContainsString('force', (string) $bodies[1]);
         self::assertStringNotContainsString('force', (string) $bodies[2]);
+    }
+
+    public function testReprocessRejectsANonBooleanForce(): void
+    {
+        $calls = 0;
+        $controller = new LibraryController($this->client(function () use (&$calls): MockResponse {
+            ++$calls;
+
+            return new MockResponse(json_encode(['data' => []], JSON_THROW_ON_ERROR));
+        }), $this->prophesize(VideoOptimizerEmbedResolver::class)->reveal());
+
+        foreach (['"true"', '1', '"yes"', 'null'] as $value) {
+            self::assertSame(400, $controller->reprocess(new Request(content: '{"force":' . $value . '}'), 'lib-1')->getStatusCode(), $value);
+        }
+        self::assertSame(0, $calls);
     }
 
     public function testEncodingQualityIsPassedThroughOnCreateAndUpdate(): void

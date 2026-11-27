@@ -73,7 +73,11 @@ class LibraryController
     public function reprocess(Request $request, string $id): JsonResponse
     {
         // Optional {"force": true}: re-encode finished renditions too (needed after changing encoding_quality).
-        $force = true === ($this->payload($request)['force'] ?? false);
+        $payload = $this->payload($request);
+        if (\array_key_exists('force', $payload) && !\is_bool($payload['force'])) {
+            return new JsonResponse(['message' => 'force must be a boolean.'], 400);
+        }
+        $force = true === ($payload['force'] ?? false);
 
         return $this->guard(function () use ($id, $force) {
             $result = $this->client->reprocessLibrary($id, $force);
