@@ -140,6 +140,19 @@ class SubtitleApiTest extends TestCase
         $resolver->checkProphecyMethodsPredictions();
     }
 
+    public function testControllerSendsKindAndDefaultOnlyWhenGiven(): void
+    {
+        $controller = $this->controller(fn () => new MockResponse('{"data":{}}'));
+
+        $controller->upload(new Request(content: json_encode(['language' => 'de', 'filename' => 'a.srt', 'contentBase64' => base64_encode('x')], JSON_THROW_ON_ERROR)), self::UUID);
+        $controller->upload(new Request(content: json_encode(['language' => 'de', 'filename' => 'a.srt', 'contentBase64' => base64_encode('x'), 'isDefault' => 'yes'], JSON_THROW_ON_ERROR)), self::UUID);
+
+        foreach ($this->calls as $call) {
+            self::assertStringNotContainsString('name="is_default"', (string) $call['options']['body'], 'A missing value must not reset the default flag.');
+            self::assertStringNotContainsString('name="kind"', (string) $call['options']['body']);
+        }
+    }
+
     public function testControllerRejectsBadUploadsWithoutCallingTheApi(): void
     {
         $controller = $this->controller(fn () => new MockResponse('{}'));

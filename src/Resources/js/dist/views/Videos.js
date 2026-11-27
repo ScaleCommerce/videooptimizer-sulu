@@ -579,6 +579,10 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
           if (controller.signal.aborted) {
             throw (0, _api.abortError)();
           }
+          // Past this point the video is being created: Cancel would only leave a stray upload.
+          (0, _mobx.action)(function () {
+            _this11.uploadCancellable = false;
+          })();
           return (0, _api.completeUpload)({
             libraryId: libraryId,
             uuid: upload.uuid,

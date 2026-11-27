@@ -34,6 +34,7 @@ Object.defineProperty(exports, "__esModule", {
 exports["default"] = void 0;
 require("core-js/modules/es.array.concat.js");
 require("core-js/modules/es.array.filter.js");
+require("core-js/modules/es.array.find.js");
 require("core-js/modules/es.array.iterator.js");
 require("core-js/modules/es.array.map.js");
 require("core-js/modules/es.object.to-string.js");
@@ -41,6 +42,7 @@ require("core-js/modules/es.promise.js");
 require("core-js/modules/es.string.iterator.js");
 require("core-js/modules/esnext.iterator.constructor.js");
 require("core-js/modules/esnext.iterator.filter.js");
+require("core-js/modules/esnext.iterator.find.js");
 require("core-js/modules/esnext.iterator.map.js");
 require("core-js/modules/web.dom-collections.iterator.js");
 var _react = _interopRequireDefault(require("react"));
@@ -93,7 +95,12 @@ var VideoSubtitles = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/f
     _initializerDefineProperty(_this, "file", _descriptor0, _this);
     _this.fileInput = /*#__PURE__*/_react["default"].createRef();
     _this._unmounted = false;
-    _initializerDefineProperty(_this, "handleLanguage", _descriptor1, _this);
+    // Picking a language that already has a track pre-fills its kind and default flag, so replacing the file
+    // does not silently change them.
+    _initializerDefineProperty(_this, "selectLanguage", _descriptor1, _this);
+    _this.handleLanguage = function (event) {
+      _this.selectLanguage(event.target.value);
+    };
     _initializerDefineProperty(_this, "handleKind", _descriptor10, _this);
     _initializerDefineProperty(_this, "toggleDefault", _descriptor11, _this);
     _initializerDefineProperty(_this, "handleFile", _descriptor12, _this);
@@ -115,7 +122,7 @@ var VideoSubtitles = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/f
         }
         _this2.subtitles = subtitles;
         _this2.languages = languages;
-        _this2.language = languages.length > 0 ? languages[0].code : '';
+        _this2.selectLanguage(languages.length > 0 ? languages[0].code : '');
         _this2.loading = false;
       }))["catch"]((0, _mobx.action)(function (e) {
         if (_this2._unmounted) {
@@ -307,14 +314,19 @@ var VideoSubtitles = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/f
   initializer: function initializer() {
     return null;
   }
-}), _descriptor1 = _applyDecoratedDescriptor(_class2.prototype, "handleLanguage", [_mobx.action], {
+}), _descriptor1 = _applyDecoratedDescriptor(_class2.prototype, "selectLanguage", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this4 = this;
-    return function (event) {
-      _this4.language = event.target.value;
+    return function (code) {
+      _this4.language = code;
+      var existing = _this4.subtitles.find(function (subtitle) {
+        return subtitle.language === code;
+      });
+      _this4.kind = existing && existing.kind ? existing.kind : 'subtitles';
+      _this4.isDefault = !!(existing && existing.is_default);
     };
   }
 }), _descriptor10 = _applyDecoratedDescriptor(_class2.prototype, "handleKind", [_mobx.action], {
@@ -381,7 +393,7 @@ var VideoSubtitles = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/f
         _this8.busy = false;
         _this8.subtitles = subtitles;
         _this8.file = null;
-        _this8.isDefault = false;
+        _this8.selectLanguage(_this8.language);
         if (_this8.fileInput.current) {
           _this8.fileInput.current.value = '';
         }

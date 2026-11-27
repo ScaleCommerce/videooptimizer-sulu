@@ -81,6 +81,31 @@ class WebhookControllerTest extends TestCase
         self::assertSame(401, $this->controller()($request)->getStatusCode());
     }
 
+    public function testRejectsAnOversizedContentLengthWithoutReadingTheBody(): void
+    {
+        $request = new class([], [], [], [], [], ['CONTENT_LENGTH' => '1048577']) extends Request {
+            public function getContent(bool $asResource = false): string
+            {
+                throw new \LogicException('The body must not be read.');
+            }
+        };
+
+        self::assertSame(413, $this->controller()($request)->getStatusCode());
+    }
+
+    public function testAReplayedSignatureDoesNotClaimTheDeliveryId(): void
+    {
+        $controller = $this->controller();
+        $body = '{"event":"webhook.test"}';
+        $timestamp = (string) time();
+
+        $controller($this->request($body, ['timestamp' => $timestamp, 'delivery' => 'first']));
+        $controller($this->request($body, ['timestamp' => $timestamp, 'delivery' => 'second']));
+
+        // 'second' was a replay of the signed request: its id must stay unclaimed.
+        self::assertFalse($this->cache->hasItem('vo_wh_' . substr(md5('second'), 0, 32)));
+    }
+
     public function testRejectsAnOversizedBodyBeforeVerifying(): void
     {
         $request = $this->request(str_repeat('a', 1048577), ['signed' => false]);
@@ -95,8 +120,6 @@ class WebhookControllerTest extends TestCase
     {
         yield 'ready' => ['video.ready'];
         yield 'failed' => ['video.failed'];
-        yield 'updated' => ['video.updated'];
-        yield 'deleted' => ['video.deleted'];
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('videoEvents')]
@@ -121,7 +144,7 @@ class WebhookControllerTest extends TestCase
 
     public function testUnknownEventsAndForeignIdsAreAcknowledgedButNotFlushed(): void
     {
-        $unknown = $this->controller()($this->request('{"event":"library.updated","data":{"uuid":"' . self::UUID . '"}}'));
+        $unknown = $this->controller()($this->request('{"event":"video.updated","data":{"uuid":"' . self::UUID . '"}}'));
         $badId = $this->controller()($this->request('{"event":"video.ready","data":{"uuid":"../x"}}', ['delivery' => 'd2']));
 
         self::assertSame(['received' => true, 'flushed' => false], json_decode((string) $unknown->getContent(), true));

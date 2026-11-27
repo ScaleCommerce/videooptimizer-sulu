@@ -207,6 +207,16 @@ describe('subtitles', () => {
         expect(atob(body.contentBase64)).toContain('Hi');
     });
 
+    it('sends kind and isDefault only when they are set', async () => {
+        Requester.post.mockResolvedValue({});
+
+        await uploadSubtitle('u', {file: new File(['x'], 'a.vtt'), language: 'de'});
+        await uploadSubtitle('u', {file: new File(['x'], 'a.vtt'), language: 'de', isDefault: false});
+
+        expect(Object.keys(Requester.post.mock.calls[0][1]).sort()).toEqual(['contentBase64', 'filename', 'language']);
+        expect(Requester.post.mock.calls[1][1].isDefault).toBe(false);
+    });
+
     it('refuses a file above 2 MB without sending it', async () => {
         const file = new File([new Uint8Array(2 * 1024 * 1024 + 1)], 'big.srt');
 

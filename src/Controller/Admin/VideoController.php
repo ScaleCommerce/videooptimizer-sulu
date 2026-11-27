@@ -213,7 +213,7 @@ class VideoController
             if (!\is_array($payload['metadata']) || array_is_list($payload['metadata']) && [] !== $payload['metadata']) {
                 return 'metadata must be an object.';
             }
-            if (\count($payload['metadata']) > 10) {
+            if (\count(array_filter($payload['metadata'], static fn ($value): bool => null !== $value)) > 10) {
                 return 'A video can have at most 10 metadata entries.';
             }
             foreach ($payload['metadata'] as $key => $value) {

@@ -290,6 +290,22 @@ class AdminControllersTest extends TestCase
         self::assertSame(0, $calls);
     }
 
+    public function testMetadataKeyLimitCountsOnlyEntriesThatRemain(): void
+    {
+        $controller = new VideoController($this->client(fn () => new MockResponse('{"data":{}}')));
+        $metadata = [];
+        for ($i = 1; $i <= 10; ++$i) {
+            $metadata['k' . $i] = 'v';
+        }
+        for ($i = 1; $i <= 5; ++$i) {
+            $metadata['old' . $i] = null;
+        }
+
+        $response = $controller->patch(new Request(content: json_encode(['metadata' => $metadata], JSON_THROW_ON_ERROR)), '5c0a1e6e-7d3b-4c2a-9f10-0000000000de');
+
+        self::assertSame(200, $response->getStatusCode(), 'Removals do not count towards the 10 keys.');
+    }
+
     public function testUnreachableApiIsReportedAs502WithACode(): void
     {
         $controller = new LibraryController($this->client(fn () => new MockResponse('', ['error' => 'timeout'])));

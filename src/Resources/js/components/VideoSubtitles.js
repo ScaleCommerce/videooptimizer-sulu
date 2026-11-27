@@ -31,7 +31,7 @@ class VideoSubtitles extends React.Component<*> {
                 if (this._unmounted) { return; }
                 this.subtitles = subtitles;
                 this.languages = languages;
-                this.language = languages.length > 0 ? languages[0].code : '';
+                this.selectLanguage(languages.length > 0 ? languages[0].code : '');
                 this.loading = false;
             }))
             .catch(action((e) => {
@@ -45,7 +45,16 @@ class VideoSubtitles extends React.Component<*> {
         this._unmounted = true;
     }
 
-    @action handleLanguage = (event) => { this.language = event.target.value; };
+    // Picking a language that already has a track pre-fills its kind and default flag, so replacing the file
+    // does not silently change them.
+    @action selectLanguage = (code) => {
+        this.language = code;
+        const existing = this.subtitles.find((subtitle) => subtitle.language === code);
+        this.kind = existing && existing.kind ? existing.kind : 'subtitles';
+        this.isDefault = !!(existing && existing.is_default);
+    };
+
+    handleLanguage = (event) => { this.selectLanguage(event.target.value); };
     @action handleKind = (event) => { this.kind = event.target.value; };
     @action toggleDefault = () => { this.isDefault = !this.isDefault; };
     @action handleFile = (event) => { this.file = (event.target.files && event.target.files[0]) || null; };
@@ -64,7 +73,7 @@ class VideoSubtitles extends React.Component<*> {
                 this.busy = false;
                 this.subtitles = subtitles;
                 this.file = null;
-                this.isDefault = false;
+                this.selectLanguage(this.language);
                 if (this.fileInput.current) {
                     this.fileInput.current.value = '';
                 }

@@ -233,15 +233,20 @@ new admin labels show their raw translation key.
 
 By default a changed video shows up on the website when its cached data expires (one hour; a minute for videos
 that are not ready yet). With a webhook VideoOptimizer tells your site right away, and the cached video data and
-the HTTP-cached pages that show the video are refreshed on `video.ready`, `video.failed`, `video.updated` and
-`video.deleted`.
+the HTTP-cached pages that show the video are refreshed on `video.ready` and `video.failed` (the events the API
+sends; `webhook.test` is answered with 200).
 
 1. Run `bin/adminconsole scale:videooptimizer:install` (imports the website route and creates the `vo_webhook`
    table) and clear the caches of both kernels (`bin/adminconsole cache:clear`, `bin/websiteconsole cache:clear`).
-2. In VideoOptimizer, create a webhook under **Organization → Webhooks** with the URL shown under
+2. In VideoOptimizer, create a webhook under **Integrations → Webhooks** with the URL shown under
    **Settings → VideoOptimizer → Webhook** (`https://<your-site>/_videooptimizer/webhook`).
 3. Paste the webhook's signing secret into the same settings page (stored encrypted, like the token) and use
    "Send test" in VideoOptimizer: the settings page shows the last delivery.
+
+The receiver must be reachable by VideoOptimizer: exempt `/_videooptimizer/webhook` from any firewall, basic
+auth, WAF or bot protection in front of the website. Subtitle uploads reach the admin proxy as base64 JSON (a 2 MB
+file is about 2.7 MB), so raise `client_max_body_size` (nginx) or the equivalent limit to at least 4 MB for
+`/admin/api/`, or uploads fail with 413 before they reach Sulu.
 
 The receiver is fail-closed: without a secret it answers 503. Deliveries are verified with HMAC-SHA256
 (`X-VideoOptimizer-Signature` over `{timestamp}.{body}`), older than five minutes are rejected, retries and replays

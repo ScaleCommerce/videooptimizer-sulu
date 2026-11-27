@@ -45,6 +45,22 @@ class ExtensionWiringTest extends TestCase
         self::assertFalse($container->hasDefinition('scale_video_optimizer.cache'));
     }
 
+    public function testWebhookReceiverReferencesRealSuluServices(): void
+    {
+        $container = $this->load([]);
+        $arguments = $container->getDefinition(\Scale\VideoOptimizerBundle\Controller\WebhookController::class)->getArguments();
+
+        $ids = array_map(static fn ($argument): string => $argument instanceof Reference ? (string) $argument : '', $arguments);
+        self::assertContains('sulu_http_cache.cache_manager', $ids, 'The page cache is only invalidated through the real Sulu service id.');
+
+        // The ids must exist in Sulu itself: an unknown id with on-invalid="null" silently disables the feature.
+        $httpCache = \dirname((string) (new \ReflectionClass(\Sulu\Bundle\HttpCacheBundle\Cache\CacheManager::class))->getFileName(), 2) . '/Resources/config';
+        self::assertStringContainsString("'sulu_http_cache.cache_manager'", (string) file_get_contents($httpCache . '/cache-manager.php'));
+        self::assertStringContainsString("'sulu_http_cache.reference_store'", (string) file_get_contents($httpCache . '/services.php'));
+        $resolverIds = array_map(static fn ($argument): string => $argument instanceof Reference ? (string) $argument : '', $container->getDefinition(VideoOptimizerEmbedResolver::class)->getArguments());
+        self::assertContains('sulu_http_cache.reference_store', $resolverIds);
+    }
+
     /**
      * @param array<string, string> $parameters
      * @param array<string, mixed>  $config

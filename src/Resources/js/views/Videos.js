@@ -174,6 +174,8 @@ class Videos extends React.Component<*> {
                     if (controller.signal.aborted) {
                         throw abortError();
                     }
+                    // Past this point the video is being created: Cancel would only leave a stray upload.
+                    action(() => { this.uploadCancellable = false; })();
 
                     return completeUpload({
                         libraryId,

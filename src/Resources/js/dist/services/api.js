@@ -57,6 +57,7 @@ require("core-js/modules/es.array.reduce.js");
 require("core-js/modules/es.array.slice.js");
 require("core-js/modules/es.date.now.js");
 require("core-js/modules/es.function.name.js");
+require("core-js/modules/es.object.assign.js");
 require("core-js/modules/es.object.to-string.js");
 require("core-js/modules/es.promise.js");
 require("core-js/modules/es.regexp.exec.js");
@@ -293,13 +294,17 @@ function uploadSubtitle(uuid, _ref3) {
     return Promise.reject(toError((0, _utils.translate)('scale_videooptimizer.subtitle_too_large'), 413, 'subtitle_too_large'));
   }
   return fileToBase64(file).then(function (contentBase64) {
-    return normalize(_services.Requester.post(BASE + '/videos/' + encodeURIComponent(uuid) + '/subtitles', {
+    return normalize(_services.Requester.post(BASE + '/videos/' + encodeURIComponent(uuid) + '/subtitles',
+    // kind and isDefault are only sent when set: omitted values keep the existing track's settings.
+    Object.assign({
       language: language,
-      kind: kind,
-      isDefault: !!isDefault,
       filename: file.name,
       contentBase64: contentBase64
-    }));
+    }, kind ? {
+      kind: kind
+    } : {}, typeof isDefault === 'boolean' ? {
+      isDefault: isDefault
+    } : {})));
   });
 }
 function deleteSubtitle(uuid, language) {

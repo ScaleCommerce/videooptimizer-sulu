@@ -16,14 +16,14 @@ use Symfony\Contracts\Cache\ItemInterface;
 /**
  * Receiver for VideoOptimizer webhooks: `POST /_videooptimizer/webhook` on the website.
  *
- * Create the webhook in the VideoOptimizer app (Organization > Webhooks) and save its signing secret under
+ * Create the webhook in the VideoOptimizer app (Integrations > Webhooks) and save its signing secret under
  * VideoOptimizer > Settings. Without a secret the endpoint answers 503 (fail closed).
  *
  * Headers: X-VideoOptimizer-Timestamp, X-VideoOptimizer-Signature (`sha256=` + hex HMAC-SHA256 of
  * "{timestamp}.{rawBody}"), X-VideoOptimizer-Delivery-Id. Deliveries older than five minutes are rejected (401),
  * retries and replays are acknowledged once (kept 24 h) and bodies above 1 MiB are refused (413).
  *
- * `video.ready`, `video.failed`, `video.updated` and `video.deleted` drop the cached embed data of the video and
+ * `video.ready` and `video.failed` (the events the API sends) drop the cached embed data of the video and
  * invalidate the cached pages that showed it (tag = the video UUID); `webhook.test` answers {ok:true}.
  */
 class WebhookController
@@ -33,7 +33,7 @@ class WebhookController
     public const DEDUPE_LIFETIME = 86400;
     public const LAST_DELIVERY_KEY = 'vo_webhook_last';
 
-    private const VIDEO_EVENTS = ['video.ready', 'video.failed', 'video.updated', 'video.deleted'];
+    private const VIDEO_EVENTS = ['video.ready', 'video.failed'];
 
     public function __construct(
         private SettingsManager $settingsManager,
@@ -51,9 +51,13 @@ class WebhookController
             return $this->json(['error' => 'Webhook secret not configured.'], 503);
         }
 
+        // Refuse by the declared size first: the body is not even read.
         $length = $request->headers->get('Content-Length');
+        if (null !== $length && ctype_digit($length) && (int) $length > self::MAX_BODY) {
+            return $this->json(['error' => 'Payload too large.'], 413);
+        }
         $raw = $request->getContent();
-        if ((null !== $length && ctype_digit($length) && (int) $length > self::MAX_BODY) || \strlen($raw) > self::MAX_BODY) {
+        if (\strlen($raw) > self::MAX_BODY) {
             return $this->json(['error' => 'Payload too large.'], 413);
         }
 
@@ -68,12 +72,13 @@ class WebhookController
 
         // Dedupe on the signed part (timestamp + signature) as well as on the unsigned delivery id: a captured
         // request replayed inside the window with a new delivery id is still recognised.
-        $delivery = (string) preg_replace('/[^A-Za-z0-9_-]/', '', (string) $request->headers->get('X-VideoOptimizer-Delivery-Id', ''));
-        $first = $this->claim('vo_wh_sig_' . hash('sha256', $timestamp . '.' . $signature));
-        if ('' !== $delivery) {
-            $first = $this->claim('vo_wh_' . substr(md5($delivery), 0, 32)) && $first;
+        // Dedupe on the signed part (timestamp + signature) first: a captured request replayed inside the
+        // window with a new delivery id is a duplicate and must not claim that id. Then the delivery id.
+        if (!$this->claim('vo_wh_sig_' . hash('sha256', $timestamp . '.' . $signature))) {
+            return $this->json(['duplicate' => true]);
         }
-        if (!$first) {
+        $delivery = (string) preg_replace('/[^A-Za-z0-9_-]/', '', (string) $request->headers->get('X-VideoOptimizer-Delivery-Id', ''));
+        if ('' !== $delivery && !$this->claim('vo_wh_' . substr(md5($delivery), 0, 32))) {
             return $this->json(['duplicate' => true]);
         }
 

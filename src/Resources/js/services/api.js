@@ -225,7 +225,8 @@ export function uploadSubtitle(uuid: string, {file, language, kind, isDefault}: 
 
     return fileToBase64(file).then((contentBase64) => normalize(Requester.post(
         BASE + '/videos/' + encodeURIComponent(uuid) + '/subtitles',
-        {language, kind, isDefault: !!isDefault, filename: file.name, contentBase64}
+        // kind and isDefault are only sent when set: omitted values keep the existing track's settings.
+        Object.assign({language, filename: file.name, contentBase64}, kind ? {kind} : {}, typeof isDefault === 'boolean' ? {isDefault} : {})
     )));
 }
 

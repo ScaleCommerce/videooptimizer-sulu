@@ -769,6 +769,10 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
           if (controller.signal.aborted) {
             throw (0, _api.abortError)();
           }
+          // Past this point the video is being created: Cancel would only leave a stray upload.
+          (0, _mobx.action)(function () {
+            _this18.uploadCancellable = false;
+          })();
           return (0, _api.completeUpload)({
             libraryId: _this18.activeLibraryId,
             uuid: upload.uuid,

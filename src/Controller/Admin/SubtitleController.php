@@ -45,7 +45,8 @@ class SubtitleController
             return new JsonResponse(['message' => 'The subtitle file is larger than 2 MB.'], 413);
         }
         $kind = self::str($payload, 'kind');
-        $isDefault = \array_key_exists('isDefault', $payload) ? true === $payload['isDefault'] : null;
+        // Only an explicit boolean is forwarded: a missing value must keep the existing track's flag.
+        $isDefault = \is_bool($payload['isDefault'] ?? null) ? $payload['isDefault'] : null;
 
         return $this->guard(function () use ($uuid, $payload, $decoded, $language, $kind, $isDefault) {
             $result = $this->client->uploadSubtitle($uuid, self::str($payload, 'filename'), $decoded, $language, '' === $kind ? null : $kind, $isDefault);
