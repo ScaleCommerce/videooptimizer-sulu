@@ -384,7 +384,24 @@ class VideoOptimizerExtension extends AbstractExtension
             $style = ' style="--vo-accent:' . $accentAttr . ';--vo-player-accent:' . $accentAttr . '"';
         }
 
-        return AssetInjectionListener::SENTINEL . \sprintf('<video %s%s>%s</video>', $attrs, $style, $sourceTags);
+        $trackTags = '';
+        // @phpstan-ignore nullCoalesce.offset (entries cached or mocked without tracks)
+        foreach ($playable['tracks'] ?? [] as $track) {
+            $trackTags .= \sprintf(
+                '<track kind="%s" srclang="%s" label="%s" src="%s"%s>',
+                htmlspecialchars($track['kind'], \ENT_QUOTES),
+                htmlspecialchars($track['srclang'], \ENT_QUOTES),
+                htmlspecialchars($track['label'], \ENT_QUOTES),
+                htmlspecialchars($track['src'], \ENT_QUOTES),
+                $track['default'] ? ' default' : '',
+            );
+        }
+        if ('' !== $trackTags) {
+            // The WebVTT files are fetched cross-origin from the CDN, which allows any origin.
+            $attrs .= ' crossorigin="anonymous"';
+        }
+
+        return AssetInjectionListener::SENTINEL . \sprintf('<video %s%s>%s%s</video>', $attrs, $style, $sourceTags, $trackTags);
     }
 
     /**
@@ -417,7 +434,7 @@ class VideoOptimizerExtension extends AbstractExtension
      *
      * @param array<string, mixed>|null $video the stored video property (needs `uuid`)
      *
-     * @return array{poster: ?string, srcset: ?string, hlsUrl: ?string, sources: array<int, array{src: string, type: string, label: string}>, width: ?int, height: ?int, duration: ?int, theme: ?array<int|string, mixed>}|null
+     * @return array{poster: ?string, srcset: ?string, hlsUrl: ?string, sources: array<int, array{src: string, type: string, label: string}>, width: ?int, height: ?int, duration: ?int, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>}|null
      *                                  null when no video is selected — same null behaviour as the
      *                                  rendering functions, which return an empty string there
      */
@@ -440,6 +457,8 @@ class VideoOptimizerExtension extends AbstractExtension
             'height' => $resolved['height'] ?? null,
             'duration' => $resolved['duration'] ?? null,
             'theme' => $resolved['theme'] ?? null,
+            // @phpstan-ignore nullCoalesce.offset (entries cached or mocked without tracks)
+            'tracks' => $resolved['tracks'] ?? [],
         ];
     }
 

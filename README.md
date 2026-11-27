@@ -342,6 +342,7 @@ Returns `null` when no video is selected, otherwise:
 | `sources` | `list` | each `{ src, type, label }` — HLS plus the MP4 renditions |
 | `width` / `height` / `duration` | `int\|null` | native dimensions, seconds |
 | `theme` | `array\|null` | the library's player theme overrides |
+| `tracks` | `array` | subtitle tracks `{src, srclang, label, kind, default}` (WebVTT on the CDN); render them as `<track>` and add `crossorigin="anonymous"` to your `<video>` |
 
 The entries keep the resolver's own key names — the vocabulary of an HTML `<source>` element. The
 function passes data through; it does not adapt it to any particular consumer's field names.

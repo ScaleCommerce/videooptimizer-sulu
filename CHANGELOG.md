@@ -7,7 +7,11 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 ### Upgrade
 - The native player now follows the player theme of the API: `controls: false`/`interactive: false` hide the controls of a video that autoplays (never of one the visitor has to start), `autoplay`/`mutedStart`/`loopButton` apply where the block leaves the option on "inherit" (which counts as autoplay on for blocks, as before), a block's `controls` option now also applies to it, and a player with autoplay off no longer starts on scroll: it fetches nothing but the poster until the visitor presses play; the inline style carries `--vo-accent` next to `--vo-player-accent`. Theme overrides of `renderNative()` markup are unaffected ([#22](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/22))
 
+### Added
+- Native player renders the subtitle tracks of the embed as `<track>` (kind, srclang, label, default) and sets `crossorigin="anonymous"` on the `<video>` when there are tracks; `video_optimizer_sources()` and `getPlayable()` return `tracks` ([#23](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/23))
+
 ### Changed
+- Embed cache key is `vo_embed_v3_<uuid>`: cached embeds are looked up again once after the update ([#23](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/23))
 - Native player applies the theme keys `controls`, `interactive`, `autoplay`, `mutedStart`, `loopButton`, `preload` and `accentColor` (`--vo-accent`); other keys are ignored and listed in the README ([#22](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/22))
 
 ## [2.0.0] - 2026-11-27

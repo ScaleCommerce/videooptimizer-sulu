@@ -428,6 +428,7 @@ class VideoOptimizerBlockRenderTest extends TestCase
                 ['src' => 'https://cdn.example.net/video.mp4', 'type' => 'video/mp4', 'label' => 'MP4'],
             ],
             'theme' => ['accentColor' => '#ff0033'],
+            'tracks' => [],
             'width' => 1920,
             'height' => 1080,
         ]);
@@ -545,6 +546,35 @@ class VideoOptimizerBlockRenderTest extends TestCase
         $bad = $this->nativeWithTheme(['accentColor' => 'red;background:url(//evil)']);
         self::assertStringNotContainsString('--vo-accent', $bad);
         self::assertStringNotContainsString('evil', $bad);
+    }
+
+    public function testRenderNativeAddsSubtitleTracksAndCrossorigin(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getPlayable('abc')->willReturn(['tracks' => [
+            ['src' => 'https://cdn.example.net/de.vtt?v=2', 'srclang' => 'de', 'label' => 'Deutsch "DE"', 'kind' => 'subtitles', 'default' => true],
+            ['src' => 'https://cdn.example.net/en.vtt', 'srclang' => 'en', 'label' => 'English', 'kind' => 'captions', 'default' => false],
+        ]] + $this->playable());
+        $extension = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
+
+        $html = $extension->renderNative(['uuid' => 'abc']);
+
+        self::assertStringContainsString('crossorigin="anonymous"', $html);
+        self::assertStringContainsString('<track kind="subtitles" srclang="de" label="Deutsch &quot;DE&quot;" src="https://cdn.example.net/de.vtt?v=2" default>', $html);
+        self::assertStringContainsString('<track kind="captions" srclang="en" label="English" src="https://cdn.example.net/en.vtt">', $html);
+        self::assertStringEndsWith('</video>', $html);
+    }
+
+    public function testRenderNativeWithoutTracksHasNoTrackOrCrossorigin(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getPlayable('abc')->willReturn($this->playable());
+        $extension = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
+
+        $html = $extension->renderNative(['uuid' => 'abc']);
+
+        self::assertStringNotContainsString('<track', $html);
+        self::assertStringNotContainsString('crossorigin', $html);
     }
 
     public function testRenderNativeIsDeferredByDefault(): void
@@ -696,7 +726,7 @@ class VideoOptimizerBlockRenderTest extends TestCase
     }
 
     /**
-     * @return array{poster: ?string, sources: array<int, array{src: string, type: string, label: string}>, theme: array<string, mixed>, width: ?int, height: ?int}
+     * @return array{poster: ?string, sources: array<int, array{src: string, type: string, label: string}>, theme: array<string, mixed>, tracks: array<int, mixed>, width: ?int, height: ?int}
      */
     private function playable(): array
     {
@@ -707,6 +737,7 @@ class VideoOptimizerBlockRenderTest extends TestCase
                 ['src' => 'https://cdn.example.net/video.mp4', 'type' => 'video/mp4', 'label' => 'MP4'],
             ],
             'theme' => [],
+            'tracks' => [],
             'width' => 1920,
             'height' => 1080,
         ];

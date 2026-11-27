@@ -102,7 +102,7 @@ class VideoOptimizerSourcesTwigTest extends TestCase
 
         self::assertSame(
             ['poster' => null, 'srcset' => null, 'hlsUrl' => null, 'sources' => [],
-                'width' => null, 'height' => null, 'duration' => null, 'theme' => null],
+                'width' => null, 'height' => null, 'duration' => null, 'theme' => null, 'tracks' => []],
             $out
         );
     }
@@ -148,7 +148,7 @@ class VideoOptimizerSourcesTwigTest extends TestCase
     {
         return \array_merge([
             'poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null,
-            'duration' => null, 'srcset' => null, 'theme' => null, 'sources' => [],
+            'duration' => null, 'srcset' => null, 'theme' => null, 'tracks' => [], 'sources' => [],
         ], $overrides);
     }
 

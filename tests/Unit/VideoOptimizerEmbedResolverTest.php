@@ -61,7 +61,7 @@ class VideoOptimizerEmbedResolverTest extends TestCase
         $resolver = new VideoOptimizerEmbedResolver($client->reveal(), $this->recordingCache($ttls));
 
         self::assertSame(
-            ['poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'srcset' => null, 'theme' => null, 'sources' => []],
+            ['poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'srcset' => null, 'theme' => null, 'tracks' => [], 'sources' => []],
             $resolver->getSources('abc'),
         );
         self::assertSame([60], $ttls, 'A failure is remembered for 60 s so a broken API is not hit on every render.');
@@ -126,7 +126,7 @@ class VideoOptimizerEmbedResolverTest extends TestCase
         $resolver->getSources('first');
         $resolver->getSources('second');
 
-        self::assertFalse($cache->hasItem('vo_embed_v2_second'), 'A skipped video must not be negatively cached.');
+        self::assertFalse($cache->hasItem('vo_embed_v3_second'), 'A skipped video must not be negatively cached.');
 
         $cache->deleteItem('vo_embed_api_down');
         $client->getEmbed('second')->willReturn(['sources' => [['src' => 'https://cdn.example.net/m.m3u8', 'type' => 'application/vnd.apple.mpegurl']]]);
@@ -391,10 +391,35 @@ class VideoOptimizerEmbedResolverTest extends TestCase
                     ['src' => 'https://cdn.example.net/master.m3u8', 'type' => 'application/vnd.apple.mpegurl', 'label' => 'auto'],
                 ],
                 'theme' => ['accentColor' => '#f00'],
+                'tracks' => [],
                 'width' => 1920,
                 'height' => 1080,
             ],
             $resolver->getPlayable('abc'),
         );
+    }
+
+    public function testExtractTracksKeepsUsableSubtitleTracksOnly(): void
+    {
+        $tracks = VideoOptimizerEmbedResolver::extractTracks([
+            ['src' => 'https://cdn/de.vtt?v=2', 'srclang' => 'de', 'label' => 'Deutsch', 'kind' => 'subtitles', 'default' => true],
+            ['src' => 'https://cdn/en.vtt', 'srclang' => 'en-US', 'kind' => 'captions'],
+            ['src' => 'http://cdn/plain.vtt', 'srclang' => 'fr', 'label' => 'Francais'],
+            ['src' => 'javascript:alert(1)', 'srclang' => 'es'],
+            ['src' => 'https://cdn/x.vtt', 'srclang' => '"><b>'],
+            ['src' => 'https://cdn/x.vtt', 'srclang' => "de\n"],
+            ['src' => 'https://cdn/s.vtt', 'srclang' => 'de-x-simple', 'label' => 'Einfach'],
+            'junk',
+        ]);
+
+        self::assertSame([
+            ['src' => 'https://cdn/de.vtt?v=2', 'srclang' => 'de', 'label' => 'Deutsch', 'kind' => 'subtitles', 'default' => true],
+            ['src' => 'https://cdn/en.vtt', 'srclang' => 'en-US', 'label' => 'en-US', 'kind' => 'captions', 'default' => false],
+            ['src' => 'https://cdn/s.vtt', 'srclang' => 'de-x-simple', 'label' => 'Einfach', 'kind' => 'subtitles', 'default' => false],
+        ], $tracks);
+        self::assertSame([], VideoOptimizerEmbedResolver::extractTracks(null));
+        self::assertCount(1, VideoOptimizerEmbedResolver::extractSources(['tracks' => [
+            ['src' => 'https://cdn/de.vtt?v=2', 'srclang' => 'de', 'label' => 'Deutsch', 'default' => true],
+        ]])['tracks']);
     }
 }
