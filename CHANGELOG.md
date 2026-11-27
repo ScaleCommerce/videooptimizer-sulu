@@ -4,6 +4,9 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Added
+- JavaScript tests (Vitest) for the admin API service and `vo-blocks.js`, run in CI next to PHPUnit and PHPStan ([#21](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/21))
+
 ## [1.8.2] - 2026-11-27
 
 ### Upgrade
