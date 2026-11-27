@@ -14,6 +14,8 @@ use Symfony\Component\HttpFoundation\Request;
  */
 class LibraryController
 {
+    private const ENCODING_QUALITIES = ['performance', 'quality'];
+
     public function __construct(private VideoOptimizerClient $client)
     {
     }
@@ -26,6 +28,9 @@ class LibraryController
     public function post(Request $request): JsonResponse
     {
         $payload = $this->payload($request);
+        if (null !== $invalid = $this->validateEncodingQuality($payload)) {
+            return $invalid;
+        }
 
         return $this->guard(fn () => new JsonResponse($this->client->createLibrary($payload), 201));
     }
@@ -33,6 +38,9 @@ class LibraryController
     public function patch(Request $request, string $id): JsonResponse
     {
         $payload = $this->payload($request);
+        if (null !== $invalid = $this->validateEncodingQuality($payload)) {
+            return $invalid;
+        }
 
         return $this->guard(fn () => new JsonResponse($this->client->updateLibrary($id, $payload)));
     }
@@ -51,14 +59,29 @@ class LibraryController
         return $this->guard(fn () => new JsonResponse(['_embedded' => ['videos' => $this->client->listVideos($id)]]));
     }
 
-    public function reprocess(string $id): JsonResponse
+    public function reprocess(Request $request, string $id): JsonResponse
     {
-        return $this->guard(fn () => new JsonResponse($this->client->reprocessLibrary($id)));
+        // Optional {"force": true}: re-encode finished renditions too (needed after changing encoding_quality).
+        $force = true === ($this->payload($request)['force'] ?? false);
+
+        return $this->guard(fn () => new JsonResponse($this->client->reprocessLibrary($id, $force)));
     }
 
     public function encodings(): JsonResponse
     {
         return $this->guard(fn () => new JsonResponse($this->client->listEncodings()));
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function validateEncodingQuality(array $payload): ?JsonResponse
+    {
+        if (\array_key_exists('encoding_quality', $payload) && !\in_array($payload['encoding_quality'], self::ENCODING_QUALITIES, true)) {
+            return new JsonResponse(['message' => 'encoding_quality must be "performance" or "quality".'], 400);
+        }
+
+        return null;
     }
 
     /**
@@ -83,7 +106,12 @@ class LibraryController
         try {
             return $callback();
         } catch (VideoOptimizerException $e) {
-            return new JsonResponse(['message' => $e->getMessage()], $e->getStatusCode() ?: 502);
+            $body = ['message' => $e->getMessage()];
+            if (null !== $e->getApiCode()) {
+                $body['code'] = $e->getApiCode();
+            }
+
+            return new JsonResponse($body, $e->getStatusCode() ?: 502);
         }
     }
 }

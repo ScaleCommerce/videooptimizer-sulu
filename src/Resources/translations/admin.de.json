@@ -96,5 +96,15 @@
     "scale_videooptimizer.delivery_only_hint": "Diese Bibliothek liefert nur aus. Encoding-Leiter, Upload und Poster stehen nicht zur Verfügung.",
     "scale_videooptimizer.ladder_reprocess_hint": "Nach dem Speichern „Neu verarbeiten\", damit die geänderte Encoding-Leiter greift.",
     "scale_videooptimizer.select_or_create_hint": "Wähle oben eine Bibliothek aus oder lege eine neue an.",
-    "scale_videooptimizer.upload_file": "Datei hochladen"
+    "scale_videooptimizer.upload_file": "Datei hochladen",
+    "scale_videooptimizer.processing_failed_reason": "Verarbeitung fehlgeschlagen: {reason}",
+    "scale_videooptimizer.failure_reason": "Grund",
+    "scale_videooptimizer.ingest_url_help": "Öffentlicher https-Link auf die Videodatei selbst, z. B. https://example.com/video.mp4.",
+    "scale_videooptimizer.ingest_platform_link": "Bitte einen Link auf eine Videodatei angeben, nicht auf eine Videoseite. Videoplattformen wie YouTube lassen sich nicht importieren.",
+    "scale_videooptimizer.encoding_quality": "Qualitätsmodus",
+    "scale_videooptimizer.encoding_quality_performance": "Performance (Standard)",
+    "scale_videooptimizer.encoding_quality_quality": "Qualität (schärfer)",
+    "scale_videooptimizer.encoding_quality_help": "Performance: kompakte Dateien, schneller Start. Qualität: sichtbar schärfer, etwa 2,5–3× so viel CDN-Traffic.",
+    "scale_videooptimizer.quality_reprocess_hint": "Nach dem Speichern „Neu verarbeiten“ mit „Alle Qualitäten neu encodieren“ ausführen, damit vorhandene Videos den neuen Modus nutzen.",
+    "scale_videooptimizer.reprocess_force": "Alle Qualitäten neu encodieren (auch bereits verarbeitete Videos)"
 }

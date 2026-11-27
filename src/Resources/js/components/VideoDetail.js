@@ -172,7 +172,7 @@ class VideoDetail extends React.Component<*> {
             }));
     };
 
-    // Runs the presigned custom-poster pipeline for any File/Blob and selects it as the poster.
+    // Runs the presigned custom-poster pipeline for any File/Blob; the API activates it once processed.
     @action uploadPosterBlob = (blob) => {
         this.busy = 'poster';
         this.error = null;
@@ -183,16 +183,17 @@ class VideoDetail extends React.Component<*> {
                 if (this._unmounted) { return; }
                 this.status = translate('scale_videooptimizer.processing');
             }))
-            .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.custom_status) === 'ready'
-                || (v.poster && v.poster.custom_status) === 'failed'))
-            .then((video) => {
+            .then(() => pollVideo(this.video.uuid, (v) => {
+                const poster = v.poster || {};
+
+                return poster.custom_status === 'failed' || (poster.custom_status === 'ready' && poster.source === 'custom');
+            }))
+            .then(action((video) => {
+                // A processed custom poster becomes the active one on its own (no poster/select needed).
                 if (video.poster && video.poster.custom_status === 'failed') {
                     throw new Error(translate('scale_videooptimizer.poster_failed'));
                 }
-                return selectPoster(this.video.uuid, {source: 'custom'});
-            })
-            .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) === 'custom'))
-            .then(action((video) => {
+
                 if (this._unmounted) { return; }
                 this.busy = null;
                 this.status = null;
@@ -281,6 +282,7 @@ class VideoDetail extends React.Component<*> {
         if (v.resolution) { rows.push([translate('scale_videooptimizer.dimensions'), v.resolution]); }
         if (typeof v.duration === 'number') { rows.push([translate('scale_videooptimizer.duration'), formatDuration(v.duration)]); }
         if (v.status) { rows.push([translate('scale_videooptimizer.status'), translate('scale_videooptimizer.status_' + v.status)]); }
+        if (v.status === 'failed' && typeof v.error === 'string' && v.error.trim()) { rows.push([translate('scale_videooptimizer.failure_reason'), v.error.trim()]); }
         if (typeof v.views === 'number') { rows.push([translate('scale_videooptimizer.views'), String(v.views)]); }
         if (v.created_at) { rows.push([translate('scale_videooptimizer.created'), formatDate(v.created_at)]); }
 

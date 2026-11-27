@@ -163,7 +163,12 @@ class VideoController
         try {
             return $callback();
         } catch (VideoOptimizerException $e) {
-            return new JsonResponse(['message' => $e->getMessage()], $e->getStatusCode() ?: 502);
+            $body = ['message' => $e->getMessage()];
+            if (null !== $e->getApiCode()) {
+                $body['code'] = $e->getApiCode();
+            }
+
+            return new JsonResponse($body, $e->getStatusCode() ?: 502);
         }
     }
 }
