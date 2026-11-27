@@ -11,6 +11,7 @@ import {
     deleteSubtitleLanguage,
     fileToBase64,
     getAllVideos,
+    getSavings,
     getSubtitleLanguages,
     getSubtitles,
     subtitleDownloadUrl,
@@ -142,6 +143,20 @@ describe('posters', () => {
         expect(bustCache('https://cdn/x.jpg')).toMatch(/^https:\/\/cdn\/x\.jpg\?_=\d+$/);
         expect(bustCache('https://cdn/x.jpg?w=1')).toMatch(/\?w=1&_=\d+$/);
         expect(bustCache(null)).toBeNull();
+    });
+});
+
+describe('savings', () => {
+    it('sends the range only as a pair and the optional filters', async () => {
+        Requester.get.mockResolvedValue({traffic_available: true});
+
+        await getSavings({from: '2026-11-01', to: '2026-11-30', libraryId: 'lib 1'});
+        await getSavings({from: '2026-11-01'});
+        await getSavings();
+
+        expect(Requester.get).toHaveBeenNthCalledWith(1, '/admin/api/videooptimizer/savings?from=2026-11-01&to=2026-11-30&library_id=lib%201');
+        expect(Requester.get).toHaveBeenNthCalledWith(2, '/admin/api/videooptimizer/savings');
+        expect(Requester.get).toHaveBeenNthCalledWith(3, '/admin/api/videooptimizer/savings');
     });
 });
 

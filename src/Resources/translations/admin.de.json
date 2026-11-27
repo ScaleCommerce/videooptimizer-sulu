@@ -151,5 +151,12 @@
     "scale_videooptimizer.metadata_key_invalid": "Ein Metadaten-Schlüssel braucht 1-40 Zeichen: Kleinbuchstaben, Ziffern, _ . und -.",
     "scale_videooptimizer.metadata_key_duplicate": "Ein Metadaten-Schlüssel kommt doppelt vor.",
     "scale_videooptimizer.metadata_value_invalid": "Ein Metadaten-Wert braucht 1-64 Zeichen.",
-    "scale_videooptimizer.metadata_too_many": "Ein Video kann höchstens 10 Metadaten-Einträge haben."
+    "scale_videooptimizer.metadata_too_many": "Ein Video kann höchstens 10 Metadaten-Einträge haben.",
+    "scale_videooptimizer.savings": "Einsparungen",
+    "scale_videooptimizer.savings_videos": "Optimierte Videos",
+    "scale_videooptimizer.savings_smaller": "Kleinere Dateien",
+    "scale_videooptimizer.savings_bandwidth_range": "Eingesparte Bandbreite, letzte {days} Tage",
+    "scale_videooptimizer.savings_bandwidth_all": "Eingesparte Bandbreite, gesamt",
+    "scale_videooptimizer.savings_of_delivered": "von {delivered} ausgeliefert",
+    "scale_videooptimizer.savings_help": "Im Vergleich zur Auslieferung der Originaldateien. Die Bandbreite ist geschätzt; Video-Traffic wird seit Oktober 2026 erfasst."
 }

@@ -13,21 +13,10 @@ import {
     deleteLibrary,
     reprocessLibrary,
 } from '../services/api';
+import {formatBytes} from '../services/format';
+import SavingsSummary from '../components/SavingsSummary';
 
 const CREATE_ID = '__new__';
-
-// Formats a byte count as a human-readable size (e.g. 1536 -> "1.5 KB").
-function formatBytes(bytes: number): string {
-    if (!bytes || bytes <= 0) {
-        return '0 B';
-    }
-
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-    const value = bytes / Math.pow(1024, exponent);
-
-    return (exponent === 0 ? value : value.toFixed(1)) + ' ' + units[exponent];
-}
 
 // Splits a stored comma-separated ladder ("h264,h265") into a trimmed key array.
 function splitKeys(value: ?string): Array<string> {
@@ -508,6 +497,8 @@ class Libraries extends React.Component<*> {
                 <div className="vo-list-header">
                     <h1>{translate('scale_videooptimizer.libraries_nav')}</h1>
                 </div>
+
+                <SavingsSummary />
 
                 <div className="vo-rail">{this.renderRail()}</div>
 

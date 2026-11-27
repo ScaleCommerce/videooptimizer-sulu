@@ -164,6 +164,23 @@ export function getVideoPage({libraryId, tags, cursor, limit}: Object = {}) {
     }));
 }
 
+// Savings compared to serving the original files: {traffic_available, compression, range, all_time}.
+// Optional {from, to} (YYYY-MM-DD, UTC), libraryId, videoUuid.
+export function getSavings({from, to, libraryId, videoUuid}: Object = {}) {
+    const query = [];
+    if (from && to) {
+        query.push('from=' + encodeURIComponent(from), 'to=' + encodeURIComponent(to));
+    }
+    if (libraryId) {
+        query.push('library_id=' + encodeURIComponent(libraryId));
+    }
+    if (videoUuid) {
+        query.push('video_uuid=' + encodeURIComponent(videoUuid));
+    }
+
+    return normalize(Requester.get(BASE + '/savings' + (query.length > 0 ? '?' + query.join('&') : '')));
+}
+
 // The organization's tags with their video counts, alphabetically: [{name, video_count}].
 export function getTags() {
     return normalize(Requester.get(BASE + '/tags')).then((response) => (response._embedded && response._embedded.tags) || []);

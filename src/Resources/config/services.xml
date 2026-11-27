@@ -98,6 +98,11 @@
             <tag name="controller.service_arguments"/>
         </service>
 
+        <service id="Scale\VideoOptimizerBundle\Controller\Admin\SavingsController" public="true">
+            <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
+            <tag name="controller.service_arguments"/>
+        </service>
+
         <service id="Scale\VideoOptimizerBundle\Controller\Admin\SubtitleController" public="true">
             <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver"/>

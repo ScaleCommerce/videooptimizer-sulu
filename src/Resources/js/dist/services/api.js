@@ -24,6 +24,7 @@ exports.fileToBase64 = fileToBase64;
 exports.getAllVideos = getAllVideos;
 exports.getEncodings = getEncodings;
 exports.getLibraries = getLibraries;
+exports.getSavings = getSavings;
 exports.getSettings = getSettings;
 exports.getSubtitleLanguages = getSubtitleLanguages;
 exports.getSubtitles = getSubtitles;
@@ -220,6 +221,27 @@ function getVideoPage() {
   });
 }
 
+// Savings compared to serving the original files: {traffic_available, compression, range, all_time}.
+// Optional {from, to} (YYYY-MM-DD, UTC), libraryId, videoUuid.
+function getSavings() {
+  var _ref2 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+    from = _ref2.from,
+    to = _ref2.to,
+    libraryId = _ref2.libraryId,
+    videoUuid = _ref2.videoUuid;
+  var query = [];
+  if (from && to) {
+    query.push('from=' + encodeURIComponent(from), 'to=' + encodeURIComponent(to));
+  }
+  if (libraryId) {
+    query.push('library_id=' + encodeURIComponent(libraryId));
+  }
+  if (videoUuid) {
+    query.push('video_uuid=' + encodeURIComponent(videoUuid));
+  }
+  return normalize(_services.Requester.get(BASE + '/savings' + (query.length > 0 ? '?' + query.join('&') : '')));
+}
+
 // The organization's tags with their video counts, alphabetically: [{name, video_count}].
 function getTags() {
   return normalize(_services.Requester.get(BASE + '/tags')).then(function (response) {
@@ -253,11 +275,11 @@ function fileToBase64(file) {
 }
 
 // Uploads an .srt/.vtt file for one of the organization's subtitle languages; replaces an existing one.
-function uploadSubtitle(uuid, _ref2) {
-  var file = _ref2.file,
-    language = _ref2.language,
-    kind = _ref2.kind,
-    isDefault = _ref2.isDefault;
+function uploadSubtitle(uuid, _ref3) {
+  var file = _ref3.file,
+    language = _ref3.language,
+    kind = _ref3.kind,
+    isDefault = _ref3.isDefault;
   if (file.size > SUBTITLE_MAX_BYTES) {
     return Promise.reject(toError((0, _utils.translate)('scale_videooptimizer.subtitle_too_large'), 413, 'subtitle_too_large'));
   }

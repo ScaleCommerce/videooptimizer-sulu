@@ -151,5 +151,12 @@
     "scale_videooptimizer.metadata_key_invalid": "A metadata key needs 1-40 characters: lower-case letters, digits, _ . and -.",
     "scale_videooptimizer.metadata_key_duplicate": "A metadata key is used twice.",
     "scale_videooptimizer.metadata_value_invalid": "A metadata value needs 1-64 characters.",
-    "scale_videooptimizer.metadata_too_many": "A video can have at most 10 metadata entries."
+    "scale_videooptimizer.metadata_too_many": "A video can have at most 10 metadata entries.",
+    "scale_videooptimizer.savings": "Savings",
+    "scale_videooptimizer.savings_videos": "Optimized videos",
+    "scale_videooptimizer.savings_smaller": "Smaller files",
+    "scale_videooptimizer.savings_bandwidth_range": "Bandwidth saved, last {days} days",
+    "scale_videooptimizer.savings_bandwidth_all": "Bandwidth saved, all time",
+    "scale_videooptimizer.savings_of_delivered": "of {delivered} delivered",
+    "scale_videooptimizer.savings_help": "Compared with serving the original files. Bandwidth figures are estimates; video traffic is tracked from October 2026."
 }

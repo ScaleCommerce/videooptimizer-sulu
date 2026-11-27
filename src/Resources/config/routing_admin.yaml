@@ -175,3 +175,8 @@ scale_videooptimizer_tags_list:
     path: /videooptimizer/tags
     methods: [GET]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::tags'
+
+scale_videooptimizer_savings_get:
+    path: /videooptimizer/savings
+    methods: [GET]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SavingsController::get'

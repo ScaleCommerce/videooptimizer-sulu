@@ -154,6 +154,39 @@ class VideoOptimizerClient
     }
 
     /**
+     * What VideoOptimizer saves compared to serving the original files: file-size reduction of the encoded
+     * versions plus (when traffic data exists) the estimated bandwidth saved, for an optional date range
+     * and since the beginning. Covers the organization, or one library or video.
+     *
+     * @param string|null $from first UTC day of the range (YYYY-MM-DD), together with $to
+     * @param string|null $to   last UTC day of the range, inclusive
+     *
+     * @return array<string, mixed> {traffic_available, compression, range, all_time}
+     */
+    public function getSavings(?string $from = null, ?string $to = null, ?string $libraryId = null, ?string $videoUuid = null): array
+    {
+        $query = [];
+        foreach (['from' => $from, 'to' => $to] as $name => $date) {
+            if (null !== $date && '' !== $date) {
+                if (1 !== preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                    throw new VideoOptimizerException('"' . $name . '" must be a date like 2026-11-30.', 400);
+                }
+                $query[$name] = $date;
+            }
+        }
+        foreach (['library_id' => $libraryId, 'video_uuid' => $videoUuid] as $name => $id) {
+            if (null !== $id && '' !== $id) {
+                if (1 !== preg_match('/^[A-Za-z0-9-]{1,64}$/', $id)) {
+                    throw new VideoOptimizerException('"' . $name . '" is not a valid ID.', 400);
+                }
+                $query[$name] = $id;
+            }
+        }
+
+        return $this->requestData('GET', '/savings', [] === $query ? [] : ['query' => $query]);
+    }
+
+    /**
      * The organization's tags with the number of videos carrying them, alphabetically.
      *
      * @return array<int, array{name?: string, video_count?: int}>

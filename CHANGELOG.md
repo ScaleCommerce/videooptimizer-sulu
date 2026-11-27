@@ -13,6 +13,7 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 - API transport errors and timeouts become a neutral 502 message (the upstream URL is only logged); embed lookups while rendering no longer wait for `Retry-After` ([#20](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/20))
 
 ### Added
+- Libraries view shows the savings: optimized videos, file-size reduction and the estimated bandwidth saved (last 30 days and all time); route `GET videooptimizer/savings` ([#16](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/16))
 - Video detail: edit tags (with suggestions) and metadata key/value entries (e.g. CMS IDs), validated like the API does; video lists can be filtered by tag; `PATCH` of a video validates `tags`/`metadata` and `GET videooptimizer/tags` lists the tags ([#15](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/15))
 - Video detail: list, upload (.srt/.vtt, kind, default track), download and delete subtitles per video; Settings: manage the organization's subtitle languages, deleting a language that is still in use is explained ([#14](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/14))
 - Admin proxy routes `videos/{uuid}/subtitles[/{language}]` and `subtitle-languages[/{code}]` (the route import already covers them) ([#14](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/14))

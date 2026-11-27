@@ -468,3 +468,41 @@
     gap: 8px;
     margin-bottom: 8px;
 }
+
+.vo-savings {
+    margin: 0 0 20px;
+}
+
+.vo-savings__title {
+    margin: 0 0 8px;
+    font-size: 16px;
+}
+
+.vo-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.vo-stat {
+    flex: 1 1 180px;
+    padding: 12px 16px;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    background: #fff;
+}
+
+.vo-stat__label {
+    color: #666;
+    font-size: 13px;
+}
+
+.vo-stat__value {
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.vo-stat__hint {
+    color: #666;
+    font-size: 12px;
+}

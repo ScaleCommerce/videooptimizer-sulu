@@ -40,7 +40,6 @@ require("core-js/modules/es.array.map.js");
 require("core-js/modules/es.array.some.js");
 require("core-js/modules/es.date.to-string.js");
 require("core-js/modules/es.function.name.js");
-require("core-js/modules/es.number.to-fixed.js");
 require("core-js/modules/es.object.get-own-property-descriptor.js");
 require("core-js/modules/es.object.to-string.js");
 require("core-js/modules/es.set.js");
@@ -60,6 +59,8 @@ var _components = require("sulu-admin-bundle/components");
 var _FolderList = _interopRequireDefault(require("sulu-admin-bundle/components/FolderList"));
 var _utils = require("sulu-admin-bundle/utils");
 var _api = require("../services/api");
+var _format = require("../services/format");
+var _SavingsSummary = _interopRequireDefault(require("../components/SavingsSummary"));
 var _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9, _descriptor0, _descriptor1, _descriptor10, _descriptor11, _descriptor12, _descriptor13, _descriptor14, _descriptor15, _descriptor16, _descriptor17, _descriptor18, _descriptor19, _descriptor20, _descriptor21, _descriptor22, _descriptor23, _descriptor24, _descriptor25, _descriptor26, _descriptor27, _descriptor28, _descriptor29, _descriptor30, _descriptor31;
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
@@ -84,17 +85,6 @@ function _setPrototypeOf(t, e) { return _setPrototypeOf = Object.setPrototypeOf 
 function _applyDecoratedDescriptor(i, e, r, n, l) { var a = {}; return Object.keys(n).forEach(function (i) { a[i] = n[i]; }), a.enumerable = !!a.enumerable, a.configurable = !!a.configurable, ("value" in a || a.initializer) && (a.writable = !0), a = r.slice().reverse().reduce(function (r, n) { return n(i, e, r) || r; }, a), l && void 0 !== a.initializer && (a.value = a.initializer ? a.initializer.call(l) : void 0, a.initializer = void 0), void 0 === a.initializer ? (Object.defineProperty(i, e, a), null) : a; }
 function _initializerWarningHelper(r, e) { throw Error("Decorating class property failed. Please ensure that transform-class-properties is enabled and runs after the decorators transform."); }
 var CREATE_ID = '__new__';
-
-// Formats a byte count as a human-readable size (e.g. 1536 -> "1.5 KB").
-function formatBytes(bytes) {
-  if (!bytes || bytes <= 0) {
-    return '0 B';
-  }
-  var units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  var exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  var value = bytes / Math.pow(1024, exponent);
-  return (exponent === 0 ? value : value.toFixed(1)) + ' ' + units[exponent];
-}
 
 // Splits a stored comma-separated ladder ("h264,h265") into a trimmed key array.
 function splitKeys(value) {
@@ -351,7 +341,7 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
         className: "vo-meta__row"
       }, /*#__PURE__*/_react["default"].createElement("dt", null, (0, _utils.translate)('scale_videooptimizer.videos_label')), /*#__PURE__*/_react["default"].createElement("dd", null, library.video_count || 0)), /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-meta__row"
-      }, /*#__PURE__*/_react["default"].createElement("dt", null, (0, _utils.translate)('scale_videooptimizer.library_storage')), /*#__PURE__*/_react["default"].createElement("dd", null, formatBytes(library.storage_usage || 0))), /*#__PURE__*/_react["default"].createElement("div", {
+      }, /*#__PURE__*/_react["default"].createElement("dt", null, (0, _utils.translate)('scale_videooptimizer.library_storage')), /*#__PURE__*/_react["default"].createElement("dd", null, (0, _format.formatBytes)(library.storage_usage || 0))), /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-meta__row"
       }, /*#__PURE__*/_react["default"].createElement("dt", null, (0, _utils.translate)('scale_videooptimizer.created')), /*#__PURE__*/_react["default"].createElement("dd", null, formatDate(library.created_at))), !mediaManaged && /*#__PURE__*/_react["default"].createElement("span", {
         className: "vo-badge vo-badge--muted"
@@ -432,7 +422,7 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
         className: "vo-page vo-page--wide"
       }, /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-list-header"
-      }, /*#__PURE__*/_react["default"].createElement("h1", null, (0, _utils.translate)('scale_videooptimizer.libraries_nav'))), /*#__PURE__*/_react["default"].createElement("div", {
+      }, /*#__PURE__*/_react["default"].createElement("h1", null, (0, _utils.translate)('scale_videooptimizer.libraries_nav'))), /*#__PURE__*/_react["default"].createElement(_SavingsSummary["default"], null), /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-rail"
       }, this.renderRail()), /*#__PURE__*/_react["default"].createElement("hr", {
         className: "vo-divider"
