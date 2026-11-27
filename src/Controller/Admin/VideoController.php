@@ -26,6 +26,24 @@ class VideoController
         $libraryId = $request->query->get('library_id');
         $libraryId = \is_string($libraryId) && '' !== $libraryId ? $libraryId : null;
 
+        // Paged mode ("load more"): the admin sends limit and/or cursor and gets one page plus the next
+        // cursor. Without them every video is returned, as before.
+        if ($request->query->has('limit') || $request->query->has('cursor')) {
+            $cursor = $request->query->get('cursor');
+            $tags = $request->query->get('tags');
+
+            return $this->guard(function () use ($libraryId, $cursor, $tags, $request) {
+                $page = $this->client->listVideosPage(
+                    $libraryId,
+                    \is_string($cursor) ? $cursor : null,
+                    $request->query->getInt('limit', 60),
+                    \is_string($tags) ? $tags : null,
+                );
+
+                return new JsonResponse(['_embedded' => ['videos' => $page['videos']], 'next_cursor' => $page['next_cursor'], 'has_more' => $page['has_more']]);
+            });
+        }
+
         return $this->guard(fn () => new JsonResponse(['_embedded' => ['videos' => $this->client->listAllVideos($libraryId)]]));
     }
 

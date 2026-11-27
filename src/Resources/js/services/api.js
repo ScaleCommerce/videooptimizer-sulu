@@ -140,6 +140,27 @@ export function getAllVideos() {
         .then((response) => response._embedded.videos || []);
 }
 
+// One page of the video list for "Load more": {videos, nextCursor, hasMore}. Optional filters: library, tags
+// (comma-separated, videos must carry all of them).
+export function getVideoPage({libraryId, tags, cursor, limit}: Object = {}) {
+    const query = ['limit=' + encodeURIComponent(String(limit || 60))];
+    if (libraryId) {
+        query.push('library_id=' + encodeURIComponent(libraryId));
+    }
+    if (cursor) {
+        query.push('cursor=' + encodeURIComponent(cursor));
+    }
+    if (tags) {
+        query.push('tags=' + encodeURIComponent(tags));
+    }
+
+    return normalize(Requester.get(BASE + '/videos?' + query.join('&'))).then((response) => ({
+        videos: (response._embedded && response._embedded.videos) || [],
+        nextCursor: response.next_cursor || null,
+        hasMore: !!response.has_more && !!response.next_cursor,
+    }));
+}
+
 export function getVideo(uuid: string) {
     return normalize(Requester.get(BASE + '/videos/' + encodeURIComponent(uuid)));
 }

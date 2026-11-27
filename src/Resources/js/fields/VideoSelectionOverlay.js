@@ -5,8 +5,9 @@ import {observable, action} from 'mobx';
 import {Overlay, Loader, Button} from 'sulu-admin-bundle/components';
 import FolderList from 'sulu-admin-bundle/components/FolderList';
 import {translate} from 'sulu-admin-bundle/utils';
-import {getLibraries, getAllVideos, initiateUpload, uploadParts, completeUpload, isAbortError, abortError, ingestVideoUrl, pollVideo, posterFor, bustCache, failureMessage, errorText} from '../services/api';
+import {getLibraries, getVideoPage, initiateUpload, uploadParts, completeUpload, isAbortError, abortError, ingestVideoUrl, pollVideo, posterFor, bustCache, failureMessage, errorText} from '../services/api';
 import VideoDetail from '../components/VideoDetail';
+import VideoPager from '../services/VideoPager';
 
 @observer
 class VideoSelectionOverlay extends React.Component<*> {
@@ -16,6 +17,9 @@ class VideoSelectionOverlay extends React.Component<*> {
     // null = show videos from every library; a library id = filter to that library.
     @observable activeLibraryId = null;
     @observable videos = [];
+    @observable hasMore = false;
+    @observable loadingMore = false;
+    @observable loadingVideos = false;
     @observable uploading = false;
     @observable uploadStatus = null;
     @observable ingestSourceUrl = '';
@@ -26,6 +30,17 @@ class VideoSelectionOverlay extends React.Component<*> {
     @observable search = '';
     @observable readyOnly = false;
     @observable managing = null;
+
+    // Pages the video list with the API cursor; loaded pages survive edits, deletions and uploads.
+    pager = new VideoPager(getVideoPage, action((state) => {
+        this.videos = state.items;
+        this.hasMore = state.hasMore;
+        this.loadingMore = state.loadingMore;
+        this.loadingVideos = state.loading;
+        if (state.error) {
+            this.error = state.error.message || String(state.error);
+        }
+    }));
 
     componentDidMount() {
         this.load();
@@ -59,14 +74,14 @@ class VideoSelectionOverlay extends React.Component<*> {
 
     load() {
         this.setLoading(true);
-        Promise.all([getLibraries(), getAllVideos()])
-            .then(action(([libraries, videos]) => {
+        getLibraries()
+            .then(action((libraries) => {
                 this.libraries = libraries;
-                this.videos = videos;
                 this.loading = false;
                 const preferred = this.props.defaultLibraryId;
                 // Preselect the preferred library folder when it exists; otherwise start on "all".
                 this.activeLibraryId = (preferred && libraries.find((l) => l.id === preferred)) ? preferred : null;
+                this.pager.load({libraryId: this.activeLibraryId});
             }))
             .catch(action((e) => {
                 this.loading = false;
@@ -84,11 +99,19 @@ class VideoSelectionOverlay extends React.Component<*> {
         this.search = '';
         this.readyOnly = false;
         this.managing = null;
+        this.error = null;
+        this.pager.load({libraryId: id});
     };
 
     @action showAll = () => {
         this.activeLibraryId = null;
         this.managing = null;
+        this.error = null;
+        this.pager.load({libraryId: null});
+    };
+
+    @action loadMore = () => {
+        this.pager.loadMore();
     };
 
     activeLibrary() {
@@ -110,8 +133,8 @@ class VideoSelectionOverlay extends React.Component<*> {
     filteredVideos() {
         const term = this.search.trim().toLowerCase();
 
+        // The library is filtered by the API; "ready only" and the title search only see the loaded pages.
         return this.videos
-            .filter((video) => !this.activeLibraryId || video.library_id === this.activeLibraryId)
             .filter((video) => !this.readyOnly || video.status === 'ready')
             .filter((video) => term === '' || (video.title || '').toLowerCase().indexOf(term) !== -1)
             // Show pickable (ready) videos first; the preceding filters already return a fresh array
@@ -139,13 +162,13 @@ class VideoSelectionOverlay extends React.Component<*> {
 
     @action updateManaged = (video) => {
         this.managing = video;
-        this.videos = this.videos.map((v) => (v.uuid === video.uuid ? video : v));
+        this.pager.replace(video);
     };
 
     @action afterDelete = () => {
         const id = this.managing.uuid;
         this.managing = null;
-        this.videos = this.videos.filter((v) => v.uuid !== id);
+        this.pager.remove(id);
     };
 
     handleFileChange = (event: SyntheticInputEvent<HTMLInputElement>) => {
@@ -320,7 +343,7 @@ class VideoSelectionOverlay extends React.Component<*> {
                         {translate('scale_videooptimizer.ready_only')}
                     </label>
                 </div>
-                {videos.length === 0
+                {this.loadingVideos ? <Loader /> : videos.length === 0
                     ? <div className="vo-empty">{translate('scale_videooptimizer.no_matches')}</div>
                     : <div className="vo-video-grid">
                         {videos.map((video) => {
@@ -363,6 +386,13 @@ class VideoSelectionOverlay extends React.Component<*> {
                         })}
                     </div>
                 }
+                {this.hasMore && !this.loadingVideos && (
+                    <div className="vo-load-more">
+                        <Button skin="secondary" onClick={this.loadMore} loading={this.loadingMore}>
+                            {translate('scale_videooptimizer.load_more')}
+                        </Button>
+                    </div>
+                )}
             </React.Fragment>
         );
     }

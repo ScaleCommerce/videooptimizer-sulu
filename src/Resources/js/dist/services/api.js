@@ -22,6 +22,7 @@ exports.getLibraries = getLibraries;
 exports.getSettings = getSettings;
 exports.getThumbnails = getThumbnails;
 exports.getVideo = getVideo;
+exports.getVideoPage = getVideoPage;
 exports.ingestVideoUrl = ingestVideoUrl;
 exports.initiatePosterUpload = initiatePosterUpload;
 exports.initiateUpload = initiateUpload;
@@ -39,6 +40,7 @@ exports.updateVideo = updateVideo;
 exports.uploadParts = uploadParts;
 exports.uploadPoster = uploadPoster;
 require("core-js/modules/es.array.index-of.js");
+require("core-js/modules/es.array.join.js");
 require("core-js/modules/es.array.reduce.js");
 require("core-js/modules/es.array.slice.js");
 require("core-js/modules/es.date.now.js");
@@ -175,6 +177,33 @@ function getEncodings() {
 function getAllVideos() {
   return normalize(_services.Requester.get(BASE + '/videos')).then(function (response) {
     return response._embedded.videos || [];
+  });
+}
+
+// One page of the video list for "Load more": {videos, nextCursor, hasMore}. Optional filters: library, tags
+// (comma-separated, videos must carry all of them).
+function getVideoPage() {
+  var _ref = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+    libraryId = _ref.libraryId,
+    tags = _ref.tags,
+    cursor = _ref.cursor,
+    limit = _ref.limit;
+  var query = ['limit=' + encodeURIComponent(String(limit || 60))];
+  if (libraryId) {
+    query.push('library_id=' + encodeURIComponent(libraryId));
+  }
+  if (cursor) {
+    query.push('cursor=' + encodeURIComponent(cursor));
+  }
+  if (tags) {
+    query.push('tags=' + encodeURIComponent(tags));
+  }
+  return normalize(_services.Requester.get(BASE + '/videos?' + query.join('&'))).then(function (response) {
+    return {
+      videos: response._embedded && response._embedded.videos || [],
+      nextCursor: response.next_cursor || null,
+      hasMore: !!response.has_more && !!response.next_cursor
+    };
   });
 }
 function getVideo(uuid) {

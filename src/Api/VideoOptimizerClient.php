@@ -111,6 +111,41 @@ class VideoOptimizerClient
     }
 
     /**
+     * Fetches ONE page of the org-wide video list (newest first) for the admin's "load more" paging.
+     *
+     * @param string|null $tags comma-separated tag names: only videos carrying all of them
+     *
+     * @return array{videos: array<int, array<string, mixed>>, next_cursor: ?string, has_more: bool}
+     */
+    public function listVideosPage(?string $libraryId, ?string $cursor, int $limit, ?string $tags = null): array
+    {
+        $query = ['limit' => max(1, min($limit, self::PAGE_LIMIT))];
+        if (null !== $libraryId && '' !== $libraryId) {
+            $query['library_id'] = $libraryId;
+        }
+        if (null !== $cursor && '' !== $cursor) {
+            $query['cursor'] = $cursor;
+        }
+        if (null !== $tags && '' !== trim($tags)) {
+            $query['tags'] = trim($tags);
+        }
+
+        $response = $this->request('GET', '/videos', ['query' => $query]);
+
+        $videos = [];
+        foreach (\is_array($response['data'] ?? null) ? $response['data'] : [] as $item) {
+            if (\is_array($item)) {
+                /** @var array<string, mixed> $item */
+                $videos[] = $item;
+            }
+        }
+        $pagination = \is_array($response['pagination'] ?? null) ? $response['pagination'] : [];
+        $next = \is_string($pagination['next_cursor'] ?? null) && '' !== $pagination['next_cursor'] ? $pagination['next_cursor'] : null;
+
+        return ['videos' => $videos, 'next_cursor' => $next, 'has_more' => true === ($pagination['has_more'] ?? false) && null !== $next];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function getVideo(string $uuid): array

@@ -407,3 +407,9 @@
     font-weight: 600;
 }
 .vo-badge--muted { background: #f2f4f7; color: #667085; }
+
+.vo-load-more {
+    display: flex;
+    justify-content: center;
+    padding: 16px 0;
+}

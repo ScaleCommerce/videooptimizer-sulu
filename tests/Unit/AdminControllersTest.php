@@ -188,6 +188,47 @@ class AdminControllersTest extends TestCase
         self::assertSame($upstreamText, $decoded['upstream'] ?? false);
     }
 
+    public function testVideoListIsPagedWhenALimitOrCursorIsGiven(): void
+    {
+        $urls = [];
+        $controller = new VideoController($this->client(function (string $m, string $u) use (&$urls): MockResponse {
+            $urls[] = $u;
+
+            return new MockResponse(json_encode([
+                'data' => [['uuid' => 'a']],
+                'pagination' => ['next_cursor' => 'n1', 'has_more' => true],
+            ], JSON_THROW_ON_ERROR));
+        }));
+
+        $response = $controller->list(new Request(['library_id' => 'lib', 'limit' => '60', 'cursor' => 'c0', 'tags' => 'promo']));
+
+        self::assertSame(
+            ['_embedded' => ['videos' => [['uuid' => 'a']]], 'next_cursor' => 'n1', 'has_more' => true],
+            json_decode((string) $response->getContent(), true),
+        );
+        self::assertCount(1, $urls);
+        self::assertStringContainsString('cursor=c0', $urls[0]);
+        self::assertStringContainsString('tags=promo', $urls[0]);
+    }
+
+    public function testVideoListWithoutPagingParametersStillReturnsEveryVideo(): void
+    {
+        $calls = 0;
+        $controller = new VideoController($this->client(function () use (&$calls): MockResponse {
+            ++$calls;
+
+            return new MockResponse(json_encode([
+                'data' => [['uuid' => 'v' . $calls]],
+                'pagination' => ['next_cursor' => 1 === $calls ? 'n' : null, 'has_more' => 1 === $calls],
+            ], JSON_THROW_ON_ERROR));
+        }));
+
+        $decoded = json_decode((string) $controller->list(new Request())->getContent(), true);
+
+        self::assertSame([['uuid' => 'v1'], ['uuid' => 'v2']], $decoded['_embedded']['videos']);
+        self::assertArrayNotHasKey('has_more', $decoded);
+    }
+
     public function testUnreachableApiIsReportedAs502WithACode(): void
     {
         $controller = new LibraryController($this->client(fn () => new MockResponse('', ['error' => 'timeout'])));

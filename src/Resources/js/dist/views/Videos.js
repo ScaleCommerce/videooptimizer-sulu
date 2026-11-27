@@ -6,13 +6,11 @@ require("core-js/modules/es.symbol.description.js");
 require("core-js/modules/es.symbol.iterator.js");
 require("core-js/modules/es.symbol.to-primitive.js");
 require("core-js/modules/es.array.for-each.js");
-require("core-js/modules/es.array.from.js");
-require("core-js/modules/es.array.is-array.js");
+require("core-js/modules/es.array.iterator.js");
 require("core-js/modules/es.array.reduce.js");
 require("core-js/modules/es.array.reverse.js");
 require("core-js/modules/es.array.slice.js");
 require("core-js/modules/es.date.to-primitive.js");
-require("core-js/modules/es.date.to-string.js");
 require("core-js/modules/es.function.bind.js");
 require("core-js/modules/es.number.constructor.js");
 require("core-js/modules/es.object.create.js");
@@ -21,31 +19,26 @@ require("core-js/modules/es.object.get-prototype-of.js");
 require("core-js/modules/es.object.keys.js");
 require("core-js/modules/es.object.set-prototype-of.js");
 require("core-js/modules/es.reflect.construct.js");
-require("core-js/modules/es.regexp.exec.js");
-require("core-js/modules/es.regexp.test.js");
-require("core-js/modules/es.regexp.to-string.js");
+require("core-js/modules/es.string.iterator.js");
 require("core-js/modules/esnext.iterator.for-each.js");
 require("core-js/modules/esnext.iterator.reduce.js");
 require("core-js/modules/web.dom-collections.for-each.js");
+require("core-js/modules/web.dom-collections.iterator.js");
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports["default"] = void 0;
 require("core-js/modules/es.array.concat.js");
-require("core-js/modules/es.array.filter.js");
 require("core-js/modules/es.array.find.js");
-require("core-js/modules/es.array.iterator.js");
 require("core-js/modules/es.array.map.js");
 require("core-js/modules/es.function.name.js");
 require("core-js/modules/es.object.to-string.js");
-require("core-js/modules/es.promise.js");
-require("core-js/modules/es.string.iterator.js");
+require("core-js/modules/es.regexp.exec.js");
+require("core-js/modules/es.string.replace.js");
 require("core-js/modules/es.string.trim.js");
 require("core-js/modules/esnext.iterator.constructor.js");
-require("core-js/modules/esnext.iterator.filter.js");
 require("core-js/modules/esnext.iterator.find.js");
 require("core-js/modules/esnext.iterator.map.js");
-require("core-js/modules/web.dom-collections.iterator.js");
 var _react = _interopRequireDefault(require("react"));
 var _mobxReact = require("mobx-react");
 var _mobx = require("mobx");
@@ -55,14 +48,9 @@ var _containers = require("sulu-admin-bundle/containers");
 var _utils = require("sulu-admin-bundle/utils");
 var _api = require("../services/api");
 var _VideoDetail = _interopRequireDefault(require("../components/VideoDetail"));
-var _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9, _descriptor0, _descriptor1, _descriptor10, _descriptor11, _descriptor12, _descriptor13, _descriptor14, _descriptor15, _descriptor16, _descriptor17, _descriptor18, _descriptor19, _descriptor20, _descriptor21;
+var _VideoPager = _interopRequireDefault(require("../services/VideoPager"));
+var _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9, _descriptor0, _descriptor1, _descriptor10, _descriptor11, _descriptor12, _descriptor13, _descriptor14, _descriptor15, _descriptor16, _descriptor17, _descriptor18, _descriptor19, _descriptor20, _descriptor21, _descriptor22, _descriptor23, _descriptor24;
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
-function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
-function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
-function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
-function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
-function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
 function _initializerDefineProperty(e, i, r, l) { r && Object.defineProperty(e, i, { enumerable: r.enumerable, configurable: r.configurable, writable: r.writable, value: r.initializer ? r.initializer.call(l) : void 0 }); }
 function _classCallCheck(a, n) { if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function"); }
 function _defineProperties(e, r) { for (var t = 0; t < r.length; t++) { var o = r[t]; o.enumerable = o.enumerable || !1, o.configurable = !0, "value" in o && (o.writable = !0), Object.defineProperty(e, _toPropertyKey(o.key), o); } }
@@ -88,28 +76,41 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
     _this = _callSuper(this, Videos, [].concat(args));
     _initializerDefineProperty(_this, "loading", _descriptor, _this);
     _initializerDefineProperty(_this, "loadingVideos", _descriptor2, _this);
-    _initializerDefineProperty(_this, "libraries", _descriptor3, _this);
+    _initializerDefineProperty(_this, "loadingMore", _descriptor3, _this);
+    _initializerDefineProperty(_this, "hasMore", _descriptor4, _this);
+    _initializerDefineProperty(_this, "libraries", _descriptor5, _this);
     // null = show videos from every library; a library id = filter to that library.
-    _initializerDefineProperty(_this, "activeLibraryId", _descriptor4, _this);
-    _initializerDefineProperty(_this, "videos", _descriptor5, _this);
-    _initializerDefineProperty(_this, "selected", _descriptor6, _this);
-    _initializerDefineProperty(_this, "error", _descriptor7, _this);
-    _initializerDefineProperty(_this, "uploading", _descriptor8, _this);
-    _initializerDefineProperty(_this, "uploadStatus", _descriptor9, _this);
-    _initializerDefineProperty(_this, "ingestSourceUrl", _descriptor0, _this);
-    _initializerDefineProperty(_this, "ingestTitle", _descriptor1, _this);
-    _initializerDefineProperty(_this, "ingesting", _descriptor10, _this);
-    _initializerDefineProperty(_this, "ingestStatus", _descriptor11, _this);
+    _initializerDefineProperty(_this, "activeLibraryId", _descriptor6, _this);
+    _initializerDefineProperty(_this, "videos", _descriptor7, _this);
+    _initializerDefineProperty(_this, "selected", _descriptor8, _this);
+    _initializerDefineProperty(_this, "error", _descriptor9, _this);
+    _initializerDefineProperty(_this, "uploading", _descriptor0, _this);
+    _initializerDefineProperty(_this, "uploadStatus", _descriptor1, _this);
+    _initializerDefineProperty(_this, "ingestSourceUrl", _descriptor10, _this);
+    _initializerDefineProperty(_this, "ingestTitle", _descriptor11, _this);
+    _initializerDefineProperty(_this, "ingesting", _descriptor12, _this);
+    _initializerDefineProperty(_this, "ingestStatus", _descriptor13, _this);
     // Hidden file input driven by the toolbar "upload" button (Sulu media pattern).
     _this.fileInputRef = /*#__PURE__*/_react["default"].createRef();
     // Aborts a running browser upload when the view is left (it must not create a video afterwards).
     _this.uploadController = null;
-    _initializerDefineProperty(_this, "selectLibrary", _descriptor12, _this);
-    _initializerDefineProperty(_this, "showAll", _descriptor13, _this);
-    _initializerDefineProperty(_this, "open", _descriptor14, _this);
-    _initializerDefineProperty(_this, "back", _descriptor15, _this);
-    _initializerDefineProperty(_this, "onChanged", _descriptor16, _this);
-    _initializerDefineProperty(_this, "onDeleted", _descriptor17, _this);
+    // Pages the video list with the API cursor; the loaded pages survive edits, deletions and uploads.
+    _this.pager = new _VideoPager["default"](_api.getVideoPage, (0, _mobx.action)(function (state) {
+      _this.videos = state.items;
+      _this.hasMore = state.hasMore;
+      _this.loadingVideos = state.loading;
+      _this.loadingMore = state.loadingMore;
+      if (state.error) {
+        _this.error = 428 === state.error.status ? (0, _utils.translate)('scale_videooptimizer.not_configured') : state.error.message || String(state.error);
+      }
+    }));
+    _initializerDefineProperty(_this, "selectLibrary", _descriptor14, _this);
+    _initializerDefineProperty(_this, "showAll", _descriptor15, _this);
+    _initializerDefineProperty(_this, "loadMore", _descriptor16, _this);
+    _initializerDefineProperty(_this, "open", _descriptor17, _this);
+    _initializerDefineProperty(_this, "back", _descriptor18, _this);
+    _initializerDefineProperty(_this, "onChanged", _descriptor19, _this);
+    _initializerDefineProperty(_this, "onDeleted", _descriptor20, _this);
     // Opens the native file dialog from the toolbar button (a real user gesture, so allowed).
     _this.triggerFileDialog = function () {
       if (_this.fileInputRef.current) {
@@ -127,10 +128,10 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
     };
     // Presigned multipart upload: token stays server-side, parts go straight to storage, then we
     // poll until processing finishes. Mirrors the field-overlay upload flow.
-    _initializerDefineProperty(_this, "startUpload", _descriptor18, _this);
-    _initializerDefineProperty(_this, "handleIngestUrlChange", _descriptor19, _this);
-    _initializerDefineProperty(_this, "handleIngestTitleChange", _descriptor20, _this);
-    _initializerDefineProperty(_this, "startIngest", _descriptor21, _this);
+    _initializerDefineProperty(_this, "startUpload", _descriptor21, _this);
+    _initializerDefineProperty(_this, "handleIngestUrlChange", _descriptor22, _this);
+    _initializerDefineProperty(_this, "handleIngestTitleChange", _descriptor23, _this);
+    _initializerDefineProperty(_this, "startIngest", _descriptor24, _this);
     return _this;
   }
   _inherits(Videos, _React$Component);
@@ -146,49 +147,24 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
     key: "componentDidMount",
     value: function componentDidMount() {
       var _this2 = this;
-      Promise.all([(0, _api.getLibraries)(), (0, _api.getAllVideos)()]).then((0, _mobx.action)(function (_ref) {
-        var _ref2 = _slicedToArray(_ref, 2),
-          libraries = _ref2[0],
-          videos = _ref2[1];
+      (0, _api.getLibraries)().then((0, _mobx.action)(function (libraries) {
         _this2.libraries = libraries;
-        _this2.videos = videos;
         _this2.loading = false;
+        _this2.pager.load({
+          libraryId: _this2.activeLibraryId
+        });
       }))["catch"]((0, _mobx.action)(function (e) {
         _this2.loading = false;
         _this2.error = 428 === e.status ? (0, _utils.translate)('scale_videooptimizer.not_configured') : e.message || String(e);
       }));
     }
   }, {
-    key: "reloadVideos",
-    value: function reloadVideos() {
-      var _this3 = this;
-      this.loadingVideos = true;
-      (0, _api.getAllVideos)().then((0, _mobx.action)(function (videos) {
-        _this3.videos = videos;
-        _this3.loadingVideos = false;
-      }))["catch"]((0, _mobx.action)(function (e) {
-        _this3.loadingVideos = false;
-        _this3.error = e.message || String(e);
-      }));
-    }
-  }, {
     key: "activeLibrary",
     value: function activeLibrary() {
-      var _this4 = this;
+      var _this3 = this;
       return this.libraries.find(function (l) {
-        return l.id === _this4.activeLibraryId;
+        return l.id === _this3.activeLibraryId;
       }) || null;
-    }
-  }, {
-    key: "visibleVideos",
-    value: function visibleVideos() {
-      var _this5 = this;
-      if (!this.activeLibraryId) {
-        return this.videos;
-      }
-      return this.videos.filter(function (video) {
-        return video.library_id === _this5.activeLibraryId;
-      });
     }
   }, {
     key: "renderFolders",
@@ -212,14 +188,14 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
   }, {
     key: "renderVideoGrid",
     value: function renderVideoGrid() {
-      var _this6 = this;
-      var videos = this.visibleVideos();
+      var _this4 = this;
+      var videos = this.videos;
       if (videos.length === 0) {
         return /*#__PURE__*/_react["default"].createElement("div", {
           className: "vo-empty"
         }, (0, _utils.translate)('scale_videooptimizer.no_videos_anywhere'));
       }
-      return /*#__PURE__*/_react["default"].createElement("div", {
+      return /*#__PURE__*/_react["default"].createElement(_react["default"].Fragment, null, /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-video-grid"
       }, videos.map(function (video) {
         return /*#__PURE__*/_react["default"].createElement("button", {
@@ -227,7 +203,7 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
           type: "button",
           className: "vo-video",
           onClick: function onClick() {
-            return _this6.open(video);
+            return _this4.open(video);
           }
         }, (0, _api.posterFor)(video) ? /*#__PURE__*/_react["default"].createElement("img", {
           src: (0, _api.bustCache)((0, _api.posterFor)(video)),
@@ -237,7 +213,13 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
         }, "\u25B6"), /*#__PURE__*/_react["default"].createElement("span", {
           className: "vo-video-title"
         }, video.title || video.uuid));
-      }));
+      })), this.hasMore && /*#__PURE__*/_react["default"].createElement("div", {
+        className: "vo-load-more"
+      }, /*#__PURE__*/_react["default"].createElement(_components.Button, {
+        skin: "secondary",
+        onClick: this.loadMore,
+        loading: this.loadingMore
+      }, (0, _utils.translate)('scale_videooptimizer.load_more'))));
     }
   }, {
     key: "renderIngestForm",
@@ -332,165 +314,193 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
   initializer: function initializer() {
     return false;
   }
-}), _descriptor3 = _applyDecoratedDescriptor(_class2.prototype, "libraries", [_mobx.observable], {
-  configurable: true,
-  enumerable: true,
-  writable: true,
-  initializer: function initializer() {
-    return [];
-  }
-}), _descriptor4 = _applyDecoratedDescriptor(_class2.prototype, "activeLibraryId", [_mobx.observable], {
-  configurable: true,
-  enumerable: true,
-  writable: true,
-  initializer: function initializer() {
-    return null;
-  }
-}), _descriptor5 = _applyDecoratedDescriptor(_class2.prototype, "videos", [_mobx.observable], {
-  configurable: true,
-  enumerable: true,
-  writable: true,
-  initializer: function initializer() {
-    return [];
-  }
-}), _descriptor6 = _applyDecoratedDescriptor(_class2.prototype, "selected", [_mobx.observable], {
-  configurable: true,
-  enumerable: true,
-  writable: true,
-  initializer: function initializer() {
-    return null;
-  }
-}), _descriptor7 = _applyDecoratedDescriptor(_class2.prototype, "error", [_mobx.observable], {
-  configurable: true,
-  enumerable: true,
-  writable: true,
-  initializer: function initializer() {
-    return null;
-  }
-}), _descriptor8 = _applyDecoratedDescriptor(_class2.prototype, "uploading", [_mobx.observable], {
+}), _descriptor3 = _applyDecoratedDescriptor(_class2.prototype, "loadingMore", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return false;
   }
-}), _descriptor9 = _applyDecoratedDescriptor(_class2.prototype, "uploadStatus", [_mobx.observable], {
-  configurable: true,
-  enumerable: true,
-  writable: true,
-  initializer: function initializer() {
-    return null;
-  }
-}), _descriptor0 = _applyDecoratedDescriptor(_class2.prototype, "ingestSourceUrl", [_mobx.observable], {
-  configurable: true,
-  enumerable: true,
-  writable: true,
-  initializer: function initializer() {
-    return '';
-  }
-}), _descriptor1 = _applyDecoratedDescriptor(_class2.prototype, "ingestTitle", [_mobx.observable], {
-  configurable: true,
-  enumerable: true,
-  writable: true,
-  initializer: function initializer() {
-    return '';
-  }
-}), _descriptor10 = _applyDecoratedDescriptor(_class2.prototype, "ingesting", [_mobx.observable], {
+}), _descriptor4 = _applyDecoratedDescriptor(_class2.prototype, "hasMore", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return false;
   }
-}), _descriptor11 = _applyDecoratedDescriptor(_class2.prototype, "ingestStatus", [_mobx.observable], {
+}), _descriptor5 = _applyDecoratedDescriptor(_class2.prototype, "libraries", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return [];
+  }
+}), _descriptor6 = _applyDecoratedDescriptor(_class2.prototype, "activeLibraryId", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return null;
   }
-}), _descriptor12 = _applyDecoratedDescriptor(_class2.prototype, "selectLibrary", [_mobx.action], {
+}), _descriptor7 = _applyDecoratedDescriptor(_class2.prototype, "videos", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return [];
+  }
+}), _descriptor8 = _applyDecoratedDescriptor(_class2.prototype, "selected", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return null;
+  }
+}), _descriptor9 = _applyDecoratedDescriptor(_class2.prototype, "error", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return null;
+  }
+}), _descriptor0 = _applyDecoratedDescriptor(_class2.prototype, "uploading", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return false;
+  }
+}), _descriptor1 = _applyDecoratedDescriptor(_class2.prototype, "uploadStatus", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return null;
+  }
+}), _descriptor10 = _applyDecoratedDescriptor(_class2.prototype, "ingestSourceUrl", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return '';
+  }
+}), _descriptor11 = _applyDecoratedDescriptor(_class2.prototype, "ingestTitle", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return '';
+  }
+}), _descriptor12 = _applyDecoratedDescriptor(_class2.prototype, "ingesting", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return false;
+  }
+}), _descriptor13 = _applyDecoratedDescriptor(_class2.prototype, "ingestStatus", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return null;
+  }
+}), _descriptor14 = _applyDecoratedDescriptor(_class2.prototype, "selectLibrary", [_mobx.action], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    var _this5 = this;
+    return function (id) {
+      _this5.activeLibraryId = id;
+      _this5.selected = null;
+      _this5.error = null;
+      _this5.pager.load({
+        libraryId: id
+      });
+    };
+  }
+}), _descriptor15 = _applyDecoratedDescriptor(_class2.prototype, "showAll", [_mobx.action], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    var _this6 = this;
+    return function () {
+      _this6.activeLibraryId = null;
+      _this6.selected = null;
+      _this6.error = null;
+      _this6.pager.load({
+        libraryId: null
+      });
+    };
+  }
+}), _descriptor16 = _applyDecoratedDescriptor(_class2.prototype, "loadMore", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this7 = this;
-    return function (id) {
-      _this7.activeLibraryId = id;
-      _this7.selected = null;
+    return function () {
+      _this7.pager.loadMore();
     };
   }
-}), _descriptor13 = _applyDecoratedDescriptor(_class2.prototype, "showAll", [_mobx.action], {
+}), _descriptor17 = _applyDecoratedDescriptor(_class2.prototype, "open", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this8 = this;
-    return function () {
-      _this8.activeLibraryId = null;
-      _this8.selected = null;
+    return function (video) {
+      _this8.selected = video;
     };
   }
-}), _descriptor14 = _applyDecoratedDescriptor(_class2.prototype, "open", [_mobx.action], {
+}), _descriptor18 = _applyDecoratedDescriptor(_class2.prototype, "back", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this9 = this;
-    return function (video) {
-      _this9.selected = video;
+    return function () {
+      _this9.selected = null;
     };
   }
-}), _descriptor15 = _applyDecoratedDescriptor(_class2.prototype, "back", [_mobx.action], {
+}), _descriptor19 = _applyDecoratedDescriptor(_class2.prototype, "onChanged", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this0 = this;
-    return function () {
-      _this0.selected = null;
+    return function (video) {
+      _this0.selected = video;
+      _this0.pager.replace(video);
     };
   }
-}), _descriptor16 = _applyDecoratedDescriptor(_class2.prototype, "onChanged", [_mobx.action], {
+}), _descriptor20 = _applyDecoratedDescriptor(_class2.prototype, "onDeleted", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this1 = this;
-    return function (video) {
-      _this1.selected = video;
-      _this1.videos = _this1.videos.map(function (v) {
-        return v.uuid === video.uuid ? video : v;
-      });
+    return function () {
+      var id = _this1.selected.uuid;
+      _this1.selected = null;
+      _this1.pager.remove(id);
     };
   }
-}), _descriptor17 = _applyDecoratedDescriptor(_class2.prototype, "onDeleted", [_mobx.action], {
+}), _descriptor21 = _applyDecoratedDescriptor(_class2.prototype, "startUpload", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this10 = this;
-    return function () {
-      var id = _this10.selected.uuid;
-      _this10.selected = null;
-      _this10.videos = _this10.videos.filter(function (v) {
-        return v.uuid !== id;
-      });
-    };
-  }
-}), _descriptor18 = _applyDecoratedDescriptor(_class2.prototype, "startUpload", [_mobx.action], {
-  configurable: true,
-  enumerable: true,
-  writable: true,
-  initializer: function initializer() {
-    var _this11 = this;
     return function (file) {
-      var libraryId = _this11.activeLibraryId;
+      var libraryId = _this10.activeLibraryId;
       var controller = new AbortController();
-      _this11.uploadController = controller;
-      _this11.uploading = true;
-      _this11.error = null;
-      _this11.uploadStatus = (0, _utils.translate)('scale_videooptimizer.uploading');
+      _this10.uploadController = controller;
+      _this10.uploading = true;
+      _this10.error = null;
+      _this10.uploadStatus = (0, _utils.translate)('scale_videooptimizer.uploading');
       (0, _api.initiateUpload)({
         libraryId: libraryId,
         filename: file.name,
@@ -510,10 +520,10 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
             parts: parts
           });
         }).then((0, _mobx.action)(function () {
-          if (_this11.uploadController !== controller) {
+          if (_this10.uploadController !== controller) {
             throw (0, _api.abortError)();
           }
-          _this11.uploadStatus = (0, _utils.translate)('scale_videooptimizer.processing');
+          _this10.uploadStatus = (0, _utils.translate)('scale_videooptimizer.processing');
         })).then(function () {
           return (0, _api.pollVideo)(upload.uuid, function (v) {
             return v.status === 'ready' || v.status === 'failed';
@@ -521,85 +531,85 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
             signal: controller.signal
           });
         }).then((0, _mobx.action)(function (video) {
-          if (_this11.uploadController !== controller) {
+          if (_this10.uploadController !== controller) {
             return;
           }
-          _this11.uploadController = null;
-          _this11.uploading = false;
-          _this11.uploadStatus = null;
+          _this10.uploadController = null;
+          _this10.uploading = false;
+          _this10.uploadStatus = null;
           if (video.status === 'failed') {
-            _this11.error = (0, _api.failureMessage)(video);
+            _this10.error = (0, _api.failureMessage)(video);
             return;
           }
-          _this11.reloadVideos();
-          _this11.open(video);
+          _this10.pager.prepend(video);
+          _this10.open(video);
         }));
       })["catch"]((0, _mobx.action)(function (e) {
-        if (_this11.uploadController !== controller || (0, _api.isAbortError)(e)) {
+        if (_this10.uploadController !== controller || (0, _api.isAbortError)(e)) {
           return;
         }
-        _this11.uploadController = null;
-        _this11.uploading = false;
-        _this11.uploadStatus = null;
-        _this11.error = (0, _api.errorText)(e);
+        _this10.uploadController = null;
+        _this10.uploading = false;
+        _this10.uploadStatus = null;
+        _this10.error = (0, _api.errorText)(e);
       }));
     };
   }
-}), _descriptor19 = _applyDecoratedDescriptor(_class2.prototype, "handleIngestUrlChange", [_mobx.action], {
+}), _descriptor22 = _applyDecoratedDescriptor(_class2.prototype, "handleIngestUrlChange", [_mobx.action], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    var _this11 = this;
+    return function (event) {
+      _this11.ingestSourceUrl = event.target.value;
+    };
+  }
+}), _descriptor23 = _applyDecoratedDescriptor(_class2.prototype, "handleIngestTitleChange", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this12 = this;
     return function (event) {
-      _this12.ingestSourceUrl = event.target.value;
+      _this12.ingestTitle = event.target.value;
     };
   }
-}), _descriptor20 = _applyDecoratedDescriptor(_class2.prototype, "handleIngestTitleChange", [_mobx.action], {
+}), _descriptor24 = _applyDecoratedDescriptor(_class2.prototype, "startIngest", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this13 = this;
-    return function (event) {
-      _this13.ingestTitle = event.target.value;
-    };
-  }
-}), _descriptor21 = _applyDecoratedDescriptor(_class2.prototype, "startIngest", [_mobx.action], {
-  configurable: true,
-  enumerable: true,
-  writable: true,
-  initializer: function initializer() {
-    var _this14 = this;
     return function () {
-      if (!_this14.ingestSourceUrl.trim() || !_this14.activeLibraryId) {
+      if (!_this13.ingestSourceUrl.trim() || !_this13.activeLibraryId) {
         return;
       }
-      _this14.ingesting = true;
-      _this14.error = null;
-      _this14.ingestStatus = (0, _utils.translate)('scale_videooptimizer.processing');
+      _this13.ingesting = true;
+      _this13.error = null;
+      _this13.ingestStatus = (0, _utils.translate)('scale_videooptimizer.processing');
       (0, _api.ingestVideoUrl)({
-        library_id: _this14.activeLibraryId,
-        source_url: _this14.ingestSourceUrl.trim(),
-        title: _this14.ingestTitle.trim() || undefined
+        library_id: _this13.activeLibraryId,
+        source_url: _this13.ingestSourceUrl.trim(),
+        title: _this13.ingestTitle.trim() || undefined
       }).then(function (result) {
         return (0, _api.pollVideo)(result.uuid, function (v) {
           return v.status === 'ready' || v.status === 'failed';
         }).then((0, _mobx.action)(function (video) {
-          _this14.ingesting = false;
-          _this14.ingestStatus = null;
+          _this13.ingesting = false;
+          _this13.ingestStatus = null;
           if (video.status === 'failed') {
-            _this14.error = (0, _api.failureMessage)(video);
+            _this13.error = (0, _api.failureMessage)(video);
             return;
           }
-          _this14.ingestSourceUrl = '';
-          _this14.ingestTitle = '';
-          _this14.reloadVideos();
+          _this13.ingestSourceUrl = '';
+          _this13.ingestTitle = '';
+          _this13.pager.prepend(video);
         }));
       })["catch"]((0, _mobx.action)(function (e) {
-        _this14.ingesting = false;
-        _this14.ingestStatus = null;
-        _this14.error = (0, _api.errorText)(e);
+        _this13.ingesting = false;
+        _this13.ingestStatus = null;
+        _this13.error = (0, _api.errorText)(e);
       }));
     };
   }

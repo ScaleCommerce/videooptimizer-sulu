@@ -45,6 +45,57 @@ class VideoOptimizerClientTest extends TestCase
         self::assertStringContainsString('cursor=cursor-2', $requestedUrls[1], 'The second request must carry the next cursor.');
     }
 
+    public function testListVideosPageFetchesExactlyOnePageWithCursorLimitAndFilters(): void
+    {
+        $requestedUrls = [];
+        $httpClient = new MockHttpClient(function (string $method, string $url) use (&$requestedUrls): MockResponse {
+            $requestedUrls[] = $url;
+
+            return new MockResponse(json_encode([
+                'data' => [['uuid' => 'a'], 'junk', ['uuid' => 'b']],
+                'pagination' => ['next_cursor' => 'next-1', 'has_more' => true],
+            ], JSON_THROW_ON_ERROR));
+        });
+
+        $page = $this->client($httpClient)->listVideosPage('lib-7', 'cur-0', 60, 'promo,2026');
+
+        self::assertSame([['uuid' => 'a'], ['uuid' => 'b']], $page['videos']);
+        self::assertSame('next-1', $page['next_cursor']);
+        self::assertTrue($page['has_more']);
+        self::assertCount(1, $requestedUrls, 'Only the requested page is fetched.');
+        self::assertStringContainsString('limit=60', $requestedUrls[0]);
+        self::assertStringContainsString('cursor=cur-0', $requestedUrls[0]);
+        self::assertStringContainsString('library_id=lib-7', $requestedUrls[0]);
+        self::assertStringContainsString('tags=promo%2C2026', $requestedUrls[0]);
+    }
+
+    public function testListVideosPageOfTheLastPageHasNoCursor(): void
+    {
+        $httpClient = new MockHttpClient(fn () => new MockResponse(json_encode([
+            'data' => [['uuid' => 'a']],
+            'pagination' => ['next_cursor' => null, 'has_more' => false],
+        ], JSON_THROW_ON_ERROR)));
+
+        $page = $this->client($httpClient)->listVideosPage(null, null, 500);
+
+        self::assertFalse($page['has_more']);
+        self::assertNull($page['next_cursor']);
+    }
+
+    public function testListVideosPageCapsTheLimitAtTheApiMaximum(): void
+    {
+        $url = '';
+        $httpClient = new MockHttpClient(function (string $method, string $u) use (&$url): MockResponse {
+            $url = $u;
+
+            return new MockResponse('{"data":[]}');
+        });
+
+        $this->client($httpClient)->listVideosPage(null, null, 500);
+
+        self::assertStringContainsString('limit=100', $url);
+    }
+
     public function testListAllVideosHitsGlobalEndpointWithoutLibraryFilter(): void
     {
         $requestedUrls = [];

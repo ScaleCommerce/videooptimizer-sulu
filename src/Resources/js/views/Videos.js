@@ -8,7 +8,7 @@ import {withToolbar} from 'sulu-admin-bundle/containers';
 import {translate} from 'sulu-admin-bundle/utils';
 import {
     getLibraries,
-    getAllVideos,
+    getVideoPage,
     initiateUpload,
     uploadParts,
     isAbortError,
@@ -22,11 +22,14 @@ import {
     bustCache,
 } from '../services/api';
 import VideoDetail from '../components/VideoDetail';
+import VideoPager from '../services/VideoPager';
 
 @observer
 class Videos extends React.Component<*> {
     @observable loading = true;
     @observable loadingVideos = false;
+    @observable loadingMore = false;
+    @observable hasMore = false;
     @observable libraries = [];
     // null = show videos from every library; a library id = filter to that library.
     @observable activeLibraryId = null;
@@ -53,12 +56,25 @@ class Videos extends React.Component<*> {
         }
     }
 
+    // Pages the video list with the API cursor; the loaded pages survive edits, deletions and uploads.
+    pager = new VideoPager(getVideoPage, action((state) => {
+        this.videos = state.items;
+        this.hasMore = state.hasMore;
+        this.loadingVideos = state.loading;
+        this.loadingMore = state.loadingMore;
+        if (state.error) {
+            this.error = 428 === state.error.status
+                ? translate('scale_videooptimizer.not_configured')
+                : (state.error.message || String(state.error));
+        }
+    }));
+
     componentDidMount() {
-        Promise.all([getLibraries(), getAllVideos()])
-            .then(action(([libraries, videos]) => {
+        getLibraries()
+            .then(action((libraries) => {
                 this.libraries = libraries;
-                this.videos = videos;
                 this.loading = false;
+                this.pager.load({libraryId: this.activeLibraryId});
             }))
             .catch(action((e) => {
                 this.loading = false;
@@ -68,39 +84,32 @@ class Videos extends React.Component<*> {
             }));
     }
 
-    reloadVideos() {
-        this.loadingVideos = true;
-        getAllVideos()
-            .then(action((videos) => { this.videos = videos; this.loadingVideos = false; }))
-            .catch(action((e) => { this.loadingVideos = false; this.error = e.message || String(e); }));
-    }
-
     @action selectLibrary = (id) => {
         this.activeLibraryId = id;
         this.selected = null;
+        this.error = null;
+        this.pager.load({libraryId: id});
     };
 
     @action showAll = () => {
         this.activeLibraryId = null;
         this.selected = null;
+        this.error = null;
+        this.pager.load({libraryId: null});
+    };
+
+    @action loadMore = () => {
+        this.pager.loadMore();
     };
 
     activeLibrary() {
         return this.libraries.find((l) => l.id === this.activeLibraryId) || null;
     }
 
-    visibleVideos() {
-        if (!this.activeLibraryId) {
-            return this.videos;
-        }
-
-        return this.videos.filter((video) => video.library_id === this.activeLibraryId);
-    }
-
     @action open = (video) => { this.selected = video; };
     @action back = () => { this.selected = null; };
-    @action onChanged = (video) => { this.selected = video; this.videos = this.videos.map((v) => v.uuid === video.uuid ? video : v); };
-    @action onDeleted = () => { const id = this.selected.uuid; this.selected = null; this.videos = this.videos.filter((v) => v.uuid !== id); };
+    @action onChanged = (video) => { this.selected = video; this.pager.replace(video); };
+    @action onDeleted = () => { const id = this.selected.uuid; this.selected = null; this.pager.remove(id); };
 
     // Opens the native file dialog from the toolbar button (a real user gesture, so allowed).
     triggerFileDialog = () => {
@@ -168,7 +177,7 @@ class Videos extends React.Component<*> {
                         this.error = failureMessage(video);
                         return;
                     }
-                    this.reloadVideos();
+                    this.pager.prepend(video);
                     this.open(video);
                 })))
             .catch(action((e) => {
@@ -213,7 +222,7 @@ class Videos extends React.Component<*> {
                     }
                     this.ingestSourceUrl = '';
                     this.ingestTitle = '';
-                    this.reloadVideos();
+                    this.pager.prepend(video);
                 })))
             .catch(action((e) => {
                 this.ingesting = false;
@@ -242,21 +251,30 @@ class Videos extends React.Component<*> {
     }
 
     renderVideoGrid() {
-        const videos = this.visibleVideos();
+        const videos = this.videos;
 
         if (videos.length === 0) {
             return <div className="vo-empty">{translate('scale_videooptimizer.no_videos_anywhere')}</div>;
         }
 
         return (
-            <div className="vo-video-grid">
-                {videos.map((video) => (
-                    <button key={video.uuid} type="button" className="vo-video" onClick={() => this.open(video)}>
-                        {posterFor(video) ? <img src={bustCache(posterFor(video))} alt="" /> : <span className="vo-video-ph">▶</span>}
-                        <span className="vo-video-title">{video.title || video.uuid}</span>
-                    </button>
-                ))}
-            </div>
+            <React.Fragment>
+                <div className="vo-video-grid">
+                    {videos.map((video) => (
+                        <button key={video.uuid} type="button" className="vo-video" onClick={() => this.open(video)}>
+                            {posterFor(video) ? <img src={bustCache(posterFor(video))} alt="" /> : <span className="vo-video-ph">▶</span>}
+                            <span className="vo-video-title">{video.title || video.uuid}</span>
+                        </button>
+                    ))}
+                </div>
+                {this.hasMore && (
+                    <div className="vo-load-more">
+                        <Button skin="secondary" onClick={this.loadMore} loading={this.loadingMore}>
+                            {translate('scale_videooptimizer.load_more')}
+                        </Button>
+                    </div>
+                )}
+            </React.Fragment>
         );
     }
 

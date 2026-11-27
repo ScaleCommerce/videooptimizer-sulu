@@ -69,4 +69,16 @@ final class AdminJsContractTest extends TestCase
         self::assertStringContainsString('poster_unsupported_type', self::read($root . 'components/VideoDetail.js'));
         self::assertMatchesRegularExpression('/posterContentType\)?\(blob\.type, media\)/', self::read($root . 'components/VideoDetail.js'));
     }
+
+    #[DataProvider('roots')]
+    public function testVideoListsPageWithTheApiCursorInsteadOfLoadingEverything(string $root): void
+    {
+        foreach (['fields/VideoSelectionOverlay.js', 'views/Videos.js'] as $file) {
+            $code = self::read($root . $file);
+            self::assertStringContainsString('VideoPager', $code, $file);
+            self::assertStringContainsString('getVideoPage', $code, $file);
+            self::assertStringNotContainsString('getAllVideos', $code, $file . ': the whole organization must not be loaded at once.');
+            self::assertStringContainsString('scale_videooptimizer.load_more', $code, $file);
+        }
+    }
 }
