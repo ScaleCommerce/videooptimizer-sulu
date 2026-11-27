@@ -35,6 +35,22 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
         self::assertStringContainsString('playsinline', $html);
     }
 
+    public function testExposesMp4AsFallbackForTheScript(): void
+    {
+        $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
+        $resolver->getSources('abc')->willReturn([
+            'poster' => null,
+            'hlsUrl' => 'https://cdn.example.net/master.m3u8',
+            'sources' => [
+                ['src' => 'https://cdn.example.net/master.m3u8', 'type' => 'application/vnd.apple.mpegurl', 'label' => ''],
+                ['src' => 'https://cdn.example.net/v.mp4', 'type' => 'video/mp4', 'label' => '720p'],
+            ],
+        ]);
+        $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
+
+        self::assertStringContainsString('data-mp4="https://cdn.example.net/v.mp4"', $ext->renderBackground(['uuid' => 'abc']));
+    }
+
     /**
      * A background video is decoration: it carries no information a screen reader could use, and
      * it has no accessible name to give one. Without `aria-hidden` it still lands in the

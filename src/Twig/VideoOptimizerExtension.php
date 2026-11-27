@@ -264,6 +264,12 @@ class VideoOptimizerExtension extends AbstractExtension
         $sources = $this->embedResolver->getSources($uuid);
         $poster = self::posterFor($video, $sources['poster'] ?? null);
         $hlsUrl = $sources['hlsUrl'] ?? null;
+        $mp4Url = null;
+        foreach ($sources['sources'] ?? [] as $source) {
+            if (null === $mp4Url && str_starts_with(strtolower($source['type']), 'video/mp4')) {
+                $mp4Url = $source['src'];
+            }
+        }
         $posterAttr = null !== $poster ? htmlspecialchars($poster, \ENT_QUOTES) : null;
 
         $preload = $priority && null !== $posterAttr
@@ -271,10 +277,12 @@ class VideoOptimizerExtension extends AbstractExtension
             : '';
 
         return AssetInjectionListener::SENTINEL . $preload . \sprintf(
-            '<video class="vo-bg-hero__video" muted autoplay loop playsinline aria-hidden="true" preload="%s"%s%s%s></video>',
+            '<video class="vo-bg-hero__video" muted autoplay loop playsinline aria-hidden="true" preload="%s"%s%s%s%s></video>',
             $priority ? 'auto' : 'metadata',
             null !== $posterAttr ? \sprintf(' poster="%s"', $posterAttr) : '',
             null !== $hlsUrl ? \sprintf(' data-hls="%s"', htmlspecialchars($hlsUrl, \ENT_QUOTES)) : '',
+            // Fallback for vo-blocks.js when HLS fails or is unsupported.
+            null !== $hlsUrl && null !== $mp4Url ? \sprintf(' data-mp4="%s"', htmlspecialchars($mp4Url, \ENT_QUOTES)) : '',
             // Absence is the default (deferred), so custom markup inherits it without changes.
             $eager || $priority ? ' data-vo-hls-eager' : '',
         );
