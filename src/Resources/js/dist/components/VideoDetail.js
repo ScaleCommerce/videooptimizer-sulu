@@ -47,6 +47,7 @@ require("core-js/modules/es.object.to-string.js");
 require("core-js/modules/es.parse-int.js");
 require("core-js/modules/es.promise.js");
 require("core-js/modules/es.string.pad-start.js");
+require("core-js/modules/es.string.trim.js");
 require("core-js/modules/esnext.iterator.constructor.js");
 require("core-js/modules/esnext.iterator.map.js");
 var _react = _interopRequireDefault(require("react"));
@@ -83,6 +84,9 @@ function _inherits(t, e) { if ("function" != typeof e && null !== e) throw new T
 function _setPrototypeOf(t, e) { return _setPrototypeOf = Object.setPrototypeOf ? Object.setPrototypeOf.bind() : function (t, e) { return t.__proto__ = e, t; }, _setPrototypeOf(t, e); }
 function _applyDecoratedDescriptor(i, e, r, n, l) { var a = {}; return Object.keys(n).forEach(function (i) { a[i] = n[i]; }), a.enumerable = !!a.enumerable, a.configurable = !!a.configurable, ("value" in a || a.initializer) && (a.writable = !0), a = r.slice().reverse().reduce(function (r, n) { return n(i, e, r) || r; }, a), l && void 0 !== a.initializer && (a.value = a.initializer ? a.initializer.call(l) : void 0, a.initializer = void 0), void 0 === a.initializer ? (Object.defineProperty(i, e, a), null) : a; }
 function _initializerWarningHelper(r, e) { throw Error("Decorating class property failed. Please ensure that transform-class-properties is enabled and runs after the decorators transform."); }
+// Poster processing takes seconds; stop polling after ~3 minutes.
+var POSTER_POLL_ATTEMPTS = 60;
+
 // Formats a duration in seconds as m:ss (e.g. 83 -> "1:23").
 function formatDuration(seconds) {
   var total = Math.max(0, Math.round(seconds));
@@ -138,7 +142,7 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
     // Picks an image from the Sulu media library and uploads it as the custom poster: the browser
     // fetches the (same-origin) media file and feeds it through the presigned poster pipeline.
     _initializerDefineProperty(_this, "handleMediaSelect", _descriptor18, _this);
-    // Runs the presigned custom-poster pipeline for any File/Blob and selects it as the poster.
+    // Runs the presigned custom-poster pipeline for any File/Blob; the API activates it once processed.
     _initializerDefineProperty(_this, "uploadPosterBlob", _descriptor19, _this);
     _initializerDefineProperty(_this, "removeCustomPoster", _descriptor20, _this);
     _initializerDefineProperty(_this, "askDelete", _descriptor21, _this);
@@ -194,7 +198,7 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
           maxWidth: maxWidth + 'px'
         }
       }, this.playing ? /*#__PURE__*/_react["default"].createElement("iframe", {
-        src: (this.video.embed_url || 'https://videooptimizer.eu/embed/' + this.video.uuid) + '?autoplay=1',
+        src: (this.video.embed_url || 'https://player.videooptimizer.eu/embed/' + this.video.uuid) + '?autoplay=1',
         title: this.video.title || 'Video',
         allow: "autoplay; fullscreen; picture-in-picture",
         allowFullScreen: true
@@ -228,6 +232,9 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
       }
       if (v.status) {
         rows.push([(0, _utils.translate)('scale_videooptimizer.status'), (0, _utils.translate)('scale_videooptimizer.status_' + v.status)]);
+      }
+      if (v.status === 'failed' && typeof v.error === 'string' && v.error.trim()) {
+        rows.push([(0, _utils.translate)('scale_videooptimizer.failure_reason'), v.error.trim()]);
       }
       if (typeof v.views === 'number') {
         rows.push([(0, _utils.translate)('scale_videooptimizer.views'), String(v.views)]);
@@ -523,6 +530,8 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
       (0, _api.selectThumbnail)(_this9.video.uuid, index).then(function () {
         return (0, _api.pollVideo)(_this9.video.uuid, function (v) {
           return (v.poster && v.poster.source) === 'thumbnail';
+        }, {
+          maxAttempts: POSTER_POLL_ATTEMPTS
         });
       }).then((0, _mobx.action)(function (video) {
         if (_this9._unmounted) {
@@ -553,6 +562,8 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
       }).then(function () {
         return (0, _api.pollVideo)(_this0.video.uuid, function (v) {
           return (v.poster && v.poster.source) === 'custom';
+        }, {
+          maxAttempts: POSTER_POLL_ATTEMPTS
         });
       }).then((0, _mobx.action)(function (video) {
         if (_this0._unmounted) {
@@ -646,18 +657,28 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
         _this12.status = (0, _utils.translate)('scale_videooptimizer.processing');
       })).then(function () {
         return (0, _api.pollVideo)(_this12.video.uuid, function (v) {
-          return (v.poster && v.poster.custom_status) === 'ready' || (v.poster && v.poster.custom_status) === 'failed';
+          var status = v.poster && v.poster.custom_status;
+          return status === 'ready' || status === 'failed';
+        }, {
+          maxAttempts: POSTER_POLL_ATTEMPTS
         });
       }).then(function (video) {
         if (video.poster && video.poster.custom_status === 'failed') {
           throw new Error((0, _utils.translate)('scale_videooptimizer.poster_failed'));
         }
+        // A processed custom poster normally becomes the active one on its own. Only if it did
+        // not, activate it once explicitly.
+        if ((video.poster && video.poster.source) === 'custom') {
+          return video;
+        }
         return (0, _api.selectPoster)(_this12.video.uuid, {
           source: 'custom'
-        });
-      }).then(function () {
-        return (0, _api.pollVideo)(_this12.video.uuid, function (v) {
-          return (v.poster && v.poster.source) === 'custom';
+        }).then(function () {
+          return (0, _api.pollVideo)(_this12.video.uuid, function (v) {
+            return (v.poster && v.poster.source) === 'custom';
+          }, {
+            maxAttempts: POSTER_POLL_ATTEMPTS
+          });
         });
       }).then((0, _mobx.action)(function (video) {
         if (_this12._unmounted) {
@@ -688,6 +709,8 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
       (0, _api.deletePoster)(_this13.video.uuid).then(function () {
         return (0, _api.pollVideo)(_this13.video.uuid, function (v) {
           return (v.poster && v.poster.source) !== 'custom';
+        }, {
+          maxAttempts: POSTER_POLL_ATTEMPTS
         });
       }).then((0, _mobx.action)(function (video) {
         if (_this13._unmounted) {

@@ -9,6 +9,8 @@ use Prophecy\PhpUnit\ProphecyTrait;
 use Scale\VideoOptimizerBundle\Api\VideoOptimizerClient;
 use Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 
 class VideoOptimizerEmbedResolverTest extends TestCase
 {
@@ -47,45 +49,136 @@ class VideoOptimizerEmbedResolverTest extends TestCase
         self::assertNull($result['hlsUrl']);
     }
 
-    public function testDoesNotCacheFailedLookups(): void
+    public function testFailedLookupsAreCachedBrieflyAndReturnTheFallback(): void
     {
         $client = $this->prophesize(VideoOptimizerClient::class);
         $client->getEmbed('abc')->willThrow(new \RuntimeException('API unreachable'));
 
-        $resolver = new VideoOptimizerEmbedResolver($client->reveal(), new ArrayAdapter());
+        $ttls = [];
+        $resolver = new VideoOptimizerEmbedResolver($client->reveal(), $this->recordingCache($ttls));
 
         self::assertSame(
             ['poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'srcset' => null, 'theme' => null, 'sources' => []],
             $resolver->getSources('abc'),
-            'A failed lookup must return the null fallback.',
         );
+        self::assertSame([60], $ttls, 'A failure is remembered for 60 s so a broken API is not hit on every render.');
+    }
 
-        // The failure must not be memorized: a later successful call has to hit the API again.
-        $client->getEmbed('abc')->willReturn([
-            'poster' => 'https://cdn.example.net/thumbnails/abc/thumb_00.jpg',
-            'resolution' => '1920x1080',
-            'duration' => '42',
-            'sources' => [
-                ['src' => 'https://cdn.example.net/encoded/abc/hls/master.m3u8', 'type' => 'application/vnd.apple.mpegurl'],
-            ],
-        ]);
+    public function testPlayableVideosAreCachedForAnHour(): void
+    {
+        $client = $this->prophesize(VideoOptimizerClient::class);
+        $client->getEmbed('abc')->willReturn(['sources' => [['src' => 'https://cdn.example.net/master.m3u8', 'type' => 'application/vnd.apple.mpegurl']]]);
 
-        self::assertSame(
-            [
-                'poster' => 'https://cdn.example.net/thumbnails/abc/thumb_00.jpg',
-                'hlsUrl' => 'https://cdn.example.net/encoded/abc/hls/master.m3u8',
-                'width' => 1920,
-                'height' => 1080,
-                'duration' => 42,
-                'srcset' => null,
-                'theme' => null,
-                'sources' => [
-                    ['src' => 'https://cdn.example.net/encoded/abc/hls/master.m3u8', 'type' => 'application/vnd.apple.mpegurl', 'label' => ''],
-                ],
-            ],
-            $resolver->getSources('abc'),
-            'After a failure the resolver must retry and return the real sources.',
-        );
+        $ttls = [];
+        $resolver = new VideoOptimizerEmbedResolver($client->reveal(), $this->recordingCache($ttls));
+        $resolver->getSources('abc');
+
+        self::assertSame([3600], $ttls);
+    }
+
+    public function testVideosWithoutSourcesAreCachedForOneMinute(): void
+    {
+        $client = $this->prophesize(VideoOptimizerClient::class);
+        $client->getEmbed('abc')->willReturn(['poster' => null, 'sources' => []]);
+
+        $ttls = [];
+        $resolver = new VideoOptimizerEmbedResolver($client->reveal(), $this->recordingCache($ttls));
+        $resolver->getSources('abc');
+
+        self::assertSame([60], $ttls, 'A video that is not ready yet must not be hidden for long.');
+    }
+
+    public function testForgetDropsTheCachedEntry(): void
+    {
+        $client = $this->prophesize(VideoOptimizerClient::class);
+        $client->getEmbed('abc')->willReturn(['poster' => 'https://cdn.example.net/old.jpg', 'sources' => [['src' => 'https://cdn.example.net/m.m3u8', 'type' => 'application/vnd.apple.mpegurl']]]);
+
+        $resolver = new VideoOptimizerEmbedResolver($client->reveal(), new ArrayAdapter());
+        self::assertSame('https://cdn.example.net/old.jpg', $resolver->getSources('abc')['poster']);
+
+        $client->getEmbed('abc')->willReturn(['poster' => 'https://cdn.example.net/new.jpg', 'sources' => [['src' => 'https://cdn.example.net/m.m3u8', 'type' => 'application/vnd.apple.mpegurl']]]);
+        self::assertSame('https://cdn.example.net/old.jpg', $resolver->getSources('abc')['poster'], 'Still served from the cache.');
+
+        $resolver->forget('abc');
+
+        self::assertSame('https://cdn.example.net/new.jpg', $resolver->getSources('abc')['poster']);
+    }
+
+    /**
+     * A cache that always runs the callback and records the lifetime the resolver asked for.
+     *
+     * @param list<int|null> $ttls
+     */
+    private function recordingCache(array &$ttls): CacheInterface
+    {
+        return new class($ttls) implements CacheInterface {
+            /** @param list<int|null> $ttls */
+            public function __construct(private array &$ttls)
+            {
+            }
+
+            public function get(string $key, callable $callback, ?float $beta = null, ?array &$metadata = null): mixed
+            {
+                $ttls = &$this->ttls;
+                $item = new class($ttls) implements ItemInterface {
+                    /** @param list<int|null> $ttls */
+                    public function __construct(private array &$ttls)
+                    {
+                    }
+
+                    public function getKey(): string
+                    {
+                        return 'k';
+                    }
+
+                    public function get(): mixed
+                    {
+                        return null;
+                    }
+
+                    public function isHit(): bool
+                    {
+                        return false;
+                    }
+
+                    public function set(mixed $value): static
+                    {
+                        return $this;
+                    }
+
+                    public function expiresAt(?\DateTimeInterface $expiration): static
+                    {
+                        return $this;
+                    }
+
+                    public function expiresAfter(\DateInterval|int|null $time): static
+                    {
+                        $this->ttls[] = \is_int($time) ? $time : null;
+
+                        return $this;
+                    }
+
+                    public function tag(string|iterable $tags): static
+                    {
+                        return $this;
+                    }
+
+                    public function getMetadata(): array
+                    {
+                        return [];
+                    }
+                };
+
+                $save = true;
+
+                return $callback($item, $save);
+            }
+
+            public function delete(string $key): bool
+            {
+                return true;
+            }
+        };
     }
 
     public function testParsesPosterSrcsetFromDescriptorStrings(): void

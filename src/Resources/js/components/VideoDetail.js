@@ -12,6 +12,9 @@ import {
     pollVideo, posterFor, bustCache, bumpCacheBust,
 } from '../services/api';
 
+// Poster processing takes seconds; stop polling after ~3 minutes.
+const POSTER_POLL_ATTEMPTS = 60;
+
 // Formats a duration in seconds as m:ss (e.g. 83 -> "1:23").
 function formatDuration(seconds) {
     const total = Math.max(0, Math.round(seconds));
@@ -104,7 +107,7 @@ class VideoDetail extends React.Component<*> {
         this.busy = 'thumb';
         this.error = null;
         selectThumbnail(this.video.uuid, index)
-            .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) === 'thumbnail'))
+            .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) === 'thumbnail', {maxAttempts: POSTER_POLL_ATTEMPTS}))
             .then(action((video) => {
                 if (this._unmounted) { return; }
                 this.busy = null;
@@ -123,7 +126,7 @@ class VideoDetail extends React.Component<*> {
         this.busy = 'thumb';
         this.error = null;
         selectPoster(this.video.uuid, {source: 'custom'})
-            .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) === 'custom'))
+            .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) === 'custom', {maxAttempts: POSTER_POLL_ATTEMPTS}))
             .then(action((video) => {
                 if (this._unmounted) { return; }
                 this.busy = null;
@@ -172,7 +175,7 @@ class VideoDetail extends React.Component<*> {
             }));
     };
 
-    // Runs the presigned custom-poster pipeline for any File/Blob and selects it as the poster.
+    // Runs the presigned custom-poster pipeline for any File/Blob; the API activates it once processed.
     @action uploadPosterBlob = (blob) => {
         this.busy = 'poster';
         this.error = null;
@@ -183,15 +186,24 @@ class VideoDetail extends React.Component<*> {
                 if (this._unmounted) { return; }
                 this.status = translate('scale_videooptimizer.processing');
             }))
-            .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.custom_status) === 'ready'
-                || (v.poster && v.poster.custom_status) === 'failed'))
+            .then(() => pollVideo(this.video.uuid, (v) => {
+                const status = v.poster && v.poster.custom_status;
+
+                return status === 'ready' || status === 'failed';
+            }, {maxAttempts: POSTER_POLL_ATTEMPTS}))
             .then((video) => {
                 if (video.poster && video.poster.custom_status === 'failed') {
                     throw new Error(translate('scale_videooptimizer.poster_failed'));
                 }
-                return selectPoster(this.video.uuid, {source: 'custom'});
+                // A processed custom poster normally becomes the active one on its own. Only if it did
+                // not, activate it once explicitly.
+                if ((video.poster && video.poster.source) === 'custom') {
+                    return video;
+                }
+
+                return selectPoster(this.video.uuid, {source: 'custom'})
+                    .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) === 'custom', {maxAttempts: POSTER_POLL_ATTEMPTS}));
             })
-            .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) === 'custom'))
             .then(action((video) => {
                 if (this._unmounted) { return; }
                 this.busy = null;
@@ -210,7 +222,7 @@ class VideoDetail extends React.Component<*> {
         this.busy = 'poster';
         this.error = null;
         deletePoster(this.video.uuid)
-            .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) !== 'custom'))
+            .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) !== 'custom', {maxAttempts: POSTER_POLL_ATTEMPTS}))
             .then(action((video) => {
                 if (this._unmounted) { return; }
                 this.busy = null;
@@ -259,7 +271,7 @@ class VideoDetail extends React.Component<*> {
             <div className="vo-detail__player" style={{aspectRatio: ratio[0] + ' / ' + ratio[1], maxWidth: maxWidth + 'px'}}>
                 {this.playing ? (
                     <iframe
-                        src={(this.video.embed_url || ('https://videooptimizer.eu/embed/' + this.video.uuid)) + '?autoplay=1'}
+                        src={(this.video.embed_url || ('https://player.videooptimizer.eu/embed/' + this.video.uuid)) + '?autoplay=1'}
                         title={this.video.title || 'Video'}
                         allow="autoplay; fullscreen; picture-in-picture"
                         allowFullScreen
@@ -281,6 +293,7 @@ class VideoDetail extends React.Component<*> {
         if (v.resolution) { rows.push([translate('scale_videooptimizer.dimensions'), v.resolution]); }
         if (typeof v.duration === 'number') { rows.push([translate('scale_videooptimizer.duration'), formatDuration(v.duration)]); }
         if (v.status) { rows.push([translate('scale_videooptimizer.status'), translate('scale_videooptimizer.status_' + v.status)]); }
+        if (v.status === 'failed' && typeof v.error === 'string' && v.error.trim()) { rows.push([translate('scale_videooptimizer.failure_reason'), v.error.trim()]); }
         if (typeof v.views === 'number') { rows.push([translate('scale_videooptimizer.views'), String(v.views)]); }
         if (v.created_at) { rows.push([translate('scale_videooptimizer.created'), formatDate(v.created_at)]); }
 

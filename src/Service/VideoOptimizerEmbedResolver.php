@@ -17,6 +17,12 @@ class VideoOptimizerEmbedResolver
 {
     public const HLS_MIME = 'application/vnd.apple.mpegurl';
 
+    /** Cache lifetime for playable videos (poster, theme and source changes show up within an hour). */
+    private const TTL_PLAYABLE = 3600;
+
+    /** Cache lifetime for failures and videos without sources (not ready yet), so they recover quickly. */
+    private const TTL_UNAVAILABLE = 60;
+
     public function __construct(
         private VideoOptimizerClient $client,
         private CacheInterface $cache,
@@ -29,15 +35,51 @@ class VideoOptimizerEmbedResolver
     public function getSources(string $uuid): array
     {
         try {
-            return $this->cache->get('vo_embed_' . $uuid, function (ItemInterface $item) use ($uuid): array {
-                $item->expiresAfter(86400);
+            return $this->cache->get(self::cacheKey($uuid), function (ItemInterface $item) use ($uuid): array {
+                try {
+                    $sources = self::extractSources($this->client->getEmbed($uuid));
+                } catch (\Throwable) {
+                    // Remember a failure only briefly: it stops a broken API from being hit on every
+                    // render, yet a transient error does not hide the video for long.
+                    $item->expiresAfter(self::TTL_UNAVAILABLE);
 
-                return self::extractSources($this->client->getEmbed($uuid));
+                    return self::unavailable();
+                }
+
+                $item->expiresAfter([] === $sources['sources'] ? self::TTL_UNAVAILABLE : self::TTL_PLAYABLE);
+
+                return $sources;
             });
         } catch (\Throwable) {
-            // Do not cache failures: a transient API/network error must not hide the video for 24h.
-            return ['poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'srcset' => null, 'theme' => null, 'sources' => []];
+            // The cache itself failed: render without it.
+            return self::unavailable();
         }
+    }
+
+    /**
+     * Drops the cached embed data of a video, e.g. after it was changed or deleted in the admin.
+     */
+    public function forget(string $uuid): void
+    {
+        try {
+            $this->cache->delete(self::cacheKey($uuid));
+        } catch (\Throwable) {
+            // Best effort: the entry expires on its own.
+        }
+    }
+
+    private static function cacheKey(string $uuid): string
+    {
+        // v2: entries cached before 1.8.1 (24 h lifetime) must not survive the upgrade.
+        return 'vo_embed_v2_' . $uuid;
+    }
+
+    /**
+     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, sources: array<int, array{src:string,type:string,label:string}>}
+     */
+    private static function unavailable(): array
+    {
+        return ['poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'srcset' => null, 'theme' => null, 'sources' => []];
     }
 
     /**

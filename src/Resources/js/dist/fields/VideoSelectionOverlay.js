@@ -262,6 +262,7 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
       }, videos.map(function (video) {
         var poster = (0, _api.posterFor)(video);
         var ready = video.status === 'ready';
+        var failed = video.status === 'failed';
         return /*#__PURE__*/_react["default"].createElement("div", {
           key: video.uuid,
           className: "vo-video-item"
@@ -280,8 +281,9 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
         }, "\u25B6"), /*#__PURE__*/_react["default"].createElement("span", {
           className: "vo-video-title"
         }, video.title || video.uuid), /*#__PURE__*/_react["default"].createElement("span", {
-          className: 'vo-video-status vo-video-status--' + (ready ? 'ready' : 'processing')
-        }, ready ? '' : (0, _utils.translate)('scale_videooptimizer.processing'))), /*#__PURE__*/_react["default"].createElement("button", {
+          className: 'vo-video-status vo-video-status--' + (ready ? 'ready' : failed ? 'failed' : 'processing'),
+          title: failed && video.error ? String(video.error) : undefined
+        }, ready ? '' : (0, _utils.translate)(failed ? 'scale_videooptimizer.status_failed' : 'scale_videooptimizer.processing'))), /*#__PURE__*/_react["default"].createElement("button", {
           type: "button",
           className: "vo-video-manage",
           title: (0, _utils.translate)('scale_videooptimizer.manage'),
@@ -335,7 +337,12 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
         onClick: this.startIngest,
         loading: this.ingesting,
         disabled: !this.ingestSourceUrl.trim()
-      }, (0, _utils.translate)('scale_videooptimizer.ingest'))), this.ingestStatus && /*#__PURE__*/_react["default"].createElement("div", {
+      }, (0, _utils.translate)('scale_videooptimizer.ingest'))), /*#__PURE__*/_react["default"].createElement("div", {
+        className: "vo-hint",
+        style: {
+          padding: '4px 0 0'
+        }
+      }, (0, _utils.translate)('scale_videooptimizer.ingest_url_help')), this.ingestStatus && /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-upload-status"
       }, this.ingestStatus));
     }
@@ -630,9 +637,7 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
           _this15.uploading = false;
           _this15.uploadStatus = null;
           if (video.status === 'failed') {
-            _this15.error = (0, _utils.translate)('scale_videooptimizer.test_failed', {
-              message: 'processing failed'
-            });
+            _this15.error = (0, _api.failureMessage)(video);
             return;
           }
           _this15.chooseVideo(video);
@@ -640,7 +645,7 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
       })["catch"]((0, _mobx.action)(function (e) {
         _this15.uploading = false;
         _this15.uploadStatus = null;
-        _this15.error = e.message || String(e);
+        _this15.error = (0, _api.errorText)(e);
       }));
     };
   }
@@ -688,9 +693,7 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
           _this18.ingesting = false;
           _this18.ingestStatus = null;
           if (video.status === 'failed') {
-            _this18.error = (0, _utils.translate)('scale_videooptimizer.test_failed', {
-              message: 'processing failed'
-            });
+            _this18.error = (0, _api.failureMessage)(video);
             return;
           }
           _this18.ingestSourceUrl = '';
@@ -700,7 +703,7 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
       })["catch"]((0, _mobx.action)(function (e) {
         _this18.ingesting = false;
         _this18.ingestStatus = null;
-        _this18.error = e.message || String(e);
+        _this18.error = (0, _api.errorText)(e);
       }));
     };
   }

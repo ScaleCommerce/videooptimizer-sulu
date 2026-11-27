@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
 use Scale\VideoOptimizerBundle\Api\UserAgentProvider;
 use Scale\VideoOptimizerBundle\Api\VideoOptimizerClient;
+use Scale\VideoOptimizerBundle\Api\VideoOptimizerException;
 use Scale\VideoOptimizerBundle\Service\SettingsManager;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
@@ -184,6 +185,52 @@ class VideoOptimizerClientTest extends TestCase
         self::assertSame('POST', $captured['method']);
         self::assertStringEndsWith('/libraries/lib-1/reprocess', $captured['url']);
         self::assertSame(7, $result['queued']);
+    }
+
+    public function testReprocessLibraryDoesNotSendForceByDefault(): void
+    {
+        $captured = null;
+        $httpClient = new MockHttpClient(function (string $method, string $url, array $options) use (&$captured): MockResponse {
+            $captured = $options;
+
+            return new MockResponse(json_encode(['data' => ['queued' => 1]], JSON_THROW_ON_ERROR));
+        });
+
+        $this->client($httpClient)->reprocessLibrary('lib-1');
+
+        self::assertStringNotContainsString('force', (string) ($captured['body'] ?? ''));
+    }
+
+    public function testReprocessLibraryForceSendsForceTrue(): void
+    {
+        $captured = null;
+        $httpClient = new MockHttpClient(function (string $method, string $url, array $options) use (&$captured): MockResponse {
+            $captured = $options;
+
+            return new MockResponse(json_encode(['data' => ['queued' => 3]], JSON_THROW_ON_ERROR));
+        });
+
+        $result = $this->client($httpClient)->reprocessLibrary('lib-1', true);
+
+        self::assertSame(['force' => true], json_decode((string) $captured['body'], true));
+        self::assertSame(3, $result['queued']);
+    }
+
+    public function testApiErrorCodeIsExposedOnTheException(): void
+    {
+        $httpClient = new MockHttpClient(fn () => new MockResponse(
+            json_encode(['statusCode' => 400, 'message' => 'Video platform links are not supported.', 'data' => ['code' => 'source_url_video_platform']], JSON_THROW_ON_ERROR),
+            ['http_code' => 400],
+        ));
+
+        try {
+            $this->client($httpClient)->ingestVideoUrl(['library_id' => 'l', 'source_url' => 'https://youtu.be/x']);
+            self::fail('Expected an exception.');
+        } catch (VideoOptimizerException $e) {
+            self::assertSame(400, $e->getStatusCode());
+            self::assertSame('source_url_video_platform', $e->getApiCode());
+            self::assertSame('Video platform links are not supported.', $e->getMessage());
+        }
     }
 
     public function testListEncodingsReturnsRawPayload(): void

@@ -68,12 +68,13 @@ class VideoOptimizerClient
 
     /**
      * Re-queues encoding for every video in a library (selfhosted only). Returns {queued}.
+     * Finished renditions are kept unless $force is set, which is needed after changing `encoding_quality`.
      *
      * @return array<string, mixed>
      */
-    public function reprocessLibrary(string $id): array
+    public function reprocessLibrary(string $id, bool $force = false): array
     {
-        return $this->requestData('POST', '/libraries/' . rawurlencode($id) . '/reprocess');
+        return $this->requestData('POST', '/libraries/' . rawurlencode($id) . '/reprocess', $force ? ['json' => ['force' => true]] : []);
     }
 
     /**
@@ -352,7 +353,10 @@ class VideoOptimizerClient
                     break;
                 }
             }
-            throw new VideoOptimizerException($message, $status);
+            $data = $decoded['data'] ?? null;
+            $apiCode = \is_array($data) && \is_string($data['code'] ?? null) && '' !== $data['code'] ? $data['code'] : null;
+
+            throw new VideoOptimizerException($message, $status, null, $apiCode);
         }
 
         return $decoded;

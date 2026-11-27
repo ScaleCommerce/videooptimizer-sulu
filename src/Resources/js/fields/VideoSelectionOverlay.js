@@ -5,7 +5,7 @@ import {observable, action} from 'mobx';
 import {Overlay, Loader, Button} from 'sulu-admin-bundle/components';
 import FolderList from 'sulu-admin-bundle/components/FolderList';
 import {translate} from 'sulu-admin-bundle/utils';
-import {getLibraries, getAllVideos, initiateUpload, uploadParts, completeUpload, ingestVideoUrl, pollVideo, posterFor, bustCache} from '../services/api';
+import {getLibraries, getAllVideos, initiateUpload, uploadParts, completeUpload, ingestVideoUrl, pollVideo, posterFor, bustCache, failureMessage, errorText} from '../services/api';
 import VideoDetail from '../components/VideoDetail';
 
 @observer
@@ -166,7 +166,7 @@ class VideoSelectionOverlay extends React.Component<*> {
                     this.uploading = false;
                     this.uploadStatus = null;
                     if (video.status === 'failed') {
-                        this.error = translate('scale_videooptimizer.test_failed', {message: 'processing failed'});
+                        this.error = failureMessage(video);
                         return;
                     }
                     this.chooseVideo(video);
@@ -174,7 +174,7 @@ class VideoSelectionOverlay extends React.Component<*> {
             .catch(action((e) => {
                 this.uploading = false;
                 this.uploadStatus = null;
-                this.error = e.message || String(e);
+                this.error = errorText(e);
             }));
     };
 
@@ -204,7 +204,7 @@ class VideoSelectionOverlay extends React.Component<*> {
                     this.ingesting = false;
                     this.ingestStatus = null;
                     if (video.status === 'failed') {
-                        this.error = translate('scale_videooptimizer.test_failed', {message: 'processing failed'});
+                        this.error = failureMessage(video);
                         return;
                     }
                     this.ingestSourceUrl = '';
@@ -214,7 +214,7 @@ class VideoSelectionOverlay extends React.Component<*> {
             .catch(action((e) => {
                 this.ingesting = false;
                 this.ingestStatus = null;
-                this.error = e.message || String(e);
+                this.error = errorText(e);
             }));
     };
 
@@ -286,6 +286,7 @@ class VideoSelectionOverlay extends React.Component<*> {
                         {videos.map((video) => {
                             const poster = posterFor(video);
                             const ready = video.status === 'ready';
+                            const failed = video.status === 'failed';
 
                             return (
                                 <div key={video.uuid} className="vo-video-item">
@@ -299,8 +300,11 @@ class VideoSelectionOverlay extends React.Component<*> {
                                             ? <img src={bustCache(poster)} alt={video.title || ''} />
                                             : <span className="vo-video-ph">▶</span>}
                                         <span className="vo-video-title">{video.title || video.uuid}</span>
-                                        <span className={'vo-video-status vo-video-status--' + (ready ? 'ready' : 'processing')}>
-                                            {ready ? '' : translate('scale_videooptimizer.processing')}
+                                        <span
+                                            className={'vo-video-status vo-video-status--' + (ready ? 'ready' : (failed ? 'failed' : 'processing'))}
+                                            title={failed && video.error ? String(video.error) : undefined}
+                                        >
+                                            {ready ? '' : translate(failed ? 'scale_videooptimizer.status_failed' : 'scale_videooptimizer.processing')}
                                         </span>
                                     </button>
                                     <button
@@ -362,6 +366,7 @@ class VideoSelectionOverlay extends React.Component<*> {
                         {translate('scale_videooptimizer.ingest')}
                     </Button>
                 </div>
+                <div className="vo-hint" style={{padding: '4px 0 0'}}>{translate('scale_videooptimizer.ingest_url_help')}</div>
                 {this.ingestStatus && <div className="vo-upload-status">{this.ingestStatus}</div>}
             </div>
         );

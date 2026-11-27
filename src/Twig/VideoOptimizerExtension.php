@@ -39,6 +39,7 @@ class VideoOptimizerExtension extends AbstractExtension
             new TwigFunction('video_optimizer_player_options', [$this, 'playerOptions']),
             new TwigFunction('video_optimizer_player', [$this, 'player']),
             new TwigFunction('video_optimizer_srcset', [$this, 'srcset']),
+            new TwigFunction('video_optimizer_poster', [$this, 'poster']),
             new TwigFunction('video_optimizer_native', [$this, 'renderNative'], ['is_safe' => ['html']]),
             // No 'is_safe': this returns data, not markup. See sources() for why a consumer
             // that renders its own markup must wire the frontend assets itself.
@@ -83,6 +84,20 @@ class VideoOptimizerExtension extends AbstractExtension
             'loop' => self::str($block['loop'] ?? 'inherit'),
             'muted' => self::str($block['muted'] ?? 'inherit'),
         ];
+    }
+
+    /**
+     * Returns the current poster URL of a video: the API's active poster (kept current by the API,
+     * stable URL), else the `posterUrl` stored in the page property.
+     *
+     * @param array<string, mixed>|null $video
+     */
+    public function poster(?array $video): ?string
+    {
+        $uuid = self::uuidOf($video);
+        $resolved = null === $uuid ? null : ($this->embedResolver->getSources($uuid)['poster'] ?? null);
+
+        return self::posterFor($video, $resolved);
     }
 
     /**

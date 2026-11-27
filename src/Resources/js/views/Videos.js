@@ -13,6 +13,8 @@ import {
     uploadParts,
     completeUpload,
     ingestVideoUrl,
+    failureMessage,
+    errorText,
     pollVideo,
     posterFor,
     bustCache,
@@ -134,7 +136,7 @@ class Videos extends React.Component<*> {
                     this.uploading = false;
                     this.uploadStatus = null;
                     if (video.status === 'failed') {
-                        this.error = translate('scale_videooptimizer.processing_failed');
+                        this.error = failureMessage(video);
                         return;
                     }
                     this.reloadVideos();
@@ -143,7 +145,7 @@ class Videos extends React.Component<*> {
             .catch(action((e) => {
                 this.uploading = false;
                 this.uploadStatus = null;
-                this.error = e.message || String(e);
+                this.error = errorText(e);
             }));
     };
 
@@ -173,7 +175,7 @@ class Videos extends React.Component<*> {
                     this.ingesting = false;
                     this.ingestStatus = null;
                     if (video.status === 'failed') {
-                        this.error = translate('scale_videooptimizer.processing_failed');
+                        this.error = failureMessage(video);
                         return;
                     }
                     this.ingestSourceUrl = '';
@@ -183,7 +185,7 @@ class Videos extends React.Component<*> {
             .catch(action((e) => {
                 this.ingesting = false;
                 this.ingestStatus = null;
-                this.error = e.message || String(e);
+                this.error = errorText(e);
             }));
     };
 
@@ -255,6 +257,7 @@ class Videos extends React.Component<*> {
                         {translate('scale_videooptimizer.ingest')}
                     </Button>
                 </div>
+                <div className="vo-hint" style={{padding: '4px 0 0'}}>{translate('scale_videooptimizer.ingest_url_help')}</div>
                 {this.ingestStatus && <div className="vo-upload-status">{this.ingestStatus}</div>}
             </React.Fragment>
         );

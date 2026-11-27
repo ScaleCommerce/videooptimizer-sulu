@@ -23,6 +23,16 @@ class ScaleVideoOptimizerExtension extends Extension implements PrependExtension
 
         $loader = new XmlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config'));
         $loader->load('services.xml');
+
+        // The embed cache is invalidated from the admin kernel but read by the website kernel, which
+        // have separate cache.app directories before Symfony 7.4. A pool in the shared dir reaches both.
+        $container->setParameter(
+            'scale_video_optimizer.cache_directory',
+            $container->hasParameter('kernel.share_dir') ? '%kernel.share_dir%' : '%kernel.project_dir%/var/share/%kernel.environment%',
+        );
+        if (\is_string($config['cache_pool'] ?? null) && '' !== $config['cache_pool']) {
+            $container->setAlias('scale_video_optimizer.cache', $config['cache_pool']);
+        }
     }
 
     /**

@@ -1,14 +1,16 @@
 // @flow
 import {Requester} from 'sulu-admin-bundle/services';
+import {translate} from 'sulu-admin-bundle/utils';
 
 const BASE = '/admin/api/videooptimizer';
 
 // Requester rejects with the raw Response object on non-2xx. Convert that into a
 // proper Error carrying the server's { message } and HTTP status, so views can show a
 // readable text and branch on "not configured" (428) vs "routes missing" (404).
-function toError(message, status) {
+function toError(message, status, code) {
     const error = new Error(message);
     error.status = status || null;
+    error.code = code || null;
 
     return error;
 }
@@ -30,7 +32,7 @@ function normalize(promise) {
 
             return rejection.json().then(
                 (data) => {
-                    throw toError(messageForStatus(status, data && data.message), status);
+                    throw toError(messageForStatus(status, data && data.message), status, data && data.code);
                 },
                 () => {
                     throw toError(messageForStatus(status, null), status);
@@ -39,6 +41,26 @@ function normalize(promise) {
         }
         throw (rejection instanceof Error ? rejection : new Error(String(rejection)));
     });
+}
+
+// Readable text for a failed request: known API error codes get a translated hint, everything
+// else keeps the upstream message.
+export function errorText(error: Object): string {
+    if (error && error.code === 'source_url_video_platform') {
+        return translate('scale_videooptimizer.ingest_platform_link');
+    }
+
+    return (error && error.message) || String(error);
+}
+
+// Message for a video that ended in status 'failed': the API's readable reason (e.g. a URL import
+// download error) when present, otherwise the generic text.
+export function failureMessage(video: Object): string {
+    const reason = video && typeof video.error === 'string' ? video.error.trim() : '';
+
+    return reason
+        ? translate('scale_videooptimizer.processing_failed_reason', {reason})
+        : translate('scale_videooptimizer.processing_failed');
 }
 
 export function getSettings() {
@@ -73,8 +95,9 @@ export function deleteLibrary(id: string) {
     return normalize(Requester.delete(BASE + '/libraries/' + encodeURIComponent(id)));
 }
 
-export function reprocessLibrary(id: string) {
-    return normalize(Requester.post(BASE + '/libraries/' + encodeURIComponent(id) + '/reprocess', {}));
+// force: also re-encode renditions that are already finished (needed after changing encoding_quality).
+export function reprocessLibrary(id: string, force: boolean = false) {
+    return normalize(Requester.post(BASE + '/libraries/' + encodeURIComponent(id) + '/reprocess', force ? {force: true} : {}));
 }
 
 // Codecs and resolutions the organization may enable on a library. Each entry is
@@ -183,15 +206,21 @@ export function deletePoster(uuid: string) {
 // Polls getVideo until predicate(video) is true (or it fails). Returns the final video.
 export function pollVideo(uuid: string, predicate: (video: Object) => boolean, options: Object = {}) {
     const interval = options.interval || 3000;
+    // Gives up instead of polling forever (default 30 min at the default interval).
+    const maxAttempts = options.maxAttempts || 600;
+    let attempts = 0;
 
     return new Promise((resolve, reject) => {
         const tick = () => {
+            attempts += 1;
             getVideo(uuid).then((video) => {
                 if (options.onTick) {
                     options.onTick(video);
                 }
                 if (predicate(video)) {
                     resolve(video);
+                } else if (attempts >= maxAttempts) {
+                    reject(new Error(translate('scale_videooptimizer.poll_timeout')));
                 } else {
                     setTimeout(tick, interval);
                 }

@@ -96,5 +96,16 @@
     "scale_videooptimizer.delivery_only_hint": "This library is delivery-only. Encoding ladder, upload and poster are unavailable.",
     "scale_videooptimizer.ladder_reprocess_hint": "After saving, use \"Reprocess\" so the changed encoding ladder takes effect.",
     "scale_videooptimizer.select_or_create_hint": "Select a library above or create a new one.",
-    "scale_videooptimizer.upload_file": "Upload file"
+    "scale_videooptimizer.upload_file": "Upload file",
+    "scale_videooptimizer.processing_failed_reason": "Processing failed: {reason}",
+    "scale_videooptimizer.failure_reason": "Reason",
+    "scale_videooptimizer.ingest_url_help": "Public https link to the video file itself, e.g. https://example.com/video.mp4.",
+    "scale_videooptimizer.ingest_platform_link": "Link to a video file, not to a video page. Video platforms such as YouTube cannot be imported.",
+    "scale_videooptimizer.encoding_quality": "Quality mode",
+    "scale_videooptimizer.encoding_quality_performance": "Performance (default)",
+    "scale_videooptimizer.encoding_quality_quality": "Quality (sharper)",
+    "scale_videooptimizer.encoding_quality_help": "Performance: compact files, fast start. Quality: visibly sharper, about 2.5–3× the CDN traffic.",
+    "scale_videooptimizer.quality_reprocess_hint": "After saving, run \"Reprocess\" with \"Re-encode all qualities\" so existing videos use the new quality mode.",
+    "scale_videooptimizer.reprocess_force": "Re-encode all qualities (also videos that are already processed)",
+    "scale_videooptimizer.poll_timeout": "Timed out while waiting for VideoOptimizer. Reload the list and check the status."
 }

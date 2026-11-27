@@ -6,6 +6,7 @@ namespace Scale\VideoOptimizerBundle\Controller\Admin;
 
 use Scale\VideoOptimizerBundle\Api\VideoOptimizerClient;
 use Scale\VideoOptimizerBundle\Api\VideoOptimizerException;
+use Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -16,7 +17,7 @@ use Symfony\Component\HttpFoundation\Request;
  */
 class VideoController
 {
-    public function __construct(private VideoOptimizerClient $client)
+    public function __construct(private VideoOptimizerClient $client, private ?VideoOptimizerEmbedResolver $embedResolver = null)
     {
     }
 
@@ -65,13 +66,14 @@ class VideoController
 
     public function patch(Request $request, string $uuid): JsonResponse
     {
-        return $this->guard(fn () => new JsonResponse($this->client->updateVideo($uuid, $this->decodeJson($request))));
+        return $this->guard(fn () => new JsonResponse($this->forgetAfter($uuid, $this->client->updateVideo($uuid, $this->decodeJson($request)))));
     }
 
     public function delete(string $uuid): JsonResponse
     {
         return $this->guard(function () use ($uuid) {
             $this->client->deleteVideo($uuid);
+            $this->embedResolver?->forget($uuid);
 
             return new JsonResponse(null, 204);
         });
@@ -89,7 +91,7 @@ class VideoController
             return new JsonResponse(['message' => 'Missing thumbnailIndex.'], 400);
         }
 
-        return $this->guard(fn () => new JsonResponse($this->client->selectThumbnail($uuid, $index)));
+        return $this->guard(fn () => new JsonResponse($this->forgetAfter($uuid, $this->client->selectThumbnail($uuid, $index))));
     }
 
     public function posterInitiate(Request $request, string $uuid): JsonResponse
@@ -104,21 +106,37 @@ class VideoController
             return new JsonResponse(['message' => 'Missing key.'], 400);
         }
 
-        return $this->guard(fn () => new JsonResponse($this->client->completePosterUpload($uuid, $key)));
+        return $this->guard(fn () => new JsonResponse($this->forgetAfter($uuid, $this->client->completePosterUpload($uuid, $key))));
     }
 
     public function posterSelect(Request $request, string $uuid): JsonResponse
     {
-        return $this->guard(fn () => new JsonResponse($this->client->selectPoster($uuid, $this->decodeJson($request))));
+        return $this->guard(fn () => new JsonResponse($this->forgetAfter($uuid, $this->client->selectPoster($uuid, $this->decodeJson($request)))));
     }
 
     public function posterDelete(string $uuid): JsonResponse
     {
         return $this->guard(function () use ($uuid) {
             $this->client->deletePoster($uuid);
+            $this->embedResolver?->forget($uuid);
 
             return new JsonResponse(null, 204);
         });
+    }
+
+    /**
+     * Drops the cached storefront embed data of a video that was just changed, then passes the
+     * API result through.
+     *
+     * @param array<string, mixed> $result
+     *
+     * @return array<string, mixed>
+     */
+    private function forgetAfter(string $uuid, array $result): array
+    {
+        $this->embedResolver?->forget($uuid);
+
+        return $result;
     }
 
     /**
@@ -163,7 +181,12 @@ class VideoController
         try {
             return $callback();
         } catch (VideoOptimizerException $e) {
-            return new JsonResponse(['message' => $e->getMessage()], $e->getStatusCode() ?: 502);
+            $body = ['message' => $e->getMessage()];
+            if (null !== $e->getApiCode()) {
+                $body['code'] = $e->getApiCode();
+            }
+
+            return new JsonResponse($body, $e->getStatusCode() ?: 502);
         }
     }
 }

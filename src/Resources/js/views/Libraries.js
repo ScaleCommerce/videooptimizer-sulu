@@ -62,6 +62,7 @@ class Libraries extends React.Component<*> {
     @observable formDescription = '';
     @observable selectedCodecs = [];
     @observable selectedResolutions = [];
+    @observable formQuality = 'performance';
     @observable saving = false;
 
     @observable error = null;
@@ -70,6 +71,9 @@ class Libraries extends React.Component<*> {
     @observable reprocessId = null;
     @observable reprocessing = false;
     @observable reprocessResult = null;
+    // "Re-encode all qualities" in the reprocess dialog; pre-ticked after the quality mode changed.
+    @observable forceReprocess = false;
+    @observable forceReprocessSuggestedFor = null;
 
     componentDidMount() {
         getLibraries()
@@ -120,6 +124,7 @@ class Libraries extends React.Component<*> {
         this.formDescription = library.description || '';
         this.selectedCodecs = splitKeys(library.codec);
         this.selectedResolutions = splitKeys(library.resolutions);
+        this.formQuality = library.encoding_quality || 'performance';
         this.reprocessResult = null;
         this.error = null;
     };
@@ -130,6 +135,7 @@ class Libraries extends React.Component<*> {
         this.formDescription = '';
         this.selectedCodecs = [];
         this.selectedResolutions = [];
+        this.formQuality = 'performance';
         this.reprocessResult = null;
         this.error = null;
     };
@@ -140,6 +146,10 @@ class Libraries extends React.Component<*> {
 
     @action handleDescriptionChange = (event: SyntheticInputEvent<HTMLInputElement>) => {
         this.formDescription = event.target.value;
+    };
+
+    @action handleQualityChange = (event: SyntheticInputEvent<HTMLSelectElement>) => {
+        this.formQuality = event.target.value;
     };
 
     @action toggleCodec = (key: string) => {
@@ -175,6 +185,14 @@ class Libraries extends React.Component<*> {
             || this.ladderValue('resolutions', this.selectedResolutions) !== (library.resolutions || '');
     }
 
+    // True when the in-form quality mode differs from the saved library: finished renditions are
+    // then only re-encoded by a forced reprocess.
+    qualityChanged(): boolean {
+        const library = this.activeLibrary;
+
+        return !!library && (library.encoding_quality || 'performance') !== this.formQuality;
+    }
+
     reload(selectId: ?string) {
         getLibraries()
             .then(action((libraries) => {
@@ -205,6 +223,10 @@ class Libraries extends React.Component<*> {
             if (description) {
                 payload.description = description;
             }
+            // New libraries start with the API default (performance); only send a deliberate choice.
+            if (this.formQuality !== 'performance') {
+                payload.encoding_quality = this.formQuality;
+            }
             if (codec) {
                 payload.codec = codec;
             }
@@ -230,9 +252,17 @@ class Libraries extends React.Component<*> {
             payload.resolutions = this.ladderValue('resolutions', this.selectedResolutions);
         }
         const id = this.activeId;
+        const qualityChanged = this.mediaManaged && this.qualityChanged();
+        // Only send the quality when the user changed it, never the displayed fallback value.
+        if (qualityChanged) {
+            payload.encoding_quality = this.formQuality;
+        }
         updateLibrary(id, payload)
             .then(action(() => {
                 this.saving = false;
+                if (qualityChanged) {
+                    this.forceReprocessSuggestedFor = id;
+                }
                 this.reload(id);
             }))
             .catch(action((e) => { this.saving = false; this.error = e.message || String(e); }));
@@ -248,13 +278,22 @@ class Libraries extends React.Component<*> {
             .catch(action((e) => { this.deleting = false; this.deleteId = null; this.error = e.message || String(e); }));
     };
 
-    @action askReprocess = () => { this.reprocessId = this.activeId; this.reprocessResult = null; this.error = null; };
+    @action askReprocess = () => {
+        this.reprocessId = this.activeId;
+        this.forceReprocess = this.forceReprocessSuggestedFor === this.activeId;
+        this.reprocessResult = null;
+        this.error = null;
+    };
+    @action toggleForceReprocess = () => { this.forceReprocess = !this.forceReprocess; };
     @action cancelReprocess = () => { this.reprocessId = null; };
     @action confirmReprocess = () => {
         const id = this.reprocessId;
         this.reprocessing = true;
-        reprocessLibrary(id)
+        reprocessLibrary(id, this.forceReprocess)
             .then(action((result) => {
+                if (this.forceReprocess) {
+                    this.forceReprocessSuggestedFor = null;
+                }
                 this.reprocessing = false;
                 this.reprocessId = null;
                 this.reprocessResult = {queued: (result && result.queued) || 0};
@@ -413,6 +452,24 @@ class Libraries extends React.Component<*> {
                             this.toggleResolution
                         )}
 
+                        <label className="vo-label">{translate('scale_videooptimizer.encoding_quality')}</label>
+                        <select className="vo-input" value={this.formQuality} onChange={this.handleQualityChange}>
+                            {['performance', 'quality'].map((value) => (
+                                <option key={value} value={value}>
+                                    {translate('scale_videooptimizer.encoding_quality_' + value)}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="vo-hint" style={{padding: '4px 0 0'}}>
+                            {translate('scale_videooptimizer.encoding_quality_help')}
+                        </div>
+
+                        {!isNew && (this.qualityChanged() || this.forceReprocessSuggestedFor === this.activeId) && (
+                            <div className="vo-hint" style={{padding: '12px 0 0'}}>
+                                {translate('scale_videooptimizer.quality_reprocess_hint')}
+                            </div>
+                        )}
+
                         {!isNew && this.ladderChanged() && (
                             <div className="vo-hint" style={{padding: '12px 0 0'}}>
                                 {translate('scale_videooptimizer.ladder_reprocess_hint')}
@@ -486,6 +543,10 @@ class Libraries extends React.Component<*> {
                     confirmLoading={this.reprocessing}
                 >
                     {translate('scale_videooptimizer.confirm_reprocess')}
+                    <label className="vo-check" style={{display: 'block', marginTop: '16px'}}>
+                        <input type="checkbox" checked={this.forceReprocess} onChange={this.toggleForceReprocess} />
+                        {translate('scale_videooptimizer.reprocess_force')}
+                    </label>
                 </Dialog>
             </div>
         );

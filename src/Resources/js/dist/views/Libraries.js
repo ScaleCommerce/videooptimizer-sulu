@@ -60,7 +60,7 @@ var _components = require("sulu-admin-bundle/components");
 var _FolderList = _interopRequireDefault(require("sulu-admin-bundle/components/FolderList"));
 var _utils = require("sulu-admin-bundle/utils");
 var _api = require("../services/api");
-var _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9, _descriptor0, _descriptor1, _descriptor10, _descriptor11, _descriptor12, _descriptor13, _descriptor14, _descriptor15, _descriptor16, _descriptor17, _descriptor18, _descriptor19, _descriptor20, _descriptor21, _descriptor22, _descriptor23, _descriptor24, _descriptor25, _descriptor26;
+var _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9, _descriptor0, _descriptor1, _descriptor10, _descriptor11, _descriptor12, _descriptor13, _descriptor14, _descriptor15, _descriptor16, _descriptor17, _descriptor18, _descriptor19, _descriptor20, _descriptor21, _descriptor22, _descriptor23, _descriptor24, _descriptor25, _descriptor26, _descriptor27, _descriptor28, _descriptor29, _descriptor30, _descriptor31;
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
@@ -131,26 +131,32 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
     _initializerDefineProperty(_this, "formDescription", _descriptor6, _this);
     _initializerDefineProperty(_this, "selectedCodecs", _descriptor7, _this);
     _initializerDefineProperty(_this, "selectedResolutions", _descriptor8, _this);
-    _initializerDefineProperty(_this, "saving", _descriptor9, _this);
-    _initializerDefineProperty(_this, "error", _descriptor0, _this);
-    _initializerDefineProperty(_this, "deleteId", _descriptor1, _this);
-    _initializerDefineProperty(_this, "deleting", _descriptor10, _this);
-    _initializerDefineProperty(_this, "reprocessId", _descriptor11, _this);
-    _initializerDefineProperty(_this, "reprocessing", _descriptor12, _this);
-    _initializerDefineProperty(_this, "reprocessResult", _descriptor13, _this);
-    _initializerDefineProperty(_this, "selectLibrary", _descriptor14, _this);
-    _initializerDefineProperty(_this, "startCreate", _descriptor15, _this);
-    _initializerDefineProperty(_this, "handleNameChange", _descriptor16, _this);
-    _initializerDefineProperty(_this, "handleDescriptionChange", _descriptor17, _this);
-    _initializerDefineProperty(_this, "toggleCodec", _descriptor18, _this);
-    _initializerDefineProperty(_this, "toggleResolution", _descriptor19, _this);
-    _initializerDefineProperty(_this, "save", _descriptor20, _this);
-    _initializerDefineProperty(_this, "askDelete", _descriptor21, _this);
-    _initializerDefineProperty(_this, "cancelDelete", _descriptor22, _this);
-    _initializerDefineProperty(_this, "confirmDelete", _descriptor23, _this);
-    _initializerDefineProperty(_this, "askReprocess", _descriptor24, _this);
-    _initializerDefineProperty(_this, "cancelReprocess", _descriptor25, _this);
-    _initializerDefineProperty(_this, "confirmReprocess", _descriptor26, _this);
+    _initializerDefineProperty(_this, "formQuality", _descriptor9, _this);
+    _initializerDefineProperty(_this, "saving", _descriptor0, _this);
+    _initializerDefineProperty(_this, "error", _descriptor1, _this);
+    _initializerDefineProperty(_this, "deleteId", _descriptor10, _this);
+    _initializerDefineProperty(_this, "deleting", _descriptor11, _this);
+    _initializerDefineProperty(_this, "reprocessId", _descriptor12, _this);
+    _initializerDefineProperty(_this, "reprocessing", _descriptor13, _this);
+    _initializerDefineProperty(_this, "reprocessResult", _descriptor14, _this);
+    // "Re-encode all qualities" in the reprocess dialog; pre-ticked after the quality mode changed.
+    _initializerDefineProperty(_this, "forceReprocess", _descriptor15, _this);
+    _initializerDefineProperty(_this, "forceReprocessSuggestedFor", _descriptor16, _this);
+    _initializerDefineProperty(_this, "selectLibrary", _descriptor17, _this);
+    _initializerDefineProperty(_this, "startCreate", _descriptor18, _this);
+    _initializerDefineProperty(_this, "handleNameChange", _descriptor19, _this);
+    _initializerDefineProperty(_this, "handleDescriptionChange", _descriptor20, _this);
+    _initializerDefineProperty(_this, "handleQualityChange", _descriptor21, _this);
+    _initializerDefineProperty(_this, "toggleCodec", _descriptor22, _this);
+    _initializerDefineProperty(_this, "toggleResolution", _descriptor23, _this);
+    _initializerDefineProperty(_this, "save", _descriptor24, _this);
+    _initializerDefineProperty(_this, "askDelete", _descriptor25, _this);
+    _initializerDefineProperty(_this, "cancelDelete", _descriptor26, _this);
+    _initializerDefineProperty(_this, "confirmDelete", _descriptor27, _this);
+    _initializerDefineProperty(_this, "askReprocess", _descriptor28, _this);
+    _initializerDefineProperty(_this, "toggleForceReprocess", _descriptor29, _this);
+    _initializerDefineProperty(_this, "cancelReprocess", _descriptor30, _this);
+    _initializerDefineProperty(_this, "confirmReprocess", _descriptor31, _this);
     return _this;
   }
   _inherits(Libraries, _React$Component);
@@ -217,6 +223,15 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
         return false;
       }
       return this.ladderValue('codecs', this.selectedCodecs) !== (library.codec || '') || this.ladderValue('resolutions', this.selectedResolutions) !== (library.resolutions || '');
+    }
+
+    // True when the in-form quality mode differs from the saved library: finished renditions are
+    // then only re-encoded by a forced reprocess.
+  }, {
+    key: "qualityChanged",
+    value: function qualityChanged() {
+      var library = this.activeLibrary;
+      return !!library && (library.encoding_quality || 'performance') !== this.formQuality;
     }
   }, {
     key: "reload",
@@ -363,7 +378,28 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
         className: "vo-label"
       }, (0, _utils.translate)('scale_videooptimizer.codecs')), this.renderLadderGroup('codecs', library ? library.available_codecs : null, this.selectedCodecs, this.toggleCodec), /*#__PURE__*/_react["default"].createElement("label", {
         className: "vo-label"
-      }, (0, _utils.translate)('scale_videooptimizer.resolutions')), this.renderLadderGroup('resolutions', library ? library.available_resolutions : null, this.selectedResolutions, this.toggleResolution), !isNew && this.ladderChanged() && /*#__PURE__*/_react["default"].createElement("div", {
+      }, (0, _utils.translate)('scale_videooptimizer.resolutions')), this.renderLadderGroup('resolutions', library ? library.available_resolutions : null, this.selectedResolutions, this.toggleResolution), /*#__PURE__*/_react["default"].createElement("label", {
+        className: "vo-label"
+      }, (0, _utils.translate)('scale_videooptimizer.encoding_quality')), /*#__PURE__*/_react["default"].createElement("select", {
+        className: "vo-input",
+        value: this.formQuality,
+        onChange: this.handleQualityChange
+      }, ['performance', 'quality'].map(function (value) {
+        return /*#__PURE__*/_react["default"].createElement("option", {
+          key: value,
+          value: value
+        }, (0, _utils.translate)('scale_videooptimizer.encoding_quality_' + value));
+      })), /*#__PURE__*/_react["default"].createElement("div", {
+        className: "vo-hint",
+        style: {
+          padding: '4px 0 0'
+        }
+      }, (0, _utils.translate)('scale_videooptimizer.encoding_quality_help')), !isNew && (this.qualityChanged() || this.forceReprocessSuggestedFor === this.activeId) && /*#__PURE__*/_react["default"].createElement("div", {
+        className: "vo-hint",
+        style: {
+          padding: '12px 0 0'
+        }
+      }, (0, _utils.translate)('scale_videooptimizer.quality_reprocess_hint')), !isNew && this.ladderChanged() && /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-hint",
         style: {
           padding: '12px 0 0'
@@ -420,7 +456,17 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
         onConfirm: this.confirmReprocess,
         onCancel: this.cancelReprocess,
         confirmLoading: this.reprocessing
-      }, (0, _utils.translate)('scale_videooptimizer.confirm_reprocess')));
+      }, (0, _utils.translate)('scale_videooptimizer.confirm_reprocess'), /*#__PURE__*/_react["default"].createElement("label", {
+        className: "vo-check",
+        style: {
+          display: 'block',
+          marginTop: '16px'
+        }
+      }, /*#__PURE__*/_react["default"].createElement("input", {
+        type: "checkbox",
+        checked: this.forceReprocess,
+        onChange: this.toggleForceReprocess
+      }), (0, _utils.translate)('scale_videooptimizer.reprocess_force'))));
     }
   }]);
 }(_react["default"].Component), _descriptor = _applyDecoratedDescriptor(_class2.prototype, "loading", [_mobx.observable], {
@@ -482,56 +528,77 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
   initializer: function initializer() {
     return [];
   }
-}), _descriptor9 = _applyDecoratedDescriptor(_class2.prototype, "saving", [_mobx.observable], {
+}), _descriptor9 = _applyDecoratedDescriptor(_class2.prototype, "formQuality", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return 'performance';
+  }
+}), _descriptor0 = _applyDecoratedDescriptor(_class2.prototype, "saving", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return false;
   }
-}), _descriptor0 = _applyDecoratedDescriptor(_class2.prototype, "error", [_mobx.observable], {
+}), _descriptor1 = _applyDecoratedDescriptor(_class2.prototype, "error", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return null;
   }
-}), _descriptor1 = _applyDecoratedDescriptor(_class2.prototype, "deleteId", [_mobx.observable], {
+}), _descriptor10 = _applyDecoratedDescriptor(_class2.prototype, "deleteId", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return null;
   }
-}), _descriptor10 = _applyDecoratedDescriptor(_class2.prototype, "deleting", [_mobx.observable], {
+}), _descriptor11 = _applyDecoratedDescriptor(_class2.prototype, "deleting", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return false;
   }
-}), _descriptor11 = _applyDecoratedDescriptor(_class2.prototype, "reprocessId", [_mobx.observable], {
+}), _descriptor12 = _applyDecoratedDescriptor(_class2.prototype, "reprocessId", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return null;
   }
-}), _descriptor12 = _applyDecoratedDescriptor(_class2.prototype, "reprocessing", [_mobx.observable], {
+}), _descriptor13 = _applyDecoratedDescriptor(_class2.prototype, "reprocessing", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return false;
   }
-}), _descriptor13 = _applyDecoratedDescriptor(_class2.prototype, "reprocessResult", [_mobx.observable], {
+}), _descriptor14 = _applyDecoratedDescriptor(_class2.prototype, "reprocessResult", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return null;
   }
-}), _applyDecoratedDescriptor(_class2.prototype, "activeLibrary", [_mobx.computed], Object.getOwnPropertyDescriptor(_class2.prototype, "activeLibrary"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "mediaManaged", [_mobx.computed], Object.getOwnPropertyDescriptor(_class2.prototype, "mediaManaged"), _class2.prototype), _descriptor14 = _applyDecoratedDescriptor(_class2.prototype, "selectLibrary", [_mobx.action], {
+}), _descriptor15 = _applyDecoratedDescriptor(_class2.prototype, "forceReprocess", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return false;
+  }
+}), _descriptor16 = _applyDecoratedDescriptor(_class2.prototype, "forceReprocessSuggestedFor", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return null;
+  }
+}), _applyDecoratedDescriptor(_class2.prototype, "activeLibrary", [_mobx.computed], Object.getOwnPropertyDescriptor(_class2.prototype, "activeLibrary"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "mediaManaged", [_mobx.computed], Object.getOwnPropertyDescriptor(_class2.prototype, "mediaManaged"), _class2.prototype), _descriptor17 = _applyDecoratedDescriptor(_class2.prototype, "selectLibrary", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
@@ -553,11 +620,12 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
       _this6.formDescription = library.description || '';
       _this6.selectedCodecs = splitKeys(library.codec);
       _this6.selectedResolutions = splitKeys(library.resolutions);
+      _this6.formQuality = library.encoding_quality || 'performance';
       _this6.reprocessResult = null;
       _this6.error = null;
     };
   }
-}), _descriptor15 = _applyDecoratedDescriptor(_class2.prototype, "startCreate", [_mobx.action], {
+}), _descriptor18 = _applyDecoratedDescriptor(_class2.prototype, "startCreate", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
@@ -569,11 +637,12 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
       _this7.formDescription = '';
       _this7.selectedCodecs = [];
       _this7.selectedResolutions = [];
+      _this7.formQuality = 'performance';
       _this7.reprocessResult = null;
       _this7.error = null;
     };
   }
-}), _descriptor16 = _applyDecoratedDescriptor(_class2.prototype, "handleNameChange", [_mobx.action], {
+}), _descriptor19 = _applyDecoratedDescriptor(_class2.prototype, "handleNameChange", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
@@ -583,7 +652,7 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
       _this8.formName = event.target.value;
     };
   }
-}), _descriptor17 = _applyDecoratedDescriptor(_class2.prototype, "handleDescriptionChange", [_mobx.action], {
+}), _descriptor20 = _applyDecoratedDescriptor(_class2.prototype, "handleDescriptionChange", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
@@ -593,53 +662,67 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
       _this9.formDescription = event.target.value;
     };
   }
-}), _descriptor18 = _applyDecoratedDescriptor(_class2.prototype, "toggleCodec", [_mobx.action], {
+}), _descriptor21 = _applyDecoratedDescriptor(_class2.prototype, "handleQualityChange", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this0 = this;
-    return function (key) {
-      _this0.selectedCodecs = _this0.selectedCodecs.includes(key) ? _this0.selectedCodecs.filter(function (k) {
-        return k !== key;
-      }) : [].concat(_toConsumableArray(_this0.selectedCodecs), [key]);
+    return function (event) {
+      _this0.formQuality = event.target.value;
     };
   }
-}), _descriptor19 = _applyDecoratedDescriptor(_class2.prototype, "toggleResolution", [_mobx.action], {
+}), _descriptor22 = _applyDecoratedDescriptor(_class2.prototype, "toggleCodec", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this1 = this;
     return function (key) {
-      _this1.selectedResolutions = _this1.selectedResolutions.includes(key) ? _this1.selectedResolutions.filter(function (k) {
+      _this1.selectedCodecs = _this1.selectedCodecs.includes(key) ? _this1.selectedCodecs.filter(function (k) {
         return k !== key;
-      }) : [].concat(_toConsumableArray(_this1.selectedResolutions), [key]);
+      }) : [].concat(_toConsumableArray(_this1.selectedCodecs), [key]);
     };
   }
-}), _descriptor20 = _applyDecoratedDescriptor(_class2.prototype, "save", [_mobx.action], {
+}), _descriptor23 = _applyDecoratedDescriptor(_class2.prototype, "toggleResolution", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this10 = this;
+    return function (key) {
+      _this10.selectedResolutions = _this10.selectedResolutions.includes(key) ? _this10.selectedResolutions.filter(function (k) {
+        return k !== key;
+      }) : [].concat(_toConsumableArray(_this10.selectedResolutions), [key]);
+    };
+  }
+}), _descriptor24 = _applyDecoratedDescriptor(_class2.prototype, "save", [_mobx.action], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    var _this11 = this;
     return function () {
-      var name = _this10.formName.trim();
+      var name = _this11.formName.trim();
       if (!name) {
         return;
       }
-      _this10.saving = true;
-      _this10.error = null;
-      if (_this10.activeId === CREATE_ID) {
+      _this11.saving = true;
+      _this11.error = null;
+      if (_this11.activeId === CREATE_ID) {
         var _payload = {
           name: name
         };
-        var description = _this10.formDescription.trim();
-        var codec = _this10.ladderValue('codecs', _this10.selectedCodecs);
-        var resolutions = _this10.ladderValue('resolutions', _this10.selectedResolutions);
+        var description = _this11.formDescription.trim();
+        var codec = _this11.ladderValue('codecs', _this11.selectedCodecs);
+        var resolutions = _this11.ladderValue('resolutions', _this11.selectedResolutions);
         // Omit empty optionals on create so we don't overwrite server defaults.
         if (description) {
           _payload.description = description;
+        }
+        // New libraries start with the API default (performance); only send a deliberate choice.
+        if (_this11.formQuality !== 'performance') {
+          _payload.encoding_quality = _this11.formQuality;
         }
         if (codec) {
           _payload.codec = codec;
@@ -648,11 +731,11 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
           _payload.resolutions = resolutions;
         }
         (0, _api.createLibrary)(_payload).then((0, _mobx.action)(function (created) {
-          _this10.saving = false;
-          _this10.reload(created && created.id);
+          _this11.saving = false;
+          _this11.reload(created && created.id);
         }))["catch"]((0, _mobx.action)(function (e) {
-          _this10.saving = false;
-          _this10.error = e.message || String(e);
+          _this11.saving = false;
+          _this11.error = e.message || String(e);
         }));
         return;
       }
@@ -661,104 +744,126 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
       // media-managed library; on a delivery-only one we leave it untouched.
       var payload = {
         name: name,
-        description: _this10.formDescription.trim()
+        description: _this11.formDescription.trim()
       };
-      if (_this10.mediaManaged) {
-        payload.codec = _this10.ladderValue('codecs', _this10.selectedCodecs);
-        payload.resolutions = _this10.ladderValue('resolutions', _this10.selectedResolutions);
+      if (_this11.mediaManaged) {
+        payload.codec = _this11.ladderValue('codecs', _this11.selectedCodecs);
+        payload.resolutions = _this11.ladderValue('resolutions', _this11.selectedResolutions);
       }
-      var id = _this10.activeId;
+      var id = _this11.activeId;
+      var qualityChanged = _this11.mediaManaged && _this11.qualityChanged();
+      // Only send the quality when the user changed it, never the displayed fallback value.
+      if (qualityChanged) {
+        payload.encoding_quality = _this11.formQuality;
+      }
       (0, _api.updateLibrary)(id, payload).then((0, _mobx.action)(function () {
-        _this10.saving = false;
-        _this10.reload(id);
+        _this11.saving = false;
+        if (qualityChanged) {
+          _this11.forceReprocessSuggestedFor = id;
+        }
+        _this11.reload(id);
       }))["catch"]((0, _mobx.action)(function (e) {
-        _this10.saving = false;
-        _this10.error = e.message || String(e);
+        _this11.saving = false;
+        _this11.error = e.message || String(e);
       }));
     };
   }
-}), _descriptor21 = _applyDecoratedDescriptor(_class2.prototype, "askDelete", [_mobx.action], {
-  configurable: true,
-  enumerable: true,
-  writable: true,
-  initializer: function initializer() {
-    var _this11 = this;
-    return function () {
-      _this11.deleteId = _this11.activeId;
-      _this11.error = null;
-    };
-  }
-}), _descriptor22 = _applyDecoratedDescriptor(_class2.prototype, "cancelDelete", [_mobx.action], {
+}), _descriptor25 = _applyDecoratedDescriptor(_class2.prototype, "askDelete", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this12 = this;
     return function () {
-      _this12.deleteId = null;
+      _this12.deleteId = _this12.activeId;
+      _this12.error = null;
     };
   }
-}), _descriptor23 = _applyDecoratedDescriptor(_class2.prototype, "confirmDelete", [_mobx.action], {
+}), _descriptor26 = _applyDecoratedDescriptor(_class2.prototype, "cancelDelete", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this13 = this;
     return function () {
-      var id = _this13.deleteId;
-      _this13.deleting = true;
-      (0, _api.deleteLibrary)(id).then((0, _mobx.action)(function () {
-        _this13.deleting = false;
-        _this13.deleteId = null;
-        _this13.reload(null);
-      }))["catch"]((0, _mobx.action)(function (e) {
-        _this13.deleting = false;
-        _this13.deleteId = null;
-        _this13.error = e.message || String(e);
-      }));
+      _this13.deleteId = null;
     };
   }
-}), _descriptor24 = _applyDecoratedDescriptor(_class2.prototype, "askReprocess", [_mobx.action], {
+}), _descriptor27 = _applyDecoratedDescriptor(_class2.prototype, "confirmDelete", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this14 = this;
     return function () {
-      _this14.reprocessId = _this14.activeId;
-      _this14.reprocessResult = null;
-      _this14.error = null;
+      var id = _this14.deleteId;
+      _this14.deleting = true;
+      (0, _api.deleteLibrary)(id).then((0, _mobx.action)(function () {
+        _this14.deleting = false;
+        _this14.deleteId = null;
+        _this14.reload(null);
+      }))["catch"]((0, _mobx.action)(function (e) {
+        _this14.deleting = false;
+        _this14.deleteId = null;
+        _this14.error = e.message || String(e);
+      }));
     };
   }
-}), _descriptor25 = _applyDecoratedDescriptor(_class2.prototype, "cancelReprocess", [_mobx.action], {
+}), _descriptor28 = _applyDecoratedDescriptor(_class2.prototype, "askReprocess", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this15 = this;
     return function () {
-      _this15.reprocessId = null;
+      _this15.reprocessId = _this15.activeId;
+      _this15.forceReprocess = _this15.forceReprocessSuggestedFor === _this15.activeId;
+      _this15.reprocessResult = null;
+      _this15.error = null;
     };
   }
-}), _descriptor26 = _applyDecoratedDescriptor(_class2.prototype, "confirmReprocess", [_mobx.action], {
+}), _descriptor29 = _applyDecoratedDescriptor(_class2.prototype, "toggleForceReprocess", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this16 = this;
     return function () {
-      var id = _this16.reprocessId;
-      _this16.reprocessing = true;
-      (0, _api.reprocessLibrary)(id).then((0, _mobx.action)(function (result) {
-        _this16.reprocessing = false;
-        _this16.reprocessId = null;
-        _this16.reprocessResult = {
+      _this16.forceReprocess = !_this16.forceReprocess;
+    };
+  }
+}), _descriptor30 = _applyDecoratedDescriptor(_class2.prototype, "cancelReprocess", [_mobx.action], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    var _this17 = this;
+    return function () {
+      _this17.reprocessId = null;
+    };
+  }
+}), _descriptor31 = _applyDecoratedDescriptor(_class2.prototype, "confirmReprocess", [_mobx.action], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    var _this18 = this;
+    return function () {
+      var id = _this18.reprocessId;
+      _this18.reprocessing = true;
+      (0, _api.reprocessLibrary)(id, _this18.forceReprocess).then((0, _mobx.action)(function (result) {
+        if (_this18.forceReprocess) {
+          _this18.forceReprocessSuggestedFor = null;
+        }
+        _this18.reprocessing = false;
+        _this18.reprocessId = null;
+        _this18.reprocessResult = {
           queued: result && result.queued || 0
         };
       }))["catch"]((0, _mobx.action)(function (e) {
-        _this16.reprocessing = false;
-        _this16.reprocessId = null;
-        _this16.error = e.message || String(e);
+        _this18.reprocessing = false;
+        _this18.reprocessId = null;
+        _this18.error = e.message || String(e);
       }));
     };
   }
