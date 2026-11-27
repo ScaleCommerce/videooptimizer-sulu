@@ -344,6 +344,30 @@ B"]]);
         self::assertStringContainsString('class="vo-frame vo-frame--landscape" style="aspect-ratio: 1920 / 1080"', $html);
     }
 
+    public function testFloatingWrapsTheDirectPlayerInAPlaceholderBox(): void
+    {
+        $html = $this->render('vo_single_video.html.twig', ['block' => ['video' => ['uuid' => self::UUID], 'presentation' => 'direct', 'floating' => true]]);
+
+        self::assertMatchesRegularExpression('#<div class="vo-float" data-vo-float>\s*<div class="vo-frame[^>]*>.*</div>\s*</div>\s*<script type="application/ld\+json">#s', $html);
+    }
+
+    public function testFloatingIsIgnoredForFacadeAndLightbox(): void
+    {
+        foreach (['facade', 'lightbox'] as $presentation) {
+            $html = $this->render('vo_single_video.html.twig', ['block' => ['video' => ['uuid' => self::UUID], 'presentation' => $presentation, 'floating' => true]]);
+            self::assertStringNotContainsString('data-vo-float', $html, $presentation);
+        }
+        self::assertStringNotContainsString('data-vo-float', $this->render('vo_single_video.html.twig', ['block' => ['video' => ['uuid' => self::UUID], 'presentation' => 'direct']]));
+    }
+
+    public function testChaptersCanFloatToo(): void
+    {
+        $html = $this->render('vo_video_chapters.html.twig', ['block' => ['video' => ['uuid' => self::UUID], 'floating' => true]]);
+
+        self::assertStringContainsString('data-vo-float', $html);
+        self::assertStringContainsString('data-vo-chapters', $html);
+    }
+
     /**
      * @param array<string, mixed>                $context
      * @param array<string, string>               $titles  title per uuid; uuids without one count as unknown videos

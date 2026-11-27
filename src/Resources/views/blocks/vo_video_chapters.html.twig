@@ -16,6 +16,7 @@
                 playerOpts: playerOpts,
                 label: block.headline|default(''),
                 sizes: '(min-width: 1000px) 960px, 100vw',
+                floating: block.floating|default(false),
                 priority: false
             } only %}
             {% set scenes = video_optimizer_scenes(block.video, block.sceneCount|default(5), block.sceneTitles|default(''), locale) %}

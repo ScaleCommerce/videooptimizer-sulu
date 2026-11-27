@@ -124,6 +124,14 @@
                 <param name="max" value="100"/>
             </params>
         </property>
+        <property name="floating" type="checkbox">
+            <meta>
+                <title lang="en">Floating mini player</title>
+                <title lang="de">Schwebender Mini-Player</title>
+                <info_text lang="en">Once the visitor started the video and scrolls past it, it stays pinned bottom right as a small player (viewports from 600px, direct presentation only) with a close button.</info_text>
+                <info_text lang="de">Hat der Besucher das Video gestartet und scrollt daran vorbei, bleibt es als kleiner Player unten rechts stehen (ab 600px Breite, nur bei direkter Einbettung) mit Schließen-Button.</info_text>
+            </meta>
+        </property>
         <property name="priority" type="checkbox">
             <meta>
                 <title lang="en">Prioritize loading (above the fold)</title>

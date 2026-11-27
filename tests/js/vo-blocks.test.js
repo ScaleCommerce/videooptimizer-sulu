@@ -457,3 +457,149 @@ describe('chapters and scenes', () => {
         expect(document.querySelector('.vo-frame img')).toBeNull();
     });
 });
+
+describe('floating mini player', () => {
+    let observers;
+
+    beforeEach(() => {
+        observers = [];
+        window.IntersectionObserver = class {
+            constructor(callback) {
+                this.callback = callback;
+                observers.push(this);
+            }
+            observe(target) {
+                this.target = target;
+            }
+            unobserve() {}
+            disconnect() {}
+        };
+        window.matchMedia = (query) => ({matches: query.includes('min-width'), addEventListener() {}});
+    });
+
+    function mountFloating(inner) {
+        mount('<div class="vo-float" data-vo-float><div class="vo-frame">' + inner + '</div></div>');
+        load();
+        const wrap = document.querySelector('[data-vo-float]');
+        const observer = observers.find((o) => o.target === wrap);
+        const scroll = (ratio) => observer.callback([{intersectionRatio: ratio, isIntersecting: ratio > 0}]);
+
+        return {wrap, frame: wrap.querySelector('.vo-frame'), scroll};
+    }
+
+    function playing(video, on) {
+        Object.defineProperty(video, 'paused', {value: !on, configurable: true});
+    }
+
+    it('pins a playing native player when it scrolls out of view and unpins it when it comes back', () => {
+        const {wrap, frame, scroll} = mountFloating('<video class="vo-native" data-vo-wired></video>');
+        playing(frame.querySelector('video'), true);
+
+        scroll(0);
+        expect(frame.classList.contains('vo-frame--pinned')).toBe(true);
+        expect(wrap.classList.contains('vo-float--pinned')).toBe(true);
+        expect(frame.querySelector('.vo-float__close').getAttribute('aria-label')).toBe('Close mini player');
+
+        scroll(0.5);
+        expect(frame.classList.contains('vo-frame--pinned')).toBe(false);
+    });
+
+    it('does not pin a player that is not playing', () => {
+        const {frame, scroll} = mountFloating('<video class="vo-native"></video>');
+        playing(frame.querySelector('video'), false);
+
+        scroll(0);
+
+        expect(frame.classList.contains('vo-frame--pinned')).toBe(false);
+    });
+
+    it('never moves the video in the DOM', () => {
+        const {frame, scroll} = mountFloating('<video class="vo-native"></video>');
+        const video = frame.querySelector('video');
+        playing(video, true);
+
+        scroll(0);
+
+        expect(frame.querySelector('video')).toBe(video);
+        expect(video.parentNode).toBe(frame);
+    });
+
+    it('closes with the button: unpins, pauses and stays closed until the player was in view again', () => {
+        const {frame, scroll} = mountFloating('<video class="vo-native"></video>');
+        const video = frame.querySelector('video');
+        video.pause = vi.fn();
+        playing(video, true);
+        scroll(0);
+
+        frame.querySelector('.vo-float__close').click();
+        expect(frame.classList.contains('vo-frame--pinned')).toBe(false);
+        expect(video.pause).toHaveBeenCalled();
+
+        scroll(0); // still out of view: must not pin again
+        expect(frame.classList.contains('vo-frame--pinned')).toBe(false);
+        scroll(1);
+        scroll(0);
+        expect(frame.classList.contains('vo-frame--pinned')).toBe(true);
+    });
+
+    it('unpins on Escape inside the mini player without pausing it', () => {
+        const {frame, scroll} = mountFloating('<video class="vo-native"></video>');
+        const video = frame.querySelector('video');
+        video.pause = vi.fn();
+        playing(video, true);
+        scroll(0);
+
+        frame.querySelector('.vo-float__close').dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+
+        expect(frame.classList.contains('vo-frame--pinned')).toBe(false);
+        expect(video.pause).not.toHaveBeenCalled();
+    });
+
+    it('is not active below 600px or while the lightbox is open', () => {
+        window.matchMedia = (query) => ({matches: false, addEventListener() {}});
+        let ctx = mountFloating('<video class="vo-native"></video>');
+        playing(ctx.frame.querySelector('video'), true);
+        ctx.scroll(0);
+        expect(ctx.frame.classList.contains('vo-frame--pinned')).toBe(false);
+
+        window.matchMedia = (query) => ({matches: query.includes('min-width'), addEventListener() {}});
+        observers.length = 0;
+        ctx = mountFloating('<video class="vo-native"></video>');
+        playing(ctx.frame.querySelector('video'), true);
+        document.body.insertAdjacentHTML('beforeend', '<dialog class="vo-lightbox" open></dialog>');
+        ctx.scroll(0);
+        expect(ctx.frame.classList.contains('vo-frame--pinned')).toBe(false);
+    });
+
+    it('pins a hosted embed that plays by itself and closing reloads it without autoplay', () => {
+        const {frame, scroll} = mountFloating('<iframe src="https://videooptimizer.eu/embed/abc?autoplay=1&t=30"></iframe>');
+
+        scroll(0);
+        expect(frame.classList.contains('vo-frame--pinned')).toBe(true);
+
+        frame.querySelector('.vo-float__close').click();
+        const src = new URL(frame.querySelector('iframe').getAttribute('src'));
+        expect(src.searchParams.get('autoplay')).toBe('0');
+        expect(src.searchParams.has('t')).toBe(false);
+        expect(frame.classList.contains('vo-frame--pinned')).toBe(false);
+    });
+
+    it('does not pin a hosted embed the visitor has not started', () => {
+        const {frame, scroll} = mountFloating('<iframe src="https://videooptimizer.eu/embed/abc?autoplay=0"></iframe>');
+
+        scroll(0);
+
+        expect(frame.classList.contains('vo-frame--pinned')).toBe(false);
+    });
+
+    it('pins a hosted embed after the visitor clicked into it', () => {
+        const {frame, scroll} = mountFloating('<iframe src="https://videooptimizer.eu/embed/abc?autoplay=0"></iframe>');
+        const iframe = frame.querySelector('iframe');
+        iframe.focus();
+        window.dispatchEvent(new Event('blur'));
+
+        scroll(0);
+
+        expect(frame.classList.contains('vo-frame--pinned')).toBe(true);
+    });
+});

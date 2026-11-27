@@ -548,3 +548,46 @@ a.vo-list__title:hover {
     font-size: 0.9rem;
     font-weight: 600;
 }
+
+/* Floating mini player: a started player scrolled out of view stays bottom right (toggled by vo-blocks.js, below modals). */
+.vo-float__close {
+    display: none;
+}
+
+.vo-frame--pinned {
+    position: fixed;
+    right: max(1rem, env(safe-area-inset-right));
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    z-index: 900;
+    width: min(320px, 60vw);
+    max-width: none;
+    margin: 0;
+}
+
+.vo-frame--pinned.vo-frame--tall {
+    width: min(180px, 40vw);
+}
+
+.vo-frame--pinned .vo-float__close {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(2, 6, 23, 0.7);
+    color: #fff;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.vo-frame--pinned .vo-float__close:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 2px;
+}

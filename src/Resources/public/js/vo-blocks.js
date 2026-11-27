@@ -150,8 +150,8 @@
     }
 
     var LABELS = {
-        en: {pause: 'Pause background video', play: 'Play background video', close: 'Close', dialog: 'Video player'},
-        de: {pause: 'Hintergrundvideo anhalten', play: 'Hintergrundvideo abspielen', close: 'Schließen', dialog: 'Videoplayer'}
+        en: {pause: 'Pause background video', play: 'Play background video', close: 'Close', dialog: 'Video player', mini: 'Close mini player'},
+        de: {pause: 'Hintergrundvideo anhalten', play: 'Hintergrundvideo abspielen', close: 'Schließen', dialog: 'Videoplayer', mini: 'Mini-Player schließen'}
     };
 
     // Label in the page language (html lang, default en); `el` may override with data-vo-label-<key>.
@@ -639,6 +639,127 @@
         });
     }
 
+    // Floating mini player: a started player that scrolls out of view stays pinned bottom right. Only CSS
+    // classes are toggled, the <video>/<iframe> never moves in the DOM (an iframe would reload). The wrapper
+    // keeps the original height so the page does not jump.
+    function initFloating() {
+        var wraps = document.querySelectorAll('[data-vo-float]');
+        if (!wraps.length || !('IntersectionObserver' in window)) {
+            return;
+        }
+        var wide = window.matchMedia ? window.matchMedia('(min-width: 600px)') : {matches: true};
+
+        wraps.forEach(function (wrap) {
+            var frame = wrap.querySelector('.vo-frame');
+            if (!frame) {
+                return;
+            }
+            var pinned = false;
+            var dismissed = false; // closed by the visitor: stays unpinned until the player was in view again
+            var interacted = false; // the visitor clicked into the hosted iframe
+            var close = document.createElement('button');
+            close.type = 'button';
+            close.className = 'vo-float__close';
+            close.innerHTML = '&times;';
+            close.setAttribute('aria-label', label('mini', wrap));
+
+            // Native: it is playing. Hosted: the embed plays by itself (autoplay=1) or the visitor clicked into it.
+            function started() {
+                var video = frame.querySelector('video');
+                if (video) {
+                    return !video.paused && !video.ended;
+                }
+                var iframe = frame.querySelector('iframe');
+                if (!iframe) {
+                    return false;
+                }
+
+                return interacted || /[?&]autoplay=1(&|$)/.test(iframe.getAttribute('src') || '');
+            }
+
+            function pin() {
+                var height = frame.offsetHeight;
+                if (height > 0) {
+                    wrap.style.height = height + 'px';
+                }
+                // The autoload replaces the frame's children, so the button is added once the player exists.
+                if (close.parentNode !== frame) {
+                    frame.appendChild(close);
+                }
+                wrap.classList.add('vo-float--pinned');
+                frame.classList.add('vo-frame--pinned');
+                pinned = true;
+            }
+
+            function unpin() {
+                wrap.classList.remove('vo-float--pinned');
+                frame.classList.remove('vo-frame--pinned');
+                wrap.style.height = '';
+                pinned = false;
+            }
+
+            function dismiss(stop) {
+                dismissed = true;
+                unpin();
+                if (!stop) {
+                    return;
+                }
+                var video = frame.querySelector('video');
+                if (video) {
+                    video.pause();
+                    return;
+                }
+                var iframe = frame.querySelector('iframe');
+                if (iframe) {
+                    // Reloading without autoplay stops the hosted player; it stays unpinned.
+                    interacted = false;
+                    try {
+                        var url = new URL(iframe.getAttribute('src') || '', window.location.href);
+                        url.searchParams.set('autoplay', '0');
+                        url.searchParams.delete('t');
+                        iframe.src = url.toString();
+                    } catch (e) {
+                        iframe.removeAttribute('src');
+                    }
+                }
+            }
+
+            close.addEventListener('click', function () { dismiss(true); });
+            frame.addEventListener('keydown', function (event) {
+                if (pinned && 'Escape' === event.key) {
+                    dismiss(false);
+                }
+            });
+            // A click into a cross-origin iframe shows up as the window losing focus to it.
+            window.addEventListener('blur', function () {
+                if (document.activeElement && document.activeElement.tagName === 'IFRAME' && frame.contains(document.activeElement)) {
+                    interacted = true;
+                }
+            });
+            if (wide.addEventListener) {
+                wide.addEventListener('change', function () {
+                    if (!wide.matches && pinned) {
+                        unpin();
+                    }
+                });
+            }
+
+            new IntersectionObserver(function (entries) {
+                var entry = entries[entries.length - 1];
+                if (entry.intersectionRatio >= 0.01) {
+                    dismissed = false;
+                    if (pinned) {
+                        unpin();
+                    }
+                    return;
+                }
+                if (!pinned && !dismissed && wide.matches && !document.querySelector('dialog.vo-lightbox[open]') && started()) {
+                    pin();
+                }
+            }, {threshold: [0, 0.01]}).observe(wrap);
+        });
+    }
+
     function initReveal() {
         var els = document.querySelectorAll('.vo-reveal');
         if (!els.length || !('IntersectionObserver' in window) || prefersReducedMotion()) {
@@ -668,6 +789,7 @@
         initFacades(baseUrl);
         initAutoload();
         initChapters(baseUrl);
+        initFloating();
         initReveal();
     }
 
