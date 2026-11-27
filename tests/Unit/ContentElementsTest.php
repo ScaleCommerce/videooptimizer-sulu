@@ -78,6 +78,7 @@ class ContentElementsTest extends TestCase
         $html = $this->render('vo_video_detail.html.twig', ['block' => ['video' => ['uuid' => self::UUID, 'title' => 'Default clip']]], $uri);
 
         self::assertStringContainsString('This video was not found.', $html);
+        self::assertStringContainsString('<!--vo-assets-->', $html, 'The styles must load even though no player is rendered.');
         self::assertStringNotContainsString('<iframe', $html);
         self::assertStringNotContainsString('vo-frame', $html);
         self::assertStringNotContainsString('Default clip', $html);
