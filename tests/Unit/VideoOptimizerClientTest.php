@@ -45,6 +45,19 @@ class VideoOptimizerClientTest extends TestCase
         self::assertStringContainsString('cursor=cursor-2', $requestedUrls[1], 'The second request must carry the next cursor.');
     }
 
+    public function testListTagsReturnsTheOrganizationsTags(): void
+    {
+        $url = '';
+        $httpClient = new MockHttpClient(function (string $method, string $u) use (&$url): MockResponse {
+            $url = $u;
+
+            return new MockResponse(json_encode(['data' => [['name' => 'promo', 'video_count' => 2], 'junk']], JSON_THROW_ON_ERROR));
+        });
+
+        self::assertSame([['name' => 'promo', 'video_count' => 2]], $this->client($httpClient)->listTags());
+        self::assertStringEndsWith('/api/v1/tags', $url);
+    }
+
     public function testListVideosPageFetchesExactlyOnePageWithCursorLimitAndFilters(): void
     {
         $requestedUrls = [];

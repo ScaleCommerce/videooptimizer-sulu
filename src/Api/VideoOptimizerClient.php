@@ -154,6 +154,19 @@ class VideoOptimizerClient
     }
 
     /**
+     * The organization's tags with the number of videos carrying them, alphabetically.
+     *
+     * @return array<int, array{name?: string, video_count?: int}>
+     */
+    public function listTags(): array
+    {
+        /** @var array<int, array{name?: string, video_count?: int}> $tags */
+        $tags = $this->listOf($this->requestData('GET', '/tags'));
+
+        return $tags;
+    }
+
+    /**
      * @return array<int, array<string, mixed>> one entry per language: {language, label, kind, is_default, cue_count, source_format, origin, updated_at}
      */
     public function listSubtitles(string $uuid): array
@@ -275,7 +288,7 @@ class VideoOptimizerClient
     }
 
     /**
-     * @param array<string, mixed> $payload expects title and/or option{responsive,autoplay,preload,loop,muted}
+     * @param array<string, mixed> $payload expects title, option{responsive,autoplay,preload,loop,muted}, tags (replaces the set) and/or metadata (merged, null removes a key)
      *
      * @return array<string, mixed>
      */

@@ -229,6 +229,67 @@ class AdminControllersTest extends TestCase
         self::assertArrayNotHasKey('has_more', $decoded);
     }
 
+    public function testTagsAreListedForTheFilterAndTheEditor(): void
+    {
+        $controller = new VideoController($this->client(fn () => new MockResponse(json_encode(['data' => [['name' => 'promo', 'video_count' => 3], 'junk']], JSON_THROW_ON_ERROR))));
+
+        self::assertSame(
+            ['_embedded' => ['tags' => [['name' => 'promo', 'video_count' => 3]]]],
+            json_decode((string) $controller->tags()->getContent(), true),
+        );
+    }
+
+    public function testPatchForwardsTagsAndMetadata(): void
+    {
+        $bodies = [];
+        $controller = new VideoController($this->client(function (string $m, string $u, array $o) use (&$bodies): MockResponse {
+            $bodies[] = json_decode((string) $o['body'], true);
+
+            return new MockResponse('{"data":{}}');
+        }));
+
+        $response = $controller->patch(new Request(content: json_encode([
+            'title' => 'T', 'tags' => [' Promo ', 'promo', '', '2026'], 'metadata' => ['cms_id' => '42', 'old_key' => null],
+        ], JSON_THROW_ON_ERROR)), '5c0a1e6e-7d3b-4c2a-9f10-0000000000de');
+        $controller->patch(new Request(content: '{"metadata":null,"tags":[]}'), '5c0a1e6e-7d3b-4c2a-9f10-0000000000de');
+        $controller->patch(new Request(content: '{"title":"Only","metadata":{}}'), '5c0a1e6e-7d3b-4c2a-9f10-0000000000de');
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame(['title' => 'T', 'tags' => ['Promo', '2026'], 'metadata' => ['cms_id' => '42', 'old_key' => null]], $bodies[0]);
+        self::assertSame(['metadata' => null, 'tags' => []], $bodies[1]);
+        self::assertSame(['title' => 'Only'], $bodies[2], 'An empty metadata object changes nothing and must not be sent as a list.');
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function invalidPatches(): iterable
+    {
+        yield 'tags not a list' => ['{"tags":"promo"}'];
+        yield 'tag with a comma' => ['{"tags":["a,b"]}'];
+        yield 'tag too long' => ['{"tags":["' . str_repeat('a', 51) . '"]}'];
+        yield 'too many tags' => ['{"tags":[' . implode(',', array_map(static fn (int $i): string => '"t' . $i . '"', range(1, 21))) . ']}'];
+        yield 'metadata not an object' => ['{"metadata":"x"}'];
+        yield 'metadata key upper case' => ['{"metadata":{"CmsId":"1"}}'];
+        yield 'metadata value too long' => ['{"metadata":{"k":"' . str_repeat('v', 65) . '"}}'];
+        yield 'metadata value not a string' => ['{"metadata":{"k":5}}'];
+        yield 'too many metadata keys' => ['{"metadata":{' . implode(',', array_map(static fn (int $i): string => '"k' . $i . '":"v"', range(1, 11))) . '}}'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidPatches')]
+    public function testPatchRejectsInvalidTagsAndMetadataWithoutCallingTheApi(string $body): void
+    {
+        $calls = 0;
+        $controller = new VideoController($this->client(function () use (&$calls): MockResponse {
+            ++$calls;
+
+            return new MockResponse('{}');
+        }));
+
+        self::assertSame(400, $controller->patch(new Request(content: $body), '5c0a1e6e-7d3b-4c2a-9f10-0000000000de')->getStatusCode());
+        self::assertSame(0, $calls);
+    }
+
     public function testUnreachableApiIsReportedAs502WithACode(): void
     {
         $controller = new LibraryController($this->client(fn () => new MockResponse('', ['error' => 'timeout'])));

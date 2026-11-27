@@ -5,10 +5,11 @@ import {observable, action} from 'mobx';
 import {Overlay, Loader, Button} from 'sulu-admin-bundle/components';
 import FolderList from 'sulu-admin-bundle/components/FolderList';
 import {translate} from 'sulu-admin-bundle/utils';
-import {getLibraries, getVideoPage, initiateUpload, uploadParts, completeUpload, isAbortError, abortError, ingestVideoUrl, pollVideo, posterFor, bustCache, failureMessage, errorText} from '../services/api';
+import {getLibraries, getTags, getVideoPage, initiateUpload, uploadParts, completeUpload, isAbortError, abortError, ingestVideoUrl, pollVideo, posterFor, bustCache, failureMessage, errorText} from '../services/api';
 import VideoDetail from '../components/VideoDetail';
 import VideoPager from '../services/VideoPager';
 import UploadProgress from '../components/UploadProgress';
+import TagFilter from '../components/TagFilter';
 
 @observer
 class VideoSelectionOverlay extends React.Component<*> {
@@ -19,6 +20,8 @@ class VideoSelectionOverlay extends React.Component<*> {
     @observable activeLibraryId = null;
     @observable videos = [];
     @observable hasMore = false;
+    @observable tags = [];
+    @observable activeTag = '';
     @observable loadingMore = false;
     @observable loadingVideos = false;
     @observable uploading = false;
@@ -91,7 +94,9 @@ class VideoSelectionOverlay extends React.Component<*> {
                 const preferred = this.props.defaultLibraryId;
                 // Preselect the preferred library folder when it exists; otherwise start on "all".
                 this.activeLibraryId = (preferred && libraries.find((l) => l.id === preferred)) ? preferred : null;
-                this.pager.load({libraryId: this.activeLibraryId});
+                this.pager.load(this.filters());
+                // Tags only feed the filter: without them the list still works.
+                getTags().then(action((tags) => { this.tags = tags; })).catch(() => {});
             }))
             .catch(action((e) => {
                 this.loading = false;
@@ -110,15 +115,25 @@ class VideoSelectionOverlay extends React.Component<*> {
         this.readyOnly = false;
         this.managing = null;
         this.error = null;
-        this.pager.load({libraryId: id});
+        this.pager.load(this.filters());
     };
 
     @action showAll = () => {
         this.activeLibraryId = null;
         this.managing = null;
         this.error = null;
-        this.pager.load({libraryId: null});
+        this.pager.load(this.filters());
     };
+
+    @action selectTag = (tag) => {
+        this.activeTag = tag;
+        this.error = null;
+        this.pager.load(this.filters());
+    };
+
+    filters() {
+        return {libraryId: this.activeLibraryId, tags: this.activeTag || null};
+    }
 
     @action loadMore = () => {
         this.pager.loadMore();
@@ -360,6 +375,7 @@ class VideoSelectionOverlay extends React.Component<*> {
                         value={this.search}
                         onChange={this.handleSearch}
                     />
+                    <TagFilter tags={this.tags} value={this.activeTag} onChange={this.selectTag} />
                     <label className="vo-check">
                         <input type="checkbox" checked={this.readyOnly} onChange={this.toggleReadyOnly} />
                         {translate('scale_videooptimizer.ready_only')}

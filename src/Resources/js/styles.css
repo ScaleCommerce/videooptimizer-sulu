@@ -460,3 +460,11 @@
 .vo-subtitles__link {
     font-size: 13px;
 }
+
+.vo-metadata__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}

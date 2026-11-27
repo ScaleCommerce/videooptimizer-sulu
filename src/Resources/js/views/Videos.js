@@ -8,6 +8,7 @@ import {withToolbar} from 'sulu-admin-bundle/containers';
 import {translate} from 'sulu-admin-bundle/utils';
 import {
     getLibraries,
+    getTags,
     getVideoPage,
     initiateUpload,
     uploadParts,
@@ -24,6 +25,7 @@ import {
 import VideoDetail from '../components/VideoDetail';
 import VideoPager from '../services/VideoPager';
 import UploadProgress from '../components/UploadProgress';
+import TagFilter from '../components/TagFilter';
 
 @observer
 class Videos extends React.Component<*> {
@@ -31,6 +33,8 @@ class Videos extends React.Component<*> {
     @observable loadingVideos = false;
     @observable loadingMore = false;
     @observable hasMore = false;
+    @observable tags = [];
+    @observable activeTag = '';
     @observable libraries = [];
     // null = show videos from every library; a library id = filter to that library.
     @observable activeLibraryId = null;
@@ -77,7 +81,9 @@ class Videos extends React.Component<*> {
             .then(action((libraries) => {
                 this.libraries = libraries;
                 this.loading = false;
-                this.pager.load({libraryId: this.activeLibraryId});
+                this.pager.load(this.filters());
+                // Tags only feed the filter: without them the list still works.
+                getTags().then(action((tags) => { this.tags = tags; })).catch(() => {});
             }))
             .catch(action((e) => {
                 this.loading = false;
@@ -87,18 +93,28 @@ class Videos extends React.Component<*> {
             }));
     }
 
+    filters() {
+        return {libraryId: this.activeLibraryId, tags: this.activeTag || null};
+    }
+
     @action selectLibrary = (id) => {
         this.activeLibraryId = id;
         this.selected = null;
         this.error = null;
-        this.pager.load({libraryId: id});
+        this.pager.load(this.filters());
     };
 
     @action showAll = () => {
         this.activeLibraryId = null;
         this.selected = null;
         this.error = null;
-        this.pager.load({libraryId: null});
+        this.pager.load(this.filters());
+    };
+
+    @action selectTag = (tag) => {
+        this.activeTag = tag;
+        this.error = null;
+        this.pager.load(this.filters());
     };
 
     @action loadMore = () => {
@@ -381,6 +397,8 @@ class Videos extends React.Component<*> {
                         <UploadProgress status={this.uploadStatus} percent={this.uploadPercent} onCancel={this.uploadCancellable ? this.cancelUpload : null} />
 
                         {activeLibrary && this.renderIngestForm()}
+
+                        <TagFilter tags={this.tags} value={this.activeTag} onChange={this.selectTag} />
 
                         {this.loadingVideos ? <Loader /> : this.renderVideoGrid()}
                     </React.Fragment>

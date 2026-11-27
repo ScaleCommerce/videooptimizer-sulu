@@ -135,5 +135,21 @@
     "scale_videooptimizer.subtitle_language_help": "Der Code lässt sich später nicht ändern. Ohne Namen wird der eigene Name der Sprache verwendet.",
     "scale_videooptimizer.subtitle_language_delete": "Sprache löschen",
     "scale_videooptimizer.subtitle_language_delete_confirm": "Untertitel-Sprache „{language}“ löschen? Das geht nur, wenn kein Video einen Untertitel in dieser Sprache hat.",
-    "scale_videooptimizer.error_subtitle_language_in_use": "Videos haben noch Untertitel in dieser Sprache. Löschen Sie zuerst diese Untertitel."
+    "scale_videooptimizer.error_subtitle_language_in_use": "Videos haben noch Untertitel in dieser Sprache. Löschen Sie zuerst diese Untertitel.",
+    "scale_videooptimizer.tags": "Tags",
+    "scale_videooptimizer.tags_placeholder": "z. B. promo, 2026",
+    "scale_videooptimizer.tags_help": "Kommagetrennt. Tags gelten für alle Bibliotheken; bis zu 20 pro Video.",
+    "scale_videooptimizer.tags_too_many": "Ein Video kann höchstens 20 Tags haben.",
+    "scale_videooptimizer.tag_too_long": "Ein Tag darf höchstens 50 Zeichen lang sein.",
+    "scale_videooptimizer.filter_by_tag": "Nach Tag filtern",
+    "scale_videooptimizer.all_tags": "Alle Tags",
+    "scale_videooptimizer.metadata": "Metadaten",
+    "scale_videooptimizer.metadata_key": "Schlüssel, z. B. cms_id",
+    "scale_videooptimizer.metadata_value": "Wert",
+    "scale_videooptimizer.metadata_add": "Eintrag hinzufügen",
+    "scale_videooptimizer.metadata_help": "Eigene Schlüssel/Wert-Daten am Video, z. B. die ID der Seite, zu der es gehört. Bis zu 10 Einträge; Schlüssel in Kleinbuchstaben (a-z, 0-9, _ . -), Werte bis 64 Zeichen.",
+    "scale_videooptimizer.metadata_key_invalid": "Ein Metadaten-Schlüssel braucht 1-40 Zeichen: Kleinbuchstaben, Ziffern, _ . und -.",
+    "scale_videooptimizer.metadata_key_duplicate": "Ein Metadaten-Schlüssel kommt doppelt vor.",
+    "scale_videooptimizer.metadata_value_invalid": "Ein Metadaten-Wert braucht 1-64 Zeichen.",
+    "scale_videooptimizer.metadata_too_many": "Ein Video kann höchstens 10 Metadaten-Einträge haben."
 }

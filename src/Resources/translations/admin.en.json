@@ -135,5 +135,21 @@
     "scale_videooptimizer.subtitle_language_help": "The code cannot be changed later. Without a name the language's own name is used.",
     "scale_videooptimizer.subtitle_language_delete": "Delete language",
     "scale_videooptimizer.subtitle_language_delete_confirm": "Delete the subtitle language \"{language}\"? This is only possible when no video has a subtitle in it.",
-    "scale_videooptimizer.error_subtitle_language_in_use": "Videos still have subtitles in this language. Delete those subtitles first."
+    "scale_videooptimizer.error_subtitle_language_in_use": "Videos still have subtitles in this language. Delete those subtitles first.",
+    "scale_videooptimizer.tags": "Tags",
+    "scale_videooptimizer.tags_placeholder": "e.g. promo, 2026",
+    "scale_videooptimizer.tags_help": "Comma-separated. Tags are shared by all libraries; up to 20 per video.",
+    "scale_videooptimizer.tags_too_many": "A video can have at most 20 tags.",
+    "scale_videooptimizer.tag_too_long": "A tag can have at most 50 characters.",
+    "scale_videooptimizer.filter_by_tag": "Filter by tag",
+    "scale_videooptimizer.all_tags": "All tags",
+    "scale_videooptimizer.metadata": "Metadata",
+    "scale_videooptimizer.metadata_key": "Key, e.g. cms_id",
+    "scale_videooptimizer.metadata_value": "Value",
+    "scale_videooptimizer.metadata_add": "Add entry",
+    "scale_videooptimizer.metadata_help": "Your own key/value data on the video, e.g. the ID of the page it belongs to. Up to 10 entries; keys in lower case (a-z, 0-9, _ . -), values up to 64 characters.",
+    "scale_videooptimizer.metadata_key_invalid": "A metadata key needs 1-40 characters: lower-case letters, digits, _ . and -.",
+    "scale_videooptimizer.metadata_key_duplicate": "A metadata key is used twice.",
+    "scale_videooptimizer.metadata_value_invalid": "A metadata value needs 1-64 characters.",
+    "scale_videooptimizer.metadata_too_many": "A video can have at most 10 metadata entries."
 }

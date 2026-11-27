@@ -27,6 +27,7 @@ exports.getLibraries = getLibraries;
 exports.getSettings = getSettings;
 exports.getSubtitleLanguages = getSubtitleLanguages;
 exports.getSubtitles = getSubtitles;
+exports.getTags = getTags;
 exports.getThumbnails = getThumbnails;
 exports.getVideo = getVideo;
 exports.getVideoPage = getVideoPage;
@@ -216,6 +217,13 @@ function getVideoPage() {
       nextCursor: response.next_cursor || null,
       hasMore: !!response.has_more && !!response.next_cursor
     };
+  });
+}
+
+// The organization's tags with their video counts, alphabetically: [{name, video_count}].
+function getTags() {
+  return normalize(_services.Requester.get(BASE + '/tags')).then(function (response) {
+    return response._embedded && response._embedded.tags || [];
   });
 }
 

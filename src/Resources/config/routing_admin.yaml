@@ -170,3 +170,8 @@ scale_videooptimizer_subtitle_languages_delete:
     methods: [DELETE]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SubtitleController::deleteLanguage'
     requirements: { code: '[A-Za-z0-9_\-]{1,35}' }
+
+scale_videooptimizer_tags_list:
+    path: /videooptimizer/tags
+    methods: [GET]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::tags'

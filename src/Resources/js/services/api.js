@@ -164,6 +164,11 @@ export function getVideoPage({libraryId, tags, cursor, limit}: Object = {}) {
     }));
 }
 
+// The organization's tags with their video counts, alphabetically: [{name, video_count}].
+export function getTags() {
+    return normalize(Requester.get(BASE + '/tags')).then((response) => (response._embedded && response._embedded.tags) || []);
+}
+
 // ---- Subtitles -------------------------------------------------------------------------------------
 
 // The API refuses subtitle files above 2 MB.
