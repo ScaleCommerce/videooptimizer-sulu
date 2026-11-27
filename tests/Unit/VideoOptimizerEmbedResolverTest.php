@@ -169,6 +169,8 @@ class VideoOptimizerEmbedResolverTest extends TestCase
                     }
                 };
 
+                $save = true;
+
                 return $callback($item, $save);
             }
 
