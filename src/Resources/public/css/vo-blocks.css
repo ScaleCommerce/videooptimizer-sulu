@@ -461,3 +461,73 @@ a.vo-list__title:hover {
     color: var(--vo-accent);
     box-shadow: inset 0 0 0 2px var(--vo-accent);
 }
+
+/* Video with chapters: scene previews below the player */
+.vo-chapters__inner {
+    max-width: 60rem;
+    margin-inline: auto;
+}
+
+.vo-chapters .vo-frame {
+    margin-top: 1.5rem;
+}
+
+.vo-chapters__scenes {
+    display: flex;
+    gap: 0.75rem;
+    margin: 1rem 0 0;
+    padding: 0 0 0.5rem;
+    list-style: none;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+}
+
+.vo-chapters__scene {
+    flex: 0 0 clamp(120px, 22%, 180px);
+    scroll-snap-align: start;
+}
+
+.vo-scene {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.vo-scene img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: calc(var(--vo-radius) / 2);
+    background: #000;
+    outline: 3px solid transparent;
+    outline-offset: 2px;
+    transition: outline-color 0.15s ease;
+}
+
+.vo-scene:hover img,
+.vo-scene:focus-visible img,
+.vo-scene[aria-current="true"] img {
+    outline-color: var(--vo-accent);
+}
+
+.vo-scene__time {
+    display: block;
+    margin-top: 0.4rem;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--vo-muted);
+}
+
+.vo-scene__title {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+}

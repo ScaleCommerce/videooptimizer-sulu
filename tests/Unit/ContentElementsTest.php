@@ -217,17 +217,87 @@ class ContentElementsTest extends TestCase
         self::assertSame(2, $calls);
     }
 
+    public function testScenesSpreadTheThumbnailsEvenlyAndStartWhereTheEncoderSampled(): void
+    {
+        $scenes = $this->extension()->scenes(['uuid' => self::UUID], 5, null, 'en');
+
+        self::assertSame([0, 2, 5, 7, 9], array_column($scenes, 'index'));
+        // duration 120: floor(120 / 11 * (i + 1))
+        self::assertSame([10, 32, 65, 87, 109], array_column($scenes, 'start'));
+        self::assertSame('0:10', $scenes[0]['time']);
+        self::assertSame('Scene 1 · 0:10', $scenes[0]['label']);
+        self::assertSame('https://api.videooptimizer.eu/api/v1/videos/' . self::UUID . '/thumbnails/7', $scenes[3]['src']);
+    }
+
+    public function testSceneCountIsClampedAndAllTenAreAvailable(): void
+    {
+        $extension = $this->extension();
+
+        self::assertCount(3, $extension->scenes(['uuid' => self::UUID], 1));
+        self::assertCount(10, $extension->scenes(['uuid' => self::UUID], 99));
+        self::assertSame(range(0, 9), array_column($extension->scenes(['uuid' => self::UUID], 10), 'index'));
+        self::assertCount(5, $extension->scenes(['uuid' => self::UUID], 'x'));
+    }
+
+    public function testSceneTitlesReplaceTheNumberedLabelAndTranslateToGerman(): void
+    {
+        $scenes = $this->extension()->scenes(['uuid' => self::UUID], 3, "Intro
+
+Finale", 'de');
+
+        self::assertSame('Intro', $scenes[0]['title']);
+        self::assertSame('Intro · 0:10', $scenes[0]['label']);
+        self::assertSame('', $scenes[1]['title']);
+        self::assertSame('Szene 2 · 1:05', $scenes[1]['label']);
+        self::assertSame('Finale · 1:49', $scenes[2]['label']);
+    }
+
+    public function testNoScenesWithoutDurationOrVideo(): void
+    {
+        self::assertSame([], $this->extension([], null, 0)->scenes(['uuid' => self::UUID]));
+        self::assertSame([], $this->extension()->scenes(null));
+    }
+
+    public function testTimeLabels(): void
+    {
+        self::assertSame('0:00', VideoOptimizerExtension::timeLabel(0));
+        self::assertSame('1:05', VideoOptimizerExtension::timeLabel(65));
+        self::assertSame('1:01:01', VideoOptimizerExtension::timeLabel(3661));
+        self::assertSame('0:00', VideoOptimizerExtension::timeLabel(-5));
+    }
+
+    public function testChaptersBlockRendersTheDirectPlayerAndTheSceneButtons(): void
+    {
+        $html = $this->render('vo_video_chapters.html.twig', ['block' => ['video' => ['uuid' => self::UUID], 'headline' => 'Tour', 'sceneCount' => 3, 'sceneTitles' => "A
+B"]]);
+
+        self::assertStringContainsString('data-vo-chapters data-vo-chapters-embed="https://videooptimizer.eu/embed/' . self::UUID . '?autoplay=1"', $html);
+        self::assertSame(3, substr_count($html, 'data-vo-start="'));
+        self::assertStringContainsString('data-vo-start="10" aria-label="A · 0:10"', $html);
+        self::assertStringContainsString('src="https://api.videooptimizer.eu/api/v1/videos/' . self::UUID . '/thumbnails/0" width="320" height="180" alt="" loading="lazy" decoding="async"', $html);
+        self::assertStringContainsString('<ul class="vo-chapters__scenes" aria-label="Scenes">', $html);
+        self::assertStringContainsString('<iframe', $html);
+    }
+
+    public function testChaptersBlockOmitsTheRowWithoutADuration(): void
+    {
+        $html = $this->render('vo_video_chapters.html.twig', ['block' => ['video' => ['uuid' => self::UUID]]], '/', [], null, 0);
+
+        self::assertStringNotContainsString('vo-chapters__scenes', $html);
+        self::assertStringContainsString('vo-frame', $html);
+    }
+
     /**
      * @param array<string, mixed>                $context
      * @param array<string, string>               $titles  title per uuid; uuids without one count as unknown videos
      * @param array<string, mixed>|null           $list
      */
-    private function render(string $template, array $context, string $uri = '/', array $titles = [], ?array $list = null): string
+    private function render(string $template, array $context, string $uri = '/', array $titles = [], ?array $list = null, int $duration = 120): string
     {
         $loader = new FilesystemLoader();
         $loader->addPath(\dirname(__DIR__, 2) . '/src/Resources/views', 'ScaleVideoOptimizer');
         $twig = new Environment($loader, ['autoescape' => 'html', 'strict_variables' => false]);
-        $twig->addExtension($this->extension($titles, $list));
+        $twig->addExtension($this->extension($titles, $list, $duration));
 
         $context['app'] = (object) ['request' => Request::create($uri)];
 
@@ -238,7 +308,7 @@ class ContentElementsTest extends TestCase
      * @param array<string, string>     $titles
      * @param array<string, mixed>|null $list
      */
-    private function extension(array $titles = [], ?array $list = null): VideoOptimizerExtension
+    private function extension(array $titles = [], ?array $list = null, int $duration = 120): VideoOptimizerExtension
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
         $resolver->getDimensions(\Prophecy\Argument::any())->willReturn(['width' => 1920, 'height' => 1080, 'orientation' => 'landscape']);
@@ -246,7 +316,7 @@ class ContentElementsTest extends TestCase
         $resolver->getSources(\Prophecy\Argument::any())->will(static fn (array $args): array => [
             'title' => $titles[$args[0]] ?? null,
             'poster' => 'https://cdn.example.net/poster.jpg', 'hlsUrl' => null, 'width' => 1920, 'height' => 1080,
-            'duration' => 120, 'srcset' => null, 'theme' => null, 'tracks' => [], 'sources' => [],
+            'duration' => $duration, 'srcset' => null, 'theme' => null, 'tracks' => [], 'sources' => [],
         ]);
 
         $settings = $this->prophesize(SettingsManager::class);

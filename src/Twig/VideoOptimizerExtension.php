@@ -184,7 +184,9 @@ class VideoOptimizerExtension extends AbstractExtension
                 'start' => $start,
                 'time' => $time,
                 'title' => $title,
-                'label' => self::translate('scene', $locale, ['{n}' => (string) ($k + 1), '{time}' => $time]),
+                'label' => '' !== $title
+                    ? self::translate('scene_title', $locale, ['{title}' => $title, '{time}' => $time])
+                    : self::translate('scene', $locale, ['{n}' => (string) ($k + 1), '{time}' => $time]),
                 'src' => rtrim($this->apiBaseUrl, '/') . '/videos/' . rawurlencode($uuid) . '/thumbnails/' . $index,
             ];
         }

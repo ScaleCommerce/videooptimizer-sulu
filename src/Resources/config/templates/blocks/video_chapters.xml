@@ -1,0 +1,96 @@
+<?xml version="1.0" ?>
+<template xmlns="http://schemas.sulu.io/template/template"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://schemas.sulu.io/template/template http://schemas.sulu.io/template/template-1.0.xsd">
+    <key>vo_video_chapters</key>
+    <meta>
+        <title lang="en">[VO] Video with chapters</title>
+        <title lang="de">[VO] Video mit Kapiteln</title>
+    </meta>
+    <properties>
+        <property name="video" type="video_optimizer">
+            <meta>
+                <title lang="en">Video</title>
+                <title lang="de">Video</title>
+            </meta>
+        </property>
+        <property name="headline" type="text_line">
+            <meta><title lang="en">Headline</title><title lang="de">Überschrift</title></meta>
+        </property>
+        <property name="sceneCount" type="number">
+            <meta>
+                <title lang="en">Number of scenes</title>
+                <title lang="de">Anzahl Szenen</title>
+                <info_text lang="en">3 to 10, default 5. Evenly spread over the video.</info_text>
+                <info_text lang="de">3 bis 10, Standard 5. Gleichmäßig über das Video verteilt.</info_text>
+            </meta>
+            <params>
+                <param name="min" value="3"/>
+                <param name="max" value="10"/>
+            </params>
+        </property>
+        <property name="sceneTitles" type="text_area">
+            <meta>
+                <title lang="en">Scene titles</title>
+                <title lang="de">Szenentitel</title>
+                <info_text lang="en">Optional, one per line, in order; replaces the "Scene n" label.</info_text>
+                <info_text lang="de">Optional, eine pro Zeile in Reihenfolge; ersetzt die Bezeichnung „Szene n“.</info_text>
+            </meta>
+        </property>
+        <property name="player" type="single_select">
+            <meta><title lang="en">Player</title><title lang="de">Player</title></meta>
+            <params>
+                <param name="default_value" value="inherit"/>
+                <param name="values" type="collection">
+                    <param name="inherit"><meta><title lang="en">Global default</title><title lang="de">Globaler Standard</title></meta></param>
+                    <param name="hosted"><meta><title lang="en">Hosted player (iframe)</title><title lang="de">Gehosteter Player (iframe)</title></meta></param>
+                    <param name="native"><meta><title lang="en">Native player</title><title lang="de">Nativer Player</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="autoplay" type="single_select">
+            <meta><title lang="en">Autoplay</title><title lang="de">Autoplay</title></meta>
+            <params>
+                <param name="default_value" value="0"/>
+                <param name="values" type="collection">
+                    <param name="inherit"><meta><title lang="en">Theme default</title><title lang="de">Theme-Standard</title></meta></param>
+                    <param name="1"><meta><title lang="en">On</title><title lang="de">An</title></meta></param>
+                    <param name="0"><meta><title lang="en">Off</title><title lang="de">Aus</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="controls" type="single_select">
+            <meta><title lang="en">Player controls</title><title lang="de">Player-Bedienelemente</title></meta>
+            <params>
+                <param name="default_value" value="inherit"/>
+                <param name="values" type="collection">
+                    <param name="inherit"><meta><title lang="en">Theme default</title><title lang="de">Theme-Standard</title></meta></param>
+                    <param name="1"><meta><title lang="en">On</title><title lang="de">An</title></meta></param>
+                    <param name="0"><meta><title lang="en">Off</title><title lang="de">Aus</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="loop" type="single_select">
+            <meta><title lang="en">Loop</title><title lang="de">Endlosschleife</title></meta>
+            <params>
+                <param name="default_value" value="inherit"/>
+                <param name="values" type="collection">
+                    <param name="inherit"><meta><title lang="en">Theme default</title><title lang="de">Theme-Standard</title></meta></param>
+                    <param name="1"><meta><title lang="en">On</title><title lang="de">An</title></meta></param>
+                    <param name="0"><meta><title lang="en">Off</title><title lang="de">Aus</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="muted" type="single_select">
+            <meta><title lang="en">Muted</title><title lang="de">Stummgeschaltet</title></meta>
+            <params>
+                <param name="default_value" value="inherit"/>
+                <param name="values" type="collection">
+                    <param name="inherit"><meta><title lang="en">Theme default</title><title lang="de">Theme-Standard</title></meta></param>
+                    <param name="1"><meta><title lang="en">On</title><title lang="de">An</title></meta></param>
+                    <param name="0"><meta><title lang="en">Off</title><title lang="de">Aus</title></meta></param>
+                </param>
+            </params>
+        </property>
+    </properties>
+</template>

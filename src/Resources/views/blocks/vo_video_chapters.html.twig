@@ -1,0 +1,37 @@
+{#
+    Video with chapters: the player (shown directly) and a row of scene previews below it. A preview starts the
+    video at that scene (vo-blocks.js: `currentTime` for the native player, `t=` for the hosted embed). The
+    previews are the video's auto-generated thumbnails, so the row is left out while the duration is unknown.
+#}
+{% set locale = app.request.locale|default('en') %}
+{% set playerOpts = video_optimizer_player_options(block) %}
+<section class="vo-block vo-chapters vo-reveal">
+    <div class="vo-container vo-chapters__inner"{% if block.video and block.video.uuid %} data-vo-chapters data-vo-chapters-embed="{{ video_optimizer_embed_url(block.video, playerOpts) }}"{% endif %}>
+        {% if block.headline %}<h2>{{ block.headline }}</h2>{% endif %}
+        {% if block.video and block.video.uuid %}
+            {% include '@ScaleVideoOptimizer/blocks/_video.html.twig' with {
+                video: block.video,
+                presentation: 'direct',
+                player: video_optimizer_player(block),
+                playerOpts: playerOpts,
+                label: block.headline|default(''),
+                sizes: '(min-width: 1000px) 960px, 100vw',
+                priority: false
+            } only %}
+            {% set scenes = video_optimizer_scenes(block.video, block.sceneCount|default(5), block.sceneTitles|default(''), locale) %}
+            {% if scenes %}
+                <ul class="vo-chapters__scenes" aria-label="{{ video_optimizer_t('scenes', locale) }}">
+                    {% for scene in scenes %}
+                        <li class="vo-chapters__scene">
+                            <button type="button" class="vo-scene" data-vo-start="{{ scene.start }}" aria-label="{{ scene.label }}">
+                                <img src="{{ scene.src }}" width="320" height="180" alt="" loading="lazy" decoding="async">
+                                <span class="vo-scene__time">{{ scene.time }}</span>
+                                {% if scene.title %}<span class="vo-scene__title">{{ scene.title }}</span>{% endif %}
+                            </button>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endif %}
+    </div>
+</section>

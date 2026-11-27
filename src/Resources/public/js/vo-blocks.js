@@ -318,6 +318,9 @@
         }
 
         whenNearViewport(videos, function (video) {
+            if (video.hasAttribute('data-vo-wired')) {
+                return; // a chapter button already started it
+            }
             video.removeAttribute('data-vo-native-autoload');
             attachHls(video, baseUrl, {play: true});
         });
@@ -330,6 +333,9 @@
         document.querySelectorAll('.vo-native[data-vo-native-onplay]').forEach(function (video) {
             video.addEventListener('play', function () {
                 video.removeAttribute('data-vo-native-onplay');
+                if (video.hasAttribute('data-vo-wired')) {
+                    return; // a chapter button already attached the source
+                }
                 attachHls(video, baseUrl, {play: true});
             }, {once: true});
         });
@@ -537,6 +543,102 @@
         });
     }
 
+    // Seeks a native player to `time` and plays it. A source that is not attached yet (deferred player)
+    // is attached first; the position is applied as soon as the metadata is known.
+    function seekNative(video, time, baseUrl) {
+        function seek() {
+            video.currentTime = time;
+        }
+        if (video.readyState >= 1) {
+            seek();
+        } else {
+            video.addEventListener('loadedmetadata', seek, {once: true});
+        }
+        if (video.hasAttribute('data-vo-wired') || !video.hasAttribute('data-hls')) {
+            video.removeAttribute('data-vo-user-paused');
+            var result = video.play();
+            if (result && result.catch) {
+                result.catch(function () {});
+            }
+            return;
+        }
+        video.removeAttribute('data-vo-native-autoload');
+        video.removeAttribute('data-vo-native-onplay');
+        attachHls(video, baseUrl, {play: true});
+    }
+
+    // Starts the hosted embed at `time`: the iframe is created when the autoload has not happened yet.
+    function seekHosted(frame, embedUrl, time) {
+        var url;
+        try {
+            url = new URL(embedUrl, window.location.href);
+        } catch (e) {
+            return;
+        }
+        url.searchParams.set('t', String(time));
+        url.searchParams.set('autoplay', '1');
+        var iframe = frame.querySelector('iframe');
+        if (!iframe) {
+            frame.removeAttribute('data-vo-autoload');
+            iframe = embedIframe(url.toString());
+            frame.replaceChildren(iframe);
+            return;
+        }
+        iframe.src = url.toString();
+    }
+
+    // Chapters and scenes: a click on a scene preview starts the video there and marks the scene.
+    function initChapters(baseUrl) {
+        document.querySelectorAll('[data-vo-chapters]').forEach(function (root) {
+            var frame = root.querySelector('.vo-frame');
+            var buttons = Array.prototype.slice.call(root.querySelectorAll('[data-vo-start]'));
+            if (!frame || !buttons.length) {
+                return;
+            }
+            var embedUrl = root.getAttribute('data-vo-chapters-embed');
+
+            function mark(active) {
+                buttons.forEach(function (button) {
+                    if (button === active) {
+                        button.setAttribute('aria-current', 'true');
+                    } else {
+                        button.removeAttribute('aria-current');
+                    }
+                });
+            }
+
+            function startOf(button) {
+                return Number(button.getAttribute('data-vo-start')) || 0;
+            }
+
+            buttons.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    var video = frame.querySelector('video');
+                    if (video) {
+                        seekNative(video, startOf(button), baseUrl);
+                    } else if (embedUrl) {
+                        seekHosted(frame, embedUrl, startOf(button));
+                    }
+                    mark(button);
+                });
+            });
+
+            // The native player reports its position, so the active scene follows playback; the hosted embed cannot.
+            var native = frame.querySelector('video');
+            if (native) {
+                native.addEventListener('timeupdate', function () {
+                    var active = null;
+                    buttons.forEach(function (button) {
+                        if (startOf(button) <= native.currentTime) {
+                            active = button;
+                        }
+                    });
+                    mark(active);
+                });
+            }
+        });
+    }
+
     function initReveal() {
         var els = document.querySelectorAll('.vo-reveal');
         if (!els.length || !('IntersectionObserver' in window) || prefersReducedMotion()) {
@@ -565,6 +667,7 @@
         initLightbox(baseUrl);
         initFacades(baseUrl);
         initAutoload();
+        initChapters(baseUrl);
         initReveal();
     }
 

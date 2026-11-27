@@ -366,3 +366,94 @@ describe('vo-blocks.js', () => {
         });
     });
 });
+
+describe('chapters and scenes', () => {
+    const scenes =
+        '<button type="button" data-vo-start="10">a</button>'
+        + '<button type="button" data-vo-start="30">b</button>';
+
+    it('seeks an attached native player to the scene and plays it', () => {
+        mount('<div data-vo-chapters><div class="vo-frame"><video class="vo-native" data-vo-wired></video></div>' + scenes + '</div>');
+        const video = document.querySelector('video');
+        Object.defineProperty(video, 'readyState', {value: 4});
+        load();
+
+        document.querySelectorAll('[data-vo-start]')[1].click();
+
+        expect(video.currentTime).toBe(30);
+        expect(HTMLMediaElement.prototype.play).toHaveBeenCalled();
+        expect(document.querySelectorAll('[aria-current="true"]')).toHaveLength(1);
+        expect(document.querySelectorAll('[data-vo-start]')[1].getAttribute('aria-current')).toBe('true');
+    });
+
+    it('attaches a deferred native player on the first scene click and applies the position once the metadata is known', () => {
+        HTMLMediaElement.prototype.canPlayType = () => 'maybe'; // native HLS: attached synchronously
+        mount(
+            '<div data-vo-chapters><div class="vo-frame"><video class="vo-native" data-hls="https://cdn/x.m3u8" data-vo-native-onplay></video></div>'
+            + scenes + '</div>'
+        );
+        load();
+        const video = document.querySelector('video');
+
+        document.querySelectorAll('[data-vo-start]')[0].click();
+
+        expect(video.getAttribute('src')).toBe('https://cdn/x.m3u8');
+        expect(video.hasAttribute('data-vo-native-onplay')).toBe(false);
+        video.dispatchEvent(new Event('loadedmetadata'));
+        expect(video.currentTime).toBe(10);
+        // The `play` event that follows must not attach the source a second time.
+        video.dispatchEvent(new Event('play'));
+        expect(video.hasAttribute('data-vo-wired')).toBe(true);
+    });
+
+    it('does not load segments before a scene is clicked', () => {
+        mount('<div data-vo-chapters><div class="vo-frame"><video class="vo-native" data-hls="https://cdn/x.m3u8" data-vo-native-onplay></video></div>' + scenes + '</div>');
+
+        load();
+
+        expect(hlsScript()).toBeNull();
+        expect(document.querySelector('video').hasAttribute('data-vo-wired')).toBe(false);
+    });
+
+    it('follows the playback position of the native player', () => {
+        mount('<div data-vo-chapters><div class="vo-frame"><video class="vo-native" data-vo-wired></video></div>' + scenes + '</div>');
+        load();
+        const video = document.querySelector('video');
+
+        video.currentTime = 35;
+        video.dispatchEvent(new Event('timeupdate'));
+
+        expect(document.querySelectorAll('[data-vo-start]')[1].getAttribute('aria-current')).toBe('true');
+        expect(document.querySelectorAll('[data-vo-start]')[0].hasAttribute('aria-current')).toBe(false);
+    });
+
+    it('restarts the hosted embed at the scene with t and autoplay', () => {
+        mount(
+            '<div data-vo-chapters data-vo-chapters-embed="https://videooptimizer.eu/embed/abc?controls=1"><div class="vo-frame"><iframe src="https://videooptimizer.eu/embed/abc?autoplay=0"></iframe></div>'
+            + scenes + '</div>'
+        );
+        load();
+
+        document.querySelectorAll('[data-vo-start]')[1].click();
+
+        const src = new URL(document.querySelector('iframe').getAttribute('src'));
+        expect(src.searchParams.get('t')).toBe('30');
+        expect(src.searchParams.get('autoplay')).toBe('1');
+        expect(src.searchParams.get('controls')).toBe('1');
+        expect(document.querySelectorAll('[data-vo-start]')[1].getAttribute('aria-current')).toBe('true');
+    });
+
+    it('creates the hosted iframe when the lazy load has not happened yet and stops the autoload from overriding it', () => {
+        mount(
+            '<div data-vo-chapters data-vo-chapters-embed="https://videooptimizer.eu/embed/abc"><div class="vo-frame" data-vo-autoload="https://videooptimizer.eu/embed/abc"><img alt=""></div>'
+            + scenes + '</div>'
+        );
+        load();
+
+        document.querySelectorAll('[data-vo-start]')[0].click();
+
+        expect(document.querySelector('.vo-frame iframe').getAttribute('src')).toContain('t=10');
+        expect(document.querySelector('.vo-frame').hasAttribute('data-vo-autoload')).toBe(false);
+        expect(document.querySelector('.vo-frame img')).toBeNull();
+    });
+});
