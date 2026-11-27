@@ -1,0 +1,17 @@
+<section class="vo-block vo-single{% if not block.priority|default(false) %} vo-reveal{% endif %}">
+    <div class="vo-container vo-single__inner">
+        {% if block.headline %}<h2>{{ block.headline }}</h2>{% endif %}
+        {% if block.video and block.video.uuid %}
+            {% include '@ScaleVideoOptimizer/blocks/_video.html.twig' with {
+                video: block.video,
+                presentation: block.presentation|default('facade'),
+                player: video_optimizer_player(block),
+                playerOpts: video_optimizer_player_options(block),
+                label: block.headline|default(''),
+                sizes: '(min-width: 1000px) 960px, 100vw',
+                priority: block.priority|default(false)
+            } only %}
+        {% endif %}
+        {% if block.caption %}<p class="vo-single__caption">{{ block.caption }}</p>{% endif %}
+    </div>
+</section>

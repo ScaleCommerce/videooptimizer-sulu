@@ -374,3 +374,90 @@ dialog.vo-lightbox::backdrop {
     margin-top: 0.75rem;
     font-weight: 600;
 }
+
+/* Single video / video detail */
+.vo-single__inner,
+.vo-detail__inner {
+    max-width: 60rem;
+    margin-inline: auto;
+}
+
+.vo-single .vo-frame,
+.vo-detail .vo-frame {
+    margin-top: 1.5rem;
+}
+
+.vo-single__caption {
+    margin-top: 1rem;
+    color: var(--vo-muted);
+    font-size: 0.95rem;
+}
+
+.vo-detail__missing,
+.vo-list__empty {
+    padding: 2rem 0;
+    color: var(--vo-muted);
+}
+
+/* Video list */
+.vo-list__items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--vo-gap);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.vo-list__thumb {
+    position: relative;
+    display: block;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: var(--vo-radius);
+    background: #000;
+    box-shadow: var(--vo-shadow);
+}
+
+.vo-list__thumb:focus-visible {
+    outline: 3px solid var(--vo-accent);
+    outline-offset: 3px;
+}
+
+.vo-list__body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    align-items: baseline;
+    margin: 0.75rem 0 0;
+}
+
+.vo-list__title {
+    font-weight: 600;
+    color: inherit;
+    text-decoration: none;
+}
+
+a.vo-list__title:hover {
+    text-decoration: underline;
+}
+
+.vo-list__meta {
+    color: var(--vo-muted);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.vo-list__pager {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-top: 2.5rem;
+}
+
+.vo-btn--ghost {
+    background: transparent;
+    color: var(--vo-accent);
+    box-shadow: inset 0 0 0 2px var(--vo-accent);
+}

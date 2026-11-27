@@ -74,6 +74,12 @@
             <argument type="service" id="sulu_http_cache.reference_store" on-invalid="null"/>
         </service>
 
+        <service id="Scale\VideoOptimizerBundle\Service\VideoListProvider">
+            <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
+            <argument type="service" id="scale_video_optimizer.cache"/>
+            <argument type="service" id="Scale\VideoOptimizerBundle\Service\EmbedRenderState"/>
+        </service>
+
         <!-- Runs late so it sees the lifetime Sulu's cache-lifetime enhancer already set. -->
         <service id="Scale\VideoOptimizerBundle\EventListener\EmbedPageCacheListener">
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\EmbedRenderState"/>
@@ -85,6 +91,8 @@
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver"/>
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\SettingsManager"/>
             <argument type="service" id="logger" on-invalid="null"/>
+            <argument>%scale_video_optimizer.api_base_url%</argument>
+            <argument type="service" id="Scale\VideoOptimizerBundle\Service\VideoListProvider"/>
             <tag name="twig.extension"/>
         </service>
 

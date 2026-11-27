@@ -1,0 +1,54 @@
+{% set locale = app.request.locale|default('en') %}
+{% set cursor = app.request.query.all.vo_cursor|default(null) %}
+{% set cursor = cursor is iterable ? null : cursor %}
+{% set list = video_optimizer_videos(block.libraryId|default(null), block.tags|default(null), cursor, block.pageSize|default(null)) %}
+{% set playerOpts = video_optimizer_player_options(block) %}
+{% set player = video_optimizer_player(block) %}
+<section class="vo-block vo-list{% if not block.priority|default(false) %} vo-reveal{% endif %}">
+    <div class="vo-container">
+        {% if block.headline %}<h2>{{ block.headline }}</h2>{% endif %}
+        {% if block.intro %}<p class="vo-grid__intro">{{ block.intro }}</p>{% endif %}
+        {% if list.items %}
+            <ul class="vo-list__items">
+                {% for item in list.items %}
+                    {% set video = {uuid: item.uuid, title: item.title, posterUrl: item.poster} %}
+                    {% set href = video_optimizer_detail_url(block.detailPage|default(null), item.uuid) %}
+                    <li class="vo-list__item">
+                        {% if href %}
+                            {% set poster = video_optimizer_poster(video) %}
+                            {% set srcset = video_optimizer_srcset(video) %}
+                            <a class="vo-list__thumb" href="{{ href }}" aria-label="{{ item.title|default(video_optimizer_t('play', locale)) }}">
+                                {% if poster %}<img class="vo-poster__img" src="{{ poster }}"{% if srcset %} srcset="{{ srcset }}" sizes="(min-width: 900px) 360px, (min-width: 560px) 45vw, 100vw"{% endif %} width="640" height="360" alt="" loading="{{ block.priority|default(false) and loop.first ? 'eager' : 'lazy' }}" decoding="async">{% endif %}
+                                <span class="vo-poster__play" aria-hidden="true">▶</span>
+                            </a>
+                        {% else %}
+                            {% include '@ScaleVideoOptimizer/blocks/_video.html.twig' with {
+                                video: video,
+                                presentation: 'lightbox',
+                                player: player,
+                                playerOpts: playerOpts,
+                                label: item.title|default(''),
+                                sizes: '(min-width: 900px) 360px, (min-width: 560px) 45vw, 100vw',
+                                priority: block.priority|default(false) and loop.first
+                            } only %}
+                        {% endif %}
+                        <p class="vo-list__body">
+                            {% if item.title %}
+                                {% if href %}<a class="vo-list__title" href="{{ href }}">{{ item.title }}</a>{% else %}<span class="vo-list__title">{{ item.title }}</span>{% endif %}
+                            {% endif %}
+                            {% if item.duration %}<span class="vo-list__meta">{{ video_optimizer_duration(item.duration) }}</span>{% endif %}
+                        </p>
+                    </li>
+                {% endfor %}
+            </ul>
+            {% if list.next or cursor %}
+                <nav class="vo-list__pager" aria-label="{{ video_optimizer_t('pagination', locale) }}">
+                    {% if cursor %}<a class="vo-btn vo-btn--ghost" href="{{ app.request.pathInfo }}">{{ video_optimizer_t('first', locale) }}</a>{% endif %}
+                    {% if list.next %}<a class="vo-btn" href="{{ app.request.pathInfo }}?{{ {vo_cursor: list.next}|url_encode }}" rel="next">{{ video_optimizer_t('next', locale) }}</a>{% endif %}
+                </nav>
+            {% endif %}
+        {% else %}
+            <p class="vo-list__empty" role="status">{{ video_optimizer_t(list.error ? 'unavailable' : 'no_videos', locale) }}</p>
+        {% endif %}
+    </div>
+</section>

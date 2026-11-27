@@ -52,6 +52,13 @@ class VideoOptimizerEmbedResolverTest extends TestCase
         self::assertNull($result['hlsUrl']);
     }
 
+    public function testExtractSourcesKeepsTheTitle(): void
+    {
+        self::assertSame('Clip', VideoOptimizerEmbedResolver::extractSources(['title' => 'Clip'])['title']);
+        self::assertNull(VideoOptimizerEmbedResolver::extractSources(['title' => ''])['title']);
+        self::assertNull(VideoOptimizerEmbedResolver::extractSources([])['title']);
+    }
+
     public function testFailedLookupsAreCachedBrieflyAndReturnTheFallback(): void
     {
         $client = $this->prophesize(VideoOptimizerClient::class);
@@ -61,7 +68,7 @@ class VideoOptimizerEmbedResolverTest extends TestCase
         $resolver = new VideoOptimizerEmbedResolver($client->reveal(), $this->recordingCache($ttls));
 
         self::assertSame(
-            ['poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'srcset' => null, 'theme' => null, 'tracks' => [], 'sources' => []],
+            ['title' => null, 'poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'srcset' => null, 'theme' => null, 'tracks' => [], 'sources' => []],
             $resolver->getSources('abc'),
         );
         self::assertSame([60], $ttls, 'A failure is remembered for 60 s so a broken API is not hit on every render.');
@@ -126,7 +133,7 @@ class VideoOptimizerEmbedResolverTest extends TestCase
         $resolver->getSources('first');
         $resolver->getSources('second');
 
-        self::assertFalse($cache->hasItem('vo_embed_v3_second'), 'A skipped video must not be negatively cached.');
+        self::assertFalse($cache->hasItem('vo_embed_v4_second'), 'A skipped video must not be negatively cached.');
 
         $cache->deleteItem('vo_embed_api_down');
         $client->getEmbed('second')->willReturn(['sources' => [['src' => 'https://cdn.example.net/m.m3u8', 'type' => 'application/vnd.apple.mpegurl']]]);

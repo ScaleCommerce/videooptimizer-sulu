@@ -200,13 +200,21 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
         self::assertSame('https://videooptimizer.eu/embed/abc?autoplay=1&controls=0', $url);
     }
 
+    public function testEmbedUrlAddsFitOnlyForCover(): void
+    {
+        $ext = $this->extension();
+
+        self::assertSame('https://videooptimizer.eu/embed/abc?autoplay=1&fit=cover', $ext->embedUrl(['uuid' => 'abc'], ['autoplay' => '1', 'fit' => 'cover']));
+        self::assertSame('https://videooptimizer.eu/embed/abc', $ext->embedUrl(['uuid' => 'abc'], ['fit' => 'fill']));
+    }
+
     public function testEmbedUrlIgnoresUnknownAndNonBooleanValues(): void
     {
         $ext = $this->extension();
 
-        $url = $ext->embedUrl(['uuid' => 'abc'], ['fit' => 'cover', 'autoplay' => 'yes', 'controls' => '1']);
+        $url = $ext->embedUrl(['uuid' => 'abc'], ['theme' => 'x', 'autoplay' => 'yes', 'controls' => '1']);
 
-        // 'fit' is not an allowlisted boolean param and 'yes' is not 0/1 -> only controls=1 survives.
+        // 'theme' is not an allowlisted param and 'yes' is not 0/1 -> only controls=1 survives.
         self::assertSame('https://videooptimizer.eu/embed/abc?controls=1', $url);
     }
 

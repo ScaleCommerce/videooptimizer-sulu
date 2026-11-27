@@ -37,7 +37,7 @@ class VideoOptimizerEmbedResolver
     }
 
     /**
-     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
+     * @return array{title: ?string, poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
      */
     public function getSources(string $uuid): array
     {
@@ -55,7 +55,7 @@ class VideoOptimizerEmbedResolver
     }
 
     /**
-     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
+     * @return array{title: ?string, poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
      */
     private function lookup(string $uuid): array
     {
@@ -136,16 +136,16 @@ class VideoOptimizerEmbedResolver
 
     private static function cacheKey(string $uuid): string
     {
-        // v3: entries cached before 2.1.0 carry no subtitle tracks; v2 predates 1.8.1 (24 h lifetime).
-        return 'vo_embed_v3_' . $uuid;
+        // v4: entries cached before 2.2.0 carry no title; v3: before 2.1.0 no subtitle tracks; v2 predates 1.8.1 (24 h lifetime).
+        return 'vo_embed_v4_' . $uuid;
     }
 
     /**
-     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
+     * @return array{title: ?string, poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
      */
     private static function unavailable(): array
     {
-        return ['poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'srcset' => null, 'theme' => null, 'tracks' => [], 'sources' => []];
+        return ['title' => null, 'poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'srcset' => null, 'theme' => null, 'tracks' => [], 'sources' => []];
     }
 
     /**
@@ -177,7 +177,7 @@ class VideoOptimizerEmbedResolver
     /**
      * @param array<string, mixed> $data
      *
-     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
+     * @return array{title: ?string, poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
      */
     public static function extractSources(array $data): array
     {
@@ -209,6 +209,7 @@ class VideoOptimizerEmbedResolver
         $duration = \is_numeric($data['duration'] ?? null) ? (int) $data['duration'] : null;
 
         return [
+            'title' => \is_string($data['title'] ?? null) && '' !== $data['title'] ? $data['title'] : null,
             'poster' => $poster,
             'hlsUrl' => $hlsUrl,
             'width' => $width,
