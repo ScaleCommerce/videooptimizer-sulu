@@ -169,7 +169,7 @@ class VideoDetail extends React.Component<*> {
             .then((blob) => {
                 const type = posterContentType(blob.type, media);
                 if (!type) {
-                    throw new Error(translate('scale_videooptimizer.poster_failed'));
+                    throw new Error(translate('scale_videooptimizer.poster_unsupported_type'));
                 }
 
                 return this.uploadPosterBlob(type === blob.type ? blob : new Blob([blob], {type}));
