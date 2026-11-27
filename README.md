@@ -376,6 +376,22 @@ function passes data through; it does not adapt it to any particular consumer's 
 > additionally preloads the poster with `fetchpriority="high"`; **"Load video immediately"** only
 > removes the deferral.
 
+### Player theme and subtitles in the native player
+
+The native `<video>` player applies the organization's player theme from `GET /embed/{uuid}` and the video's subtitle tracks. A block's own player option (controls, autoplay, loop, muted) wins over the theme.
+
+| Theme key | Native player |
+|---|---|
+| `controls`, `interactive` | `controls` attribute; `false` only takes effect on a video that autoplays (eager or on scroll), otherwise visitors keep the controls to start, pause and unmute (`interactive: false` also blocks clicks) |
+| `autoplay`, `mutedStart` | autoplay (always muted) on an eager player or on scroll, `muted` attribute. A block's autoplay "inherit" counts as on; with autoplay off the player never starts by itself and loads its source on the first play |
+| `loopButton` | `loop` attribute |
+| `preload` | capped: video data is never loaded before playback. Click-to-play and scroll-triggered players stay `none`; only an explicitly prioritised (eager) player uses the theme value, where the default `auto` is kept and `metadata`/`none` are honoured |
+| `accentColor` | CSS custom property `--vo-accent` on the `<video>` (tints the controls) |
+
+Other keys (`controlBarBg`, `playButton*`, `bigPlayButton`, `fullscreenButton`, `pictureInPicture`, `playbackSpeed`, `qualitySelector`, `volumeControl`, `timeDisplay`) have no native counterpart and are ignored. The hosted embed applies all of them.
+
+Subtitles are rendered as `<track kind srclang label src [default]>`; the `<video>` then gets `crossorigin="anonymous"` (the CDN allows any origin).
+
 ## 🧱 Content blocks
 
 Beyond the single field, the bundle ships four ready-to-use **Sulu content blocks** for richer

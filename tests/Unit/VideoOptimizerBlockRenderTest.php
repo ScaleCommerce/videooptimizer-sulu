@@ -444,8 +444,107 @@ class VideoOptimizerBlockRenderTest extends TestCase
         self::assertStringContainsString('preload="auto"', $html);
         self::assertStringContainsString('autoplay muted', $html);
         self::assertStringContainsString('loop', $html);
-        self::assertStringContainsString('style="--vo-player-accent:#ff0033"', $html);
+        self::assertStringContainsString('style="--vo-accent:#ff0033;--vo-player-accent:#ff0033"', $html);
         self::assertStringNotContainsString('src="https://cdn.example.net/video.m3u8"', $html); // HLS master is not a <source>, only data-hls
+    }
+
+    /**
+     * @param array<string, mixed>  $theme
+     * @param array<string, mixed>  $options
+     */
+    private function nativeWithTheme(array $theme, array $options = [], bool $eager = true, bool $autoload = false): string
+    {
+        $resolver = $this->resolver();
+        $resolver->getPlayable('abc')->willReturn(['theme' => $theme] + $this->playable());
+        $extension = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
+
+        return $extension->renderNative(['uuid' => 'abc'], $options, $eager, $autoload);
+    }
+
+    public function testThemeControlsFalseOnlyAppliesToAVideoThatAutoplays(): void
+    {
+        self::assertStringContainsString(' controls', $this->nativeWithTheme(['controls' => true]));
+        // Not autoplaying (deferred, or eager without autoplay): visitors keep the controls.
+        self::assertStringContainsString(' controls', $this->nativeWithTheme(['controls' => false, 'interactive' => false]));
+        self::assertStringContainsString(' controls', $this->nativeWithTheme(['controls' => false], [], false));
+        $html = $this->nativeWithTheme(['controls' => false, 'interactive' => false]);
+        self::assertStringNotContainsString('vo-native--static', $html);
+
+        // Autoplaying eagerly, or on scroll: the theme may hide them.
+        self::assertStringNotContainsString(' controls', $this->nativeWithTheme(['controls' => false, 'autoplay' => true]));
+        $static = $this->nativeWithTheme(['controls' => true, 'interactive' => false, 'autoplay' => true]);
+        self::assertStringNotContainsString(' controls', $static);
+        self::assertStringContainsString('vo-native--static', $static);
+        self::assertStringNotContainsString(' controls', $this->nativeWithTheme(['controls' => false], ['autoplay' => '1'], false, true));
+        self::assertStringContainsString(' controls', $this->nativeWithTheme([]));
+    }
+
+    public function testBlockControlsOptionWinsOverTheme(): void
+    {
+        self::assertStringNotContainsString(' controls', $this->nativeWithTheme(['controls' => true], ['controls' => '0']));
+        self::assertStringContainsString(' controls', $this->nativeWithTheme(['controls' => false, 'autoplay' => true], ['controls' => '1']));
+        self::assertStringContainsString(' controls', $this->nativeWithTheme(['controls' => false], ['controls' => 'inherit']));
+        self::assertStringNotContainsString(' controls', $this->nativeWithTheme([], ['controls' => false]));
+        self::assertStringContainsString(' controls', $this->nativeWithTheme(['controls' => false, 'autoplay' => true], ['controls' => true]));
+    }
+
+    public function testAutoplayOffNeverAutoplaysOnScrollAndWiresOnFirstPlay(): void
+    {
+        $scroll = $this->nativeWithTheme([], ['autoplay' => '1'], false, true);
+        self::assertStringContainsString('data-vo-native-autoload', $scroll);
+        self::assertStringNotContainsString('data-vo-native-onplay', $scroll);
+
+        $off = $this->nativeWithTheme([], ['autoplay' => '0'], false, true);
+        self::assertStringNotContainsString('data-vo-native-autoload', $off);
+        self::assertStringContainsString('data-vo-native-onplay', $off);
+        self::assertStringNotContainsString('autoplay', $off);
+
+        // Eager without autoplay: wired on play, preload capped at metadata.
+        $eagerOff = $this->nativeWithTheme([], ['autoplay' => '0']);
+        self::assertStringContainsString('data-vo-native-onplay', $eagerOff);
+        self::assertStringContainsString('preload="metadata"', $eagerOff);
+        self::assertStringContainsString('preload="none"', $this->nativeWithTheme(['preload' => 'none'], ['autoplay' => '0']));
+
+        // Facade/lightbox players are wired on reveal, not on play.
+        self::assertStringNotContainsString('data-vo-native-onplay', $this->nativeWithTheme([], [], false));
+    }
+
+    public function testBooleanOptionsCountAsOnAndOff(): void
+    {
+        self::assertStringNotContainsString(' loop', $this->nativeWithTheme(['loopButton' => true], ['loop' => false]));
+        self::assertStringContainsString(' loop', $this->nativeWithTheme([], ['loop' => true]));
+    }
+
+    public function testThemeAutoplayMutedStartAndLoopApplyWhenTheBlockDoesNotDecide(): void
+    {
+        $html = $this->nativeWithTheme(['autoplay' => true, 'loopButton' => true]);
+        self::assertStringContainsString('autoplay muted', $html);
+        self::assertStringContainsString(' loop', $html);
+
+        $html = $this->nativeWithTheme(['mutedStart' => true], [], false);
+        self::assertStringContainsString('muted', $html);
+        self::assertStringNotContainsString('autoplay', $html);
+
+        // Explicit block options win; a deferred (click-to-play) player never autoplays.
+        $html = $this->nativeWithTheme(['autoplay' => true, 'loopButton' => true], ['autoplay' => '0', 'loop' => '0']);
+        self::assertStringNotContainsString('autoplay', $html);
+        self::assertStringNotContainsString(' loop', $html);
+        self::assertStringNotContainsString('autoplay', $this->nativeWithTheme(['autoplay' => true], [], false));
+    }
+
+    public function testThemePreloadAppliesToEagerPlayersOnly(): void
+    {
+        self::assertStringContainsString('preload="metadata"', $this->nativeWithTheme(['preload' => 'metadata', 'autoplay' => true]));
+        self::assertStringContainsString('preload="auto"', $this->nativeWithTheme(['preload' => 'bogus', 'autoplay' => true]));
+        self::assertStringContainsString('preload="none"', $this->nativeWithTheme(['preload' => 'auto'], [], false));
+    }
+
+    public function testThemeAccentColorIsSetAsCustomPropertyAndUnsafeValuesAreIgnored(): void
+    {
+        self::assertStringContainsString('--vo-accent:rgb(199, 40, 118)', $this->nativeWithTheme(['accentColor' => 'rgb(199, 40, 118)']));
+        $bad = $this->nativeWithTheme(['accentColor' => 'red;background:url(//evil)']);
+        self::assertStringNotContainsString('--vo-accent', $bad);
+        self::assertStringNotContainsString('evil', $bad);
     }
 
     public function testRenderNativeIsDeferredByDefault(): void

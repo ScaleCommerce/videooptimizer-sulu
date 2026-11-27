@@ -89,6 +89,11 @@
     accent-color: var(--vo-player-accent, var(--vo-accent));
 }
 
+/* Theme `interactive: false`: no controls, clicks do not reach the video. */
+.vo-native--static {
+    pointer-events: none;
+}
+
 /* Hidden until vo-blocks.js reveals it on facade/lightbox click. */
 .vo-native-holder[hidden] {
     display: none;

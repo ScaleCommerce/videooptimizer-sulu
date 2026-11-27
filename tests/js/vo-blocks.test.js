@@ -127,4 +127,34 @@ describe('vo-blocks.js', () => {
         expect(frame.querySelector('iframe').getAttribute('src')).toBe('https://player.videooptimizer.eu/embed/xyz');
         expect(frame.hasAttribute('data-vo-autoload')).toBe(false);
     });
+
+    describe('native players without autoplay', () => {
+        it('attaches nothing before the first play, then wires HLS once', () => {
+            mount('<video class="vo-native" controls preload="metadata" data-vo-native-onplay data-hls="https://cdn/x.m3u8"></video>');
+            load();
+            const video = document.querySelector('video');
+
+            expect(hlsScript()).toBeNull();
+            expect(video.hasAttribute('data-vo-wired')).toBe(false);
+
+            video.dispatchEvent(new Event('play'));
+            expect(hlsScript()).not.toBeNull();
+            expect(video.hasAttribute('data-vo-native-onplay')).toBe(false);
+        });
+
+        it('does not start a non-autoplaying player when it scrolls into view', () => {
+            mount('<video class="vo-native" controls data-vo-native-onplay data-hls="https://cdn/x.m3u8"></video>');
+            window.IntersectionObserver = class {
+                constructor(cb) { this.cb = cb; }
+                observe(el) { this.cb([{isIntersecting: true, target: el}]); }
+                unobserve() {}
+            };
+            load();
+            delete window.IntersectionObserver;
+
+            expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+            expect(hlsScript()).toBeNull();
+        });
+    });
+
 });

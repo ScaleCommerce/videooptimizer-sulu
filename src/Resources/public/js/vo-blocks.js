@@ -193,7 +193,7 @@
     function initNativePlayers(baseUrl) {
         var reducedMotion = prefersReducedMotion();
         document.querySelectorAll('.vo-native[data-hls]').forEach(function (video) {
-            if (video.closest('.vo-native-holder') || video.hasAttribute('data-vo-native-autoload')) {
+            if (video.closest('.vo-native-holder') || video.hasAttribute('data-vo-native-autoload') || video.hasAttribute('data-vo-native-onplay')) {
                 return;
             }
             if (reducedMotion) {
@@ -220,6 +220,18 @@
         whenNearViewport(videos, function (video) {
             video.removeAttribute('data-vo-native-autoload');
             attachHls(video, baseUrl, {play: true});
+        });
+    }
+
+    // Visible native <video> that does not autoplay (autoplay off): nothing is attached, so no HLS
+    // segments are fetched, until the visitor presses play. The source is attached on the first
+    // `play` event and playback continues from there.
+    function initNativeOnPlay(baseUrl) {
+        document.querySelectorAll('.vo-native[data-vo-native-onplay]').forEach(function (video) {
+            video.addEventListener('play', function () {
+                video.removeAttribute('data-vo-native-onplay');
+                attachHls(video, baseUrl, {play: true});
+            }, {once: true});
         });
     }
 
@@ -411,6 +423,7 @@
         initBackgroundVideos(baseUrl);
         initNativePlayers(baseUrl);
         initNativeAutoload(baseUrl);
+        initNativeOnPlay(baseUrl);
         initLightbox(baseUrl);
         initFacades(baseUrl);
         initAutoload();

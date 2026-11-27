@@ -4,6 +4,12 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Upgrade
+- The native player now follows the player theme of the API: `controls: false`/`interactive: false` hide the controls of a video that autoplays (never of one the visitor has to start), `autoplay`/`mutedStart`/`loopButton` apply where the block leaves the option on "inherit" (which counts as autoplay on for blocks, as before), a block's `controls` option now also applies to it, and a player with autoplay off no longer starts on scroll: it fetches nothing but the poster until the visitor presses play; the inline style carries `--vo-accent` next to `--vo-player-accent`. Theme overrides of `renderNative()` markup are unaffected ([#22](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/22))
+
+### Changed
+- Native player applies the theme keys `controls`, `interactive`, `autoplay`, `mutedStart`, `loopButton`, `preload` and `accentColor` (`--vo-accent`); other keys are ignored and listed in the README ([#22](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/22))
+
 ## [2.0.0] - 2026-11-27
 
 ### Upgrade
