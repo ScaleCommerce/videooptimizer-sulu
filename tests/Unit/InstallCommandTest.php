@@ -9,6 +9,10 @@ use Doctrine\DBAL\Schema\AbstractSchemaManager;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
+use Scale\VideoOptimizerBundle\Security\VideoOptimizerPermissions;
+use Sulu\Bundle\SecurityBundle\Entity\Permission;
+use Sulu\Bundle\SecurityBundle\Entity\Role;
+use Sulu\Component\Security\Authentication\RoleRepositoryInterface;
 use Scale\VideoOptimizerBundle\Command\InstallCommand;
 use Symfony\Component\Console\Tester\CommandTester;
 
@@ -100,6 +104,73 @@ class InstallCommandTest extends TestCase
         self::assertSame(1, substr_count((string) file_get_contents($this->projectDir . '/assets/admin/app.js'), "import 'videooptimizer-sulu';"));
     }
 
+    public function testGrantsTheSecurityContextsToExistingAdminRolesOnce(): void
+    {
+        $admin = (new Role())->setName('Administrator')->setSystem('Sulu');
+        $editor = (new Role())->setName('Editor')->setSystem('Sulu');
+        $website = (new Role())->setName('Website')->setSystem('Website');
+        $anonymous = (new Role())->setName('Anonymous')->setSystem('Sulu')->setAnonymous(true);
+        $roles = $this->prophesize(RoleRepositoryInterface::class);
+        $roles->findAllRoles()->willReturn([$admin, $editor, $website, $anonymous]);
+        $entityManager = $this->entityManager(tableExists: true);
+
+        $tester = new CommandTester(new InstallCommand($entityManager, $this->projectDir, $roles->reveal()));
+        $tester->execute([]);
+
+        $contexts = static fn (Role $role): array => array_map(static fn (Permission $p): string => $p->getContext() . ':' . $p->getPermissions(), $role->getPermissions()->toArray());
+        $expected = [VideoOptimizerPermissions::VIDEOS . ':127', VideoOptimizerPermissions::LIBRARIES . ':127', VideoOptimizerPermissions::SETTINGS . ':127'];
+        self::assertSame($expected, $contexts($admin));
+        self::assertSame($expected, $contexts($editor));
+        self::assertSame([], $contexts($website));
+        self::assertSame([], $contexts($anonymous));
+        self::assertStringContainsString('Administrator, Editor', $tester->getDisplay());
+
+        $tester->execute([]);
+        self::assertCount(3, $admin->getPermissions(), 'a second run adds nothing');
+    }
+
+    public function testRoleCreatedAfterTheFirstGrantStaysWithoutAccessOnARerun(): void
+    {
+        $admin = (new Role())->setName('Administrator')->setSystem('Sulu');
+        $roles = $this->prophesize(RoleRepositoryInterface::class);
+        $roles->findAllRoles()->willReturn([$admin]);
+        $tester = new CommandTester(new InstallCommand($this->entityManager(tableExists: true), $this->projectDir, $roles->reveal()));
+        $tester->execute([]);
+        self::assertCount(3, $admin->getPermissions());
+
+        $later = (new Role())->setName('Later')->setSystem('Sulu');
+        $roles->findAllRoles()->willReturn([$admin, $later]);
+        $tester->execute([]);
+
+        self::assertCount(0, $later->getPermissions());
+        self::assertCount(3, $admin->getPermissions());
+    }
+
+    public function testRestrictedRoleKeepsItsChoiceAndBlocksTheGrant(): void
+    {
+        $restricted = (new Role())->setName('Restricted')->setSystem('Sulu');
+        $restricted->addPermission((new Permission())->setContext(VideoOptimizerPermissions::VIDEOS)->setPermissions(64));
+        $other = (new Role())->setName('Other')->setSystem('Sulu');
+        $roles = $this->prophesize(RoleRepositoryInterface::class);
+        $roles->findAllRoles()->willReturn([$restricted, $other]);
+
+        (new CommandTester(new InstallCommand($this->entityManager(tableExists: true), $this->projectDir, $roles->reveal())))->execute([]);
+
+        self::assertCount(1, $restricted->getPermissions());
+        self::assertCount(0, $other->getPermissions());
+    }
+
+    public function testDryRunDoesNotGrantPermissions(): void
+    {
+        $admin = (new Role())->setName('Administrator')->setSystem('Sulu');
+        $roles = $this->prophesize(RoleRepositoryInterface::class);
+        $roles->findAllRoles()->willReturn([$admin]);
+
+        (new CommandTester(new InstallCommand($this->entityManager(tableExists: true), $this->projectDir, $roles->reveal())))->execute(['--dry-run' => true]);
+
+        self::assertCount(0, $admin->getPermissions());
+    }
+
     private function entityManager(bool $tableExists): EntityManagerInterface
     {
         $schemaManager = $this->prophesize(AbstractSchemaManager::class);
@@ -111,6 +182,8 @@ class InstallCommandTest extends TestCase
 
         $entityManager = $this->prophesize(EntityManagerInterface::class);
         $entityManager->getConnection()->willReturn($connection->reveal());
+        $entityManager->persist(\Prophecy\Argument::any());
+        $entityManager->flush();
 
         return $entityManager->reveal();
     }

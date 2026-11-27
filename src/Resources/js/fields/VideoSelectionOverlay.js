@@ -6,6 +6,7 @@ import {Overlay, Loader, Button} from 'sulu-admin-bundle/components';
 import FolderList from 'sulu-admin-bundle/components/FolderList';
 import {translate} from 'sulu-admin-bundle/utils';
 import {getLibraries, getTags, getVideoPage, initiateUpload, uploadParts, completeUpload, isAbortError, abortError, ingestVideoUrl, pollVideo, posterFor, bustCache, failureMessage, errorText} from '../services/api';
+import {can} from '../services/permissions';
 import VideoDetail from '../components/VideoDetail';
 import VideoPager from '../services/VideoPager';
 import UploadProgress from '../components/UploadProgress';
@@ -504,13 +505,15 @@ class VideoSelectionOverlay extends React.Component<*> {
                                 >
                                     {translate('scale_videooptimizer.tab_select')}
                                 </button>
-                                <button
-                                    type="button"
-                                    className={'vo-tab ' + (this.tab === 'upload' ? 'vo-tab--active' : '')}
-                                    onClick={() => this.setTab('upload')}
-                                >
-                                    {translate('scale_videooptimizer.tab_upload')}
-                                </button>
+                                {can('videos', 'add') && (
+                                    <button
+                                        type="button"
+                                        className={'vo-tab ' + (this.tab === 'upload' ? 'vo-tab--active' : '')}
+                                        onClick={() => this.setTab('upload')}
+                                    >
+                                        {translate('scale_videooptimizer.tab_upload')}
+                                    </button>
+                                )}
                             </div>
 
                             {this.libraries.length === 0
@@ -518,7 +521,7 @@ class VideoSelectionOverlay extends React.Component<*> {
                                 : (
                                     <React.Fragment>
                                         {this.renderFolders()}
-                                        {this.tab === 'select' ? this.renderSelectTab() : this.renderUploadTab()}
+                                        {this.tab === 'select' || !can('videos', 'add') ? this.renderSelectTab() : this.renderUploadTab()}
                                     </React.Fragment>
                                 )}
 

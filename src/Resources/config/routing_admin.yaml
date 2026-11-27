@@ -5,81 +5,113 @@ scale_videooptimizer_settings_get:
     path: /videooptimizer/settings
     methods: [GET]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SettingsController::get'
+    defaults:
+        _vo_permission: 'settings:view'
 
 scale_videooptimizer_settings_put:
     path: /videooptimizer/settings
     methods: [PUT]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SettingsController::put'
+    defaults:
+        _vo_permission: 'settings:edit'
 
 scale_videooptimizer_settings_test:
     path: /videooptimizer/settings/test
     methods: [POST]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SettingsController::test'
+    defaults:
+        _vo_permission: 'settings:edit'
 
 scale_videooptimizer_settings_token_delete:
     path: /videooptimizer/settings/token
     methods: [DELETE]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SettingsController::deleteToken'
+    defaults:
+        _vo_permission: 'settings:edit'
 
 scale_videooptimizer_settings_webhook_secret_delete:
     path: /videooptimizer/settings/webhook-secret
     methods: [DELETE]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SettingsController::deleteWebhookSecret'
+    defaults:
+        _vo_permission: 'settings:edit'
 
 scale_videooptimizer_encodings_get:
     path: /videooptimizer/encodings
     methods: [GET]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\LibraryController::encodings'
+    defaults:
+        _vo_permission: 'libraries:view|videos:view'
 
 scale_videooptimizer_libraries_cget:
     path: /videooptimizer/libraries
     methods: [GET]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\LibraryController::cget'
+    defaults:
+        _vo_permission: 'videos:view|libraries:view'
 
 scale_videooptimizer_libraries_post:
     path: /videooptimizer/libraries
     methods: [POST]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\LibraryController::post'
+    defaults:
+        _vo_permission: 'libraries:add'
 
 scale_videooptimizer_libraries_patch:
     path: /videooptimizer/libraries/{id}
     methods: [PATCH]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\LibraryController::patch'
+    defaults:
+        _vo_permission: 'libraries:edit'
 
 scale_videooptimizer_libraries_delete:
     path: /videooptimizer/libraries/{id}
     methods: [DELETE]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\LibraryController::delete'
+    defaults:
+        _vo_permission: 'libraries:delete'
 
 scale_videooptimizer_library_videos:
     path: /videooptimizer/libraries/{id}/videos
     methods: [GET]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\LibraryController::videos'
+    defaults:
+        _vo_permission: 'videos:view|libraries:view'
 
 scale_videooptimizer_library_reprocess:
     path: /videooptimizer/libraries/{id}/reprocess
     methods: [POST]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\LibraryController::reprocess'
+    defaults:
+        _vo_permission: 'libraries:edit'
 
 scale_videooptimizer_videos_cget:
     path: /videooptimizer/videos
     methods: [GET]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::list'
+    defaults:
+        _vo_permission: 'videos:view'
 
 scale_videooptimizer_video_upload_initiate:
     path: /videooptimizer/videos/upload/initiate
     methods: [POST]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::initiateUpload'
+    defaults:
+        _vo_permission: 'videos:add'
 
 scale_videooptimizer_video_upload_complete:
     path: /videooptimizer/videos/upload/complete
     methods: [POST]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::completeUpload'
+    defaults:
+        _vo_permission: 'videos:add'
 
 scale_videooptimizer_video_ingest:
     path: /videooptimizer/videos/ingest
     methods: [POST]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::ingestUrl'
+    defaults:
+        _vo_permission: 'videos:add'
 
 scale_videooptimizer_video_get:
     path: /videooptimizer/videos/{uuid}
@@ -87,101 +119,137 @@ scale_videooptimizer_video_get:
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::get'
     requirements:
         uuid: '[0-9a-fA-F\-]+'
+    defaults:
+        _vo_permission: 'videos:view'
 
 scale_videooptimizer_video_patch:
     path: /videooptimizer/videos/{uuid}
     methods: [PATCH]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::patch'
     requirements: { uuid: '[0-9a-fA-F\-]+' }
+    defaults:
+        _vo_permission: 'videos:edit'
 
 scale_videooptimizer_video_delete:
     path: /videooptimizer/videos/{uuid}
     methods: [DELETE]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::delete'
     requirements: { uuid: '[0-9a-fA-F\-]+' }
+    defaults:
+        _vo_permission: 'videos:delete'
 
 scale_videooptimizer_video_thumbnails:
     path: /videooptimizer/videos/{uuid}/thumbnails
     methods: [GET]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::thumbnails'
     requirements: { uuid: '[0-9a-fA-F\-]+' }
+    defaults:
+        _vo_permission: 'videos:view'
 
 scale_videooptimizer_video_thumbnail_select:
     path: /videooptimizer/videos/{uuid}/thumbnail
     methods: [POST]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::selectThumbnail'
     requirements: { uuid: '[0-9a-fA-F\-]+' }
+    defaults:
+        _vo_permission: 'videos:edit'
 
 scale_videooptimizer_video_poster_initiate:
     path: /videooptimizer/videos/{uuid}/poster/initiate
     methods: [POST]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::posterInitiate'
     requirements: { uuid: '[0-9a-fA-F\-]+' }
+    defaults:
+        _vo_permission: 'videos:edit'
 
 scale_videooptimizer_video_poster_complete:
     path: /videooptimizer/videos/{uuid}/poster/complete
     methods: [POST]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::posterComplete'
     requirements: { uuid: '[0-9a-fA-F\-]+' }
+    defaults:
+        _vo_permission: 'videos:edit'
 
 scale_videooptimizer_video_poster_select:
     path: /videooptimizer/videos/{uuid}/poster/select
     methods: [POST]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::posterSelect'
     requirements: { uuid: '[0-9a-fA-F\-]+' }
+    defaults:
+        _vo_permission: 'videos:edit'
 
 scale_videooptimizer_video_poster_delete:
     path: /videooptimizer/videos/{uuid}/poster
     methods: [DELETE]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::posterDelete'
     requirements: { uuid: '[0-9a-fA-F\-]+' }
+    defaults:
+        _vo_permission: 'videos:edit'
 
 scale_videooptimizer_video_subtitles_list:
     path: /videooptimizer/videos/{uuid}/subtitles
     methods: [GET]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SubtitleController::list'
     requirements: { uuid: '[0-9a-fA-F\-]+' }
+    defaults:
+        _vo_permission: 'videos:view'
 
 scale_videooptimizer_video_subtitles_upload:
     path: /videooptimizer/videos/{uuid}/subtitles
     methods: [POST]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SubtitleController::upload'
     requirements: { uuid: '[0-9a-fA-F\-]+' }
+    defaults:
+        _vo_permission: 'videos:edit'
 
 scale_videooptimizer_video_subtitles_download:
     path: /videooptimizer/videos/{uuid}/subtitles/{language}
     methods: [GET]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SubtitleController::download'
     requirements: { uuid: '[0-9a-fA-F\-]+', language: '[A-Za-z0-9_\-]{1,35}' }
+    defaults:
+        _vo_permission: 'videos:view'
 
 scale_videooptimizer_video_subtitles_delete:
     path: /videooptimizer/videos/{uuid}/subtitles/{language}
     methods: [DELETE]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SubtitleController::delete'
     requirements: { uuid: '[0-9a-fA-F\-]+', language: '[A-Za-z0-9_\-]{1,35}' }
+    defaults:
+        _vo_permission: 'videos:edit'
 
 scale_videooptimizer_subtitle_languages_list:
     path: /videooptimizer/subtitle-languages
     methods: [GET]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SubtitleController::languages'
+    defaults:
+        _vo_permission: 'videos:view|settings:view'
 
 scale_videooptimizer_subtitle_languages_create:
     path: /videooptimizer/subtitle-languages
     methods: [POST]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SubtitleController::createLanguage'
+    defaults:
+        _vo_permission: 'settings:edit'
 
 scale_videooptimizer_subtitle_languages_delete:
     path: /videooptimizer/subtitle-languages/{code}
     methods: [DELETE]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SubtitleController::deleteLanguage'
     requirements: { code: '[A-Za-z0-9_\-]{1,35}' }
+    defaults:
+        _vo_permission: 'settings:edit'
 
 scale_videooptimizer_tags_list:
     path: /videooptimizer/tags
     methods: [GET]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::tags'
+    defaults:
+        _vo_permission: 'videos:view'
 
 scale_videooptimizer_savings_get:
     path: /videooptimizer/savings
     methods: [GET]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SavingsController::get'
+    defaults:
+        _vo_permission: 'libraries:view'

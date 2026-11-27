@@ -98,6 +98,15 @@ describe('error codes from the proxy', () => {
         expect(error.status).toBe(502);
     });
 
+    it('explains a missing VideoOptimizer permission of the editor in their language', async () => {
+        Requester.get.mockRejectedValue(rejection(403, {message: 'You do not have permission', code: 'forbidden'}));
+
+        const error = await getAllVideos().catch((e) => e);
+
+        expect(error.message).toBe('scale_videooptimizer.error_forbidden');
+        expect(error.status).toBe(403);
+    });
+
     it('keeps the API text for a 403 that carries one (plan limit, trial, suspended organization)', async () => {
         Requester.get.mockRejectedValue(rejection(502, {message: 'Library limit reached.', code: 'token_forbidden', upstream: true}));
 

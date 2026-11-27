@@ -59,6 +59,7 @@ var _components = require("sulu-admin-bundle/components");
 var _FolderList = _interopRequireDefault(require("sulu-admin-bundle/components/FolderList"));
 var _utils = require("sulu-admin-bundle/utils");
 var _api = require("../services/api");
+var _permissions = require("../services/permissions");
 var _format = require("../services/format");
 var _SavingsSummary = _interopRequireDefault(require("../components/SavingsSummary"));
 var _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9, _descriptor0, _descriptor1, _descriptor10, _descriptor11, _descriptor12, _descriptor13, _descriptor14, _descriptor15, _descriptor16, _descriptor17, _descriptor18, _descriptor19, _descriptor20, _descriptor21, _descriptor22, _descriptor23, _descriptor24, _descriptor25, _descriptor26, _descriptor27, _descriptor28, _descriptor29, _descriptor30, _descriptor31;
@@ -254,12 +255,14 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
           })
         });
       });
-      folders.push(/*#__PURE__*/_react["default"].createElement(_FolderList["default"].Folder, {
-        key: CREATE_ID,
-        id: CREATE_ID,
-        title: '＋ ' + (0, _utils.translate)('scale_videooptimizer.new_library'),
-        info: ""
-      }));
+      if ((0, _permissions.can)('libraries', 'add')) {
+        folders.push(/*#__PURE__*/_react["default"].createElement(_FolderList["default"].Folder, {
+          key: CREATE_ID,
+          id: CREATE_ID,
+          title: '＋ ' + (0, _utils.translate)('scale_videooptimizer.new_library'),
+          info: ""
+        }));
+      }
       return /*#__PURE__*/_react["default"].createElement(_FolderList["default"], {
         onFolderClick: this.selectLibrary
       }, folders);
@@ -328,11 +331,12 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
       var isNew = this.activeId === CREATE_ID;
       var library = this.activeLibrary;
       var mediaManaged = this.mediaManaged;
+      var canSave = (0, _permissions.can)('libraries', isNew ? 'add' : 'edit');
       return /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-cockpit"
       }, /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-list-header"
-      }, /*#__PURE__*/_react["default"].createElement("h1", null, isNew ? (0, _utils.translate)('scale_videooptimizer.new_library') : library ? library.name : ''), !isNew && /*#__PURE__*/_react["default"].createElement(_components.Button, {
+      }, /*#__PURE__*/_react["default"].createElement("h1", null, isNew ? (0, _utils.translate)('scale_videooptimizer.new_library') : library ? library.name : ''), !isNew && (0, _permissions.can)('libraries', 'delete') && /*#__PURE__*/_react["default"].createElement(_components.Button, {
         skin: "link",
         onClick: this.askDelete
       }, (0, _utils.translate)('scale_videooptimizer.delete'))), library && /*#__PURE__*/_react["default"].createElement("div", {
@@ -345,7 +349,10 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
         className: "vo-meta__row"
       }, /*#__PURE__*/_react["default"].createElement("dt", null, (0, _utils.translate)('scale_videooptimizer.created')), /*#__PURE__*/_react["default"].createElement("dd", null, formatDate(library.created_at))), !mediaManaged && /*#__PURE__*/_react["default"].createElement("span", {
         className: "vo-badge vo-badge--muted"
-      }, (0, _utils.translate)('scale_videooptimizer.delivery_only'))), /*#__PURE__*/_react["default"].createElement("label", {
+      }, (0, _utils.translate)('scale_videooptimizer.delivery_only'))), /*#__PURE__*/_react["default"].createElement("fieldset", {
+        className: "vo-fieldset",
+        disabled: !canSave
+      }, /*#__PURE__*/_react["default"].createElement("label", {
         className: "vo-label"
       }, (0, _utils.translate)('scale_videooptimizer.library_name')), /*#__PURE__*/_react["default"].createElement("input", {
         type: "text",
@@ -394,14 +401,14 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
         style: {
           padding: '12px 0 0'
         }
-      }, (0, _utils.translate)('scale_videooptimizer.ladder_reprocess_hint'))), /*#__PURE__*/_react["default"].createElement("div", {
+      }, (0, _utils.translate)('scale_videooptimizer.ladder_reprocess_hint')))), /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-actions"
-      }, /*#__PURE__*/_react["default"].createElement(_components.Button, {
+      }, canSave && /*#__PURE__*/_react["default"].createElement(_components.Button, {
         skin: "primary",
         onClick: this.save,
         loading: this.saving,
         disabled: !this.formName.trim()
-      }, isNew ? (0, _utils.translate)('scale_videooptimizer.create') : (0, _utils.translate)('scale_videooptimizer.save')), !isNew && mediaManaged && /*#__PURE__*/_react["default"].createElement(_components.Button, {
+      }, isNew ? (0, _utils.translate)('scale_videooptimizer.create') : (0, _utils.translate)('scale_videooptimizer.save')), !isNew && mediaManaged && (0, _permissions.can)('libraries', 'edit') && /*#__PURE__*/_react["default"].createElement(_components.Button, {
         skin: "secondary",
         onClick: this.askReprocess
       }, (0, _utils.translate)('scale_videooptimizer.reprocess'))), this.reprocessResult && /*#__PURE__*/_react["default"].createElement("div", {

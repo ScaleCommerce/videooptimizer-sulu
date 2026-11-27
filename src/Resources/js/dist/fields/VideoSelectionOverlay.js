@@ -52,6 +52,7 @@ var _components = require("sulu-admin-bundle/components");
 var _FolderList = _interopRequireDefault(require("sulu-admin-bundle/components/FolderList"));
 var _utils = require("sulu-admin-bundle/utils");
 var _api = require("../services/api");
+var _permissions = require("../services/permissions");
 var _VideoDetail = _interopRequireDefault(require("../components/VideoDetail"));
 var _VideoPager = _interopRequireDefault(require("../services/VideoPager"));
 var _UploadProgress = _interopRequireDefault(require("../components/UploadProgress"));
@@ -429,7 +430,7 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
         onClick: function onClick() {
           return _this6.setTab('select');
         }
-      }, (0, _utils.translate)('scale_videooptimizer.tab_select')), /*#__PURE__*/_react["default"].createElement("button", {
+      }, (0, _utils.translate)('scale_videooptimizer.tab_select')), (0, _permissions.can)('videos', 'add') && /*#__PURE__*/_react["default"].createElement("button", {
         type: "button",
         className: 'vo-tab ' + (this.tab === 'upload' ? 'vo-tab--active' : ''),
         onClick: function onClick() {
@@ -437,7 +438,7 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
         }
       }, (0, _utils.translate)('scale_videooptimizer.tab_upload'))), this.libraries.length === 0 ? /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-empty"
-      }, (0, _utils.translate)('scale_videooptimizer.not_configured')) : /*#__PURE__*/_react["default"].createElement(_react["default"].Fragment, null, this.renderFolders(), this.tab === 'select' ? this.renderSelectTab() : this.renderUploadTab()), this.error && /*#__PURE__*/_react["default"].createElement("div", {
+      }, (0, _utils.translate)('scale_videooptimizer.not_configured')) : /*#__PURE__*/_react["default"].createElement(_react["default"].Fragment, null, this.renderFolders(), this.tab === 'select' || !(0, _permissions.can)('videos', 'add') ? this.renderSelectTab() : this.renderUploadTab()), this.error && /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-message vo-message--error"
       }, this.error))));
     }

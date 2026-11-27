@@ -26,6 +26,9 @@ function messageForCode(code, serverMessage, upstream) {
     if ('token_forbidden' === code) {
         return upstream && serverMessage ? serverMessage : translate('scale_videooptimizer.error_token_forbidden');
     }
+    if ('forbidden' === code) {
+        return translate('scale_videooptimizer.error_forbidden');
+    }
     if ('webhook_table_missing' === code) {
         return translate('scale_videooptimizer.error_webhook_table_missing');
     }

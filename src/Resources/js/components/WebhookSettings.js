@@ -4,6 +4,7 @@ import {observer} from 'mobx-react';
 import {observable, action} from 'mobx';
 import {Button, Dialog} from 'sulu-admin-bundle/components';
 import {translate} from 'sulu-admin-bundle/utils';
+import {can} from '../services/permissions';
 import {clearWebhookSecret, errorText} from '../services/api';
 
 type Props = {
@@ -76,6 +77,7 @@ class WebhookSettings extends React.Component<Props> {
 
     render() {
         const {settings, secret, onSecretChange} = this.props;
+        const canEdit = can('settings', 'edit');
 
         return (
             <div className="vo-card">
@@ -104,17 +106,20 @@ class WebhookSettings extends React.Component<Props> {
                     value={secret}
                     placeholder={translate('scale_videooptimizer.webhook_secret_placeholder')}
                     onChange={(event) => onSecretChange(event.target.value)}
+                    disabled={!canEdit}
                     autoComplete="off"
                 />
 
                 {settings.webhookConfigured && (
                     <React.Fragment>
                         {this.renderLastDelivery()}
-                        <div className="vo-actions">
-                            <Button skin="link" onClick={this.askRemove} disabled={this.removing}>
-                                {translate('scale_videooptimizer.webhook_remove')}
-                            </Button>
-                        </div>
+                        {canEdit && (
+                            <div className="vo-actions">
+                                <Button skin="link" onClick={this.askRemove} disabled={this.removing}>
+                                    {translate('scale_videooptimizer.webhook_remove')}
+                                </Button>
+                            </div>
+                        )}
                     </React.Fragment>
                 )}
 

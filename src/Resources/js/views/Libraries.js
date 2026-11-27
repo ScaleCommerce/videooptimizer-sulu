@@ -13,6 +13,7 @@ import {
     deleteLibrary,
     reprocessLibrary,
 } from '../services/api';
+import {can} from '../services/permissions';
 import {formatBytes} from '../services/format';
 import SavingsSummary from '../components/SavingsSummary';
 
@@ -303,14 +304,16 @@ class Libraries extends React.Component<*> {
             />
         ));
 
-        folders.push(
-            <FolderList.Folder
-                key={CREATE_ID}
-                id={CREATE_ID}
-                title={'＋ ' + translate('scale_videooptimizer.new_library')}
-                info=""
-            />
-        );
+        if (can('libraries', 'add')) {
+            folders.push(
+                <FolderList.Folder
+                    key={CREATE_ID}
+                    id={CREATE_ID}
+                    title={'＋ ' + translate('scale_videooptimizer.new_library')}
+                    info=""
+                />
+            );
+        }
 
         return <FolderList onFolderClick={this.selectLibrary}>{folders}</FolderList>;
     }
@@ -379,12 +382,13 @@ class Libraries extends React.Component<*> {
         const isNew = this.activeId === CREATE_ID;
         const library = this.activeLibrary;
         const mediaManaged = this.mediaManaged;
+        const canSave = can('libraries', isNew ? 'add' : 'edit');
 
         return (
             <div className="vo-cockpit">
                 <div className="vo-list-header">
                     <h1>{isNew ? translate('scale_videooptimizer.new_library') : (library ? library.name : '')}</h1>
-                    {!isNew && (
+                    {!isNew && can('libraries', 'delete') && (
                         <Button skin="link" onClick={this.askDelete}>
                             {translate('scale_videooptimizer.delete')}
                         </Button>
@@ -413,6 +417,7 @@ class Libraries extends React.Component<*> {
                     </div>
                 )}
 
+                <fieldset className="vo-fieldset" disabled={!canSave}>
                 <label className="vo-label">{translate('scale_videooptimizer.library_name')}</label>
                 <input type="text" className="vo-input" value={this.formName} onChange={this.handleNameChange} />
 
@@ -467,11 +472,13 @@ class Libraries extends React.Component<*> {
                     </React.Fragment>
                 )}
 
+                </fieldset>
+
                 <div className="vo-actions">
-                    <Button skin="primary" onClick={this.save} loading={this.saving} disabled={!this.formName.trim()}>
+                    {canSave && <Button skin="primary" onClick={this.save} loading={this.saving} disabled={!this.formName.trim()}>
                         {isNew ? translate('scale_videooptimizer.create') : translate('scale_videooptimizer.save')}
-                    </Button>
-                    {!isNew && mediaManaged && (
+                    </Button>}
+                    {!isNew && mediaManaged && can('libraries', 'edit') && (
                         <Button skin="secondary" onClick={this.askReprocess}>
                             {translate('scale_videooptimizer.reprocess')}
                         </Button>

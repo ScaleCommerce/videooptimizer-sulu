@@ -506,3 +506,11 @@
     color: #666;
     font-size: 12px;
 }
+
+/* Disabled groups (no edit permission) keep the layout of the surrounding form. */
+.vo-fieldset {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+}

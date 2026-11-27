@@ -4,6 +4,7 @@ import {observer} from 'mobx-react';
 import {observable, action} from 'mobx';
 import {Button, Dialog, Loader} from 'sulu-admin-bundle/components';
 import {translate} from 'sulu-admin-bundle/utils';
+import {can} from '../services/permissions';
 import {getSubtitleLanguages, createSubtitleLanguage, deleteSubtitleLanguage, errorText} from '../services/api';
 
 // The organization's subtitle languages (shared by all videos): add with an optional player label, delete.
@@ -90,6 +91,8 @@ class SubtitleLanguages extends React.Component<*> {
     };
 
     render() {
+        const canEdit = can('settings', 'edit');
+
         return (
             <div className="vo-card">
                 <h2>{translate('scale_videooptimizer.subtitle_languages')}</h2>
@@ -107,14 +110,16 @@ class SubtitleLanguages extends React.Component<*> {
                                             <span className="vo-subtitles__meta">
                                                 {translate('scale_videooptimizer.videos_count', {count: language.video_count || 0})}
                                             </span>
-                                            <Button skin="link" disabled={this.busy} onClick={() => this.askDelete(language)}>
-                                                {translate('scale_videooptimizer.delete')}
-                                            </Button>
+                                            {canEdit && (
+                                                <Button skin="link" disabled={this.busy} onClick={() => this.askDelete(language)}>
+                                                    {translate('scale_videooptimizer.delete')}
+                                                </Button>
+                                            )}
                                         </li>
                                     ))}
                                 </ul>
                             )}
-                        <div className="vo-actions" style={{alignItems: 'center', flexWrap: 'wrap'}}>
+                        {canEdit && <div className="vo-actions" style={{alignItems: 'center', flexWrap: 'wrap'}}>
                             <input
                                 type="text"
                                 className="vo-input vo-input--auto"
@@ -134,8 +139,8 @@ class SubtitleLanguages extends React.Component<*> {
                             <Button skin="secondary" onClick={this.add} loading={this.busy} disabled={!this.code.trim()}>
                                 {translate('scale_videooptimizer.subtitle_language_add')}
                             </Button>
-                        </div>
-                        <div className="vo-hint" style={{padding: '4px 0 0'}}>{translate('scale_videooptimizer.subtitle_language_help')}</div>
+                        </div>}
+                        {canEdit && <div className="vo-hint" style={{padding: '4px 0 0'}}>{translate('scale_videooptimizer.subtitle_language_help')}</div>}
                     </React.Fragment>
                 )}
 

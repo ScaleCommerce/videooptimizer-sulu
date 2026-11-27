@@ -20,6 +20,7 @@
         <service id="Scale\VideoOptimizerBundle\Command\InstallCommand">
             <argument type="service" id="doctrine.orm.entity_manager"/>
             <argument>%kernel.project_dir%</argument>
+            <argument type="service" id="sulu.repository.role" on-invalid="null"/>
         </service>
 
         <service id="Scale\VideoOptimizerBundle\Command\UninstallCommand">
@@ -42,6 +43,13 @@
 
         <service id="Scale\VideoOptimizerBundle\Admin\VideoOptimizerAdmin">
             <argument type="service" id="sulu_admin.view_builder_factory"/>
+            <argument type="service" id="sulu_security.security_checker" on-invalid="null"/>
+        </service>
+
+        <!-- Enforces the `_vo_permission` requirement of the admin proxy routes. -->
+        <service id="Scale\VideoOptimizerBundle\EventListener\AdminPermissionListener">
+            <argument type="service" id="sulu_security.security_checker" on-invalid="null"/>
+            <tag name="kernel.event_subscriber"/>
         </service>
 
         <service id="Scale\VideoOptimizerBundle\Content\VideoOptimizerPropertyResolver">

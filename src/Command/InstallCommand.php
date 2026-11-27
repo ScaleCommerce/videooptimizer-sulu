@@ -8,6 +8,10 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Scale\VideoOptimizerBundle\Entity\VideoOptimizerSettings;
 use Scale\VideoOptimizerBundle\Entity\VideoOptimizerWebhook;
+use Scale\VideoOptimizerBundle\Security\VideoOptimizerPermissions;
+use Sulu\Bundle\AdminBundle\Admin\Admin;
+use Sulu\Bundle\SecurityBundle\Entity\Permission;
+use Sulu\Component\Security\Authentication\RoleRepositoryInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -22,7 +26,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  */
 #[AsCommand(
     name: 'scale:videooptimizer:install',
-    description: 'Wire the VideoOptimizer bundle into the project (routes, admin JS, settings and webhook tables).',
+    description: 'Wire the VideoOptimizer bundle into the project (routes, admin JS, settings and webhook tables, permissions of the admin roles).',
 )]
 class InstallCommand extends Command
 {
@@ -35,6 +39,7 @@ class InstallCommand extends Command
     public function __construct(
         private EntityManagerInterface $entityManager,
         private string $projectDir,
+        private ?RoleRepositoryInterface $roleRepository = null,
     ) {
         parent::__construct();
     }
@@ -54,7 +59,7 @@ class InstallCommand extends Command
             $io->note('Dry run — no files or tables are changed.');
         }
 
-        foreach (['importRoutes', 'importWebsiteRoutes', 'wireAdminDependency', 'wireAdminImport', 'createSettingsTable', 'createWebhookTable'] as $step) {
+        foreach (['importRoutes', 'importWebsiteRoutes', 'wireAdminDependency', 'wireAdminImport', 'createSettingsTable', 'createWebhookTable', 'grantSecurityContexts'] as $step) {
             [$status, $message] = $this->{$step}($dryRun);
             if ('done' === $status) {
                 $io->writeln(' <info>✓</info> ' . $message);
@@ -229,5 +234,59 @@ class InstallCommand extends Command
         }
 
         return ['done', 'Created the webhook table (' . self::WEBHOOK_TABLE . ')'];
+    }
+
+    /**
+     * 2.1 checks Sulu security contexts. Roles of the Sulu admin created before that have none of them
+     * and would lose access, so they get all permissions (what they could do before). This is a one-time
+     * migration: as soon as any role holds a VideoOptimizer context it is skipped entirely, so roles
+     * created later without access, and restrictions made afterwards, survive a re-run.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function grantSecurityContexts(bool $dryRun): array
+    {
+        $label = 'Permissions of the admin roles';
+        if (null === $this->roleRepository) {
+            return ['warn', 'Sulu role repository not available — grant the "VideoOptimizer" permissions to your admin roles under Settings > User roles.'];
+        }
+
+        $contexts = array_values(VideoOptimizerPermissions::CONTEXTS);
+        $roles = $this->roleRepository->findAllRoles();
+        foreach ($roles as $role) {
+            foreach ($role->getPermissions() as $permission) {
+                if (\in_array($permission->getContext(), $contexts, true)) {
+                    return ['skip', $label];
+                }
+            }
+        }
+
+        $granted = [];
+        foreach ($roles as $role) {
+            if (Admin::SULU_ADMIN_SECURITY_SYSTEM !== $role->getSystem() || $role->getAnonymous()) {
+                continue;
+            }
+
+            if (!$dryRun) {
+                foreach ($contexts as $context) {
+                    $permission = new Permission();
+                    $permission->setRole($role);
+                    $permission->setContext($context);
+                    $permission->setPermissions(127);
+                    $role->addPermission($permission);
+                }
+                $this->entityManager->persist($role);
+            }
+            $granted[] = $role->getName();
+        }
+
+        if ([] === $granted) {
+            return ['skip', $label];
+        }
+        if (!$dryRun) {
+            $this->entityManager->flush();
+        }
+
+        return ['done', 'Granted the VideoOptimizer permissions (videos, libraries, settings) to the admin roles: ' . implode(', ', $granted)];
     }
 }
