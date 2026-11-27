@@ -47,9 +47,16 @@
             <tag name="sulu_content.property_resolver"/>
         </service>
 
+        <!-- Shared between the admin and website kernels; replace via the `cache_pool` config option. -->
+        <service id="scale_video_optimizer.cache" class="Symfony\Component\Cache\Adapter\FilesystemAdapter">
+            <argument>scale_video_optimizer</argument>
+            <argument>0</argument>
+            <argument>%scale_video_optimizer.cache_directory%</argument>
+        </service>
+
         <service id="Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver">
             <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
-            <argument type="service" id="cache.app"/>
+            <argument type="service" id="scale_video_optimizer.cache"/>
         </service>
 
         <service id="Scale\VideoOptimizerBundle\Twig\VideoOptimizerExtension">

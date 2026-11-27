@@ -4,6 +4,9 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Breaking
+- Hosted embeds without an explicit `embed_base_url` now load from `https://player.videooptimizer.eu`: allow it in your CSP `frame-src` and consent tools, or set `embed_base_url: 'https://videooptimizer.eu'` ([#1](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/1))
+
 ### Added
 - Libraries: show and set the quality mode (`encoding_quality`: performance or quality) and re-encode finished renditions with a forced reprocess ([#3](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/3))
 - Failed videos and URL imports show the reason reported by the API ([#2](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/2))
@@ -11,6 +14,7 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 
 ### Changed
 - `embed_base_url` now defaults to `https://player.videooptimizer.eu`; an explicitly configured value is kept ([#1](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/1))
+- Embed data is cached in a dedicated pool shared by the admin and website kernels (`var/share`, or `kernel.share_dir`); set `scale_video_optimizer.cache_pool` to use your own pool, e.g. Redis ([#6](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/6))
 - Embed lookups are cached for 1 hour (was 24 hours), for 60 seconds when a video has no sources yet or the API fails, and are dropped when a video or its library is changed, deleted or reprocessed in the admin ([#6](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/6))
 - Custom poster upload no longer calls `poster/select`; the admin waits until the API has activated the poster ([#4](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/4))
 - Bundled hls.js updated to 1.7.4 ([#8](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/8))

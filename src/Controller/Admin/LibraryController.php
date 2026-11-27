@@ -17,7 +17,7 @@ class LibraryController
 {
     private const ENCODING_QUALITIES = ['performance', 'quality'];
 
-    public function __construct(private VideoOptimizerClient $client, private VideoOptimizerEmbedResolver $embedResolver)
+    public function __construct(private VideoOptimizerClient $client, private ?VideoOptimizerEmbedResolver $embedResolver = null)
     {
     }
 
@@ -43,7 +43,15 @@ class LibraryController
             return $invalid;
         }
 
-        return $this->guard(fn () => new JsonResponse($this->client->updateLibrary($id, $payload)));
+        return $this->guard(function () use ($id, $payload) {
+            $result = $this->client->updateLibrary($id, $payload);
+            // A changed ladder changes the renditions (and possibly the sources) of every video.
+            if (\array_key_exists('codec', $payload) || \array_key_exists('resolutions', $payload)) {
+                $this->forgetAll($this->videoUuids($id));
+            }
+
+            return new JsonResponse($result);
+        });
     }
 
     public function delete(string $id): JsonResponse
@@ -109,7 +117,7 @@ class LibraryController
     private function forgetAll(array $uuids): void
     {
         foreach ($uuids as $uuid) {
-            $this->embedResolver->forget($uuid);
+            $this->embedResolver?->forget($uuid);
         }
     }
 

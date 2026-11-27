@@ -70,7 +70,8 @@ class VideoOptimizerEmbedResolver
 
     private static function cacheKey(string $uuid): string
     {
-        return 'vo_embed_' . $uuid;
+        // v2: entries cached before 1.8.1 (24 h lifetime) must not survive the upgrade.
+        return 'vo_embed_v2_' . $uuid;
     }
 
     /**

@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\Request;
  */
 class VideoController
 {
-    public function __construct(private VideoOptimizerClient $client, private VideoOptimizerEmbedResolver $embedResolver)
+    public function __construct(private VideoOptimizerClient $client, private ?VideoOptimizerEmbedResolver $embedResolver = null)
     {
     }
 
@@ -73,7 +73,7 @@ class VideoController
     {
         return $this->guard(function () use ($uuid) {
             $this->client->deleteVideo($uuid);
-            $this->embedResolver->forget($uuid);
+            $this->embedResolver?->forget($uuid);
 
             return new JsonResponse(null, 204);
         });
@@ -118,7 +118,7 @@ class VideoController
     {
         return $this->guard(function () use ($uuid) {
             $this->client->deletePoster($uuid);
-            $this->embedResolver->forget($uuid);
+            $this->embedResolver?->forget($uuid);
 
             return new JsonResponse(null, 204);
         });
@@ -134,7 +134,7 @@ class VideoController
      */
     private function forgetAfter(string $uuid, array $result): array
     {
-        $this->embedResolver->forget($uuid);
+        $this->embedResolver?->forget($uuid);
 
         return $result;
     }

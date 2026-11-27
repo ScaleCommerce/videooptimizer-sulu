@@ -117,6 +117,30 @@ class AdminControllersTest extends TestCase
         $resolver->checkProphecyMethodsPredictions();
     }
 
+    public function testChangingTheLadderDropsTheVideosCachedEmbedDataButRenamingDoesNot(): void
+    {
+        $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
+        $resolver->forget('v1')->shouldBeCalledTimes(2);
+
+        $controller = new LibraryController($this->client(fn (string $method) => 'GET' === $method
+            ? new MockResponse(json_encode(['data' => [['uuid' => 'v1']]], JSON_THROW_ON_ERROR))
+            : new MockResponse(json_encode(['data' => ['id' => 'lib']], JSON_THROW_ON_ERROR))), $resolver->reveal());
+
+        $controller->patch(new Request(content: '{"codec":"h264"}'), 'lib');
+        $controller->patch(new Request(content: '{"resolutions":"720p"}'), 'lib');
+        $controller->patch(new Request(content: '{"name":"Renamed"}'), 'lib');
+
+        $resolver->checkProphecyMethodsPredictions();
+    }
+
+    public function testControllersWorkWithoutAnEmbedResolver(): void
+    {
+        $client = $this->client(fn () => new MockResponse(json_encode(['data' => []], JSON_THROW_ON_ERROR)));
+
+        self::assertSame(200, (new LibraryController($client))->reprocess(new Request(), 'lib')->getStatusCode());
+        self::assertSame(200, (new VideoController($client))->patch(new Request(content: '{}'), 'u')->getStatusCode());
+    }
+
     public function testLibraryDeleteStillWorksWhenTheVideoListIsUnavailable(): void
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
