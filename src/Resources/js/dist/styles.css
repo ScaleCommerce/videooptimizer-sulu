@@ -413,3 +413,16 @@
     justify-content: center;
     padding: 16px 0;
 }
+
+.vo-upload-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.vo-progress {
+    flex: 1 1 160px;
+    max-width: 320px;
+    height: 8px;
+}

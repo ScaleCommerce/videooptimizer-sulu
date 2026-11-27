@@ -186,10 +186,50 @@ export function isAbortError(error: ?Object): boolean {
     return !!error && error.name === 'AbortError';
 }
 
+const PART_ATTEMPTS = 3;
+
+function wait(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// PUTs one part, retrying network errors and non-2xx answers with backoff (1 s, 2 s). A missing ETag is
+// a bucket CORS problem and an aborted upload was cancelled on purpose: neither is retried.
+function putPart(url: string, blob: Blob, signal: ?AbortSignal, attempt: number = 1) {
+    return fetch(url, signal ? {method: 'PUT', body: blob, signal} : {method: 'PUT', body: blob})
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error('Part upload failed (' + response.status + ')');
+            }
+            const etag = response.headers.get('ETag');
+            if (!etag) {
+                const error = new Error('Missing ETag on uploaded part — check bucket CORS (expose ETag).');
+                error.noRetry = true;
+                throw error;
+            }
+
+            return etag;
+        })
+        .catch((error) => {
+            if ((signal && signal.aborted) || error.noRetry || attempt >= PART_ATTEMPTS) {
+                throw error;
+            }
+
+            return wait(1000 * Math.pow(2, attempt - 1)).then(() => {
+                if (signal && signal.aborted) {
+                    throw abortError();
+                }
+
+                return putPart(url, blob, signal, attempt + 1);
+            });
+        });
+}
+
 // PUTs each file part to its presigned URL and collects the ETags the complete step needs.
-// Cross-origin, so no credentials; the bucket must expose ETag via CORS.
-// An optional AbortSignal stops the chain (in-flight PUT and remaining parts) with an AbortError.
-export function uploadParts(file: File, parts: Array<Object>, partSize: number, signal: ?AbortSignal) {
+// Cross-origin, so no credentials; the bucket must expose ETag via CORS. Every part is retried up to
+// three times; onProgress(finishedParts, totalParts) follows each finished part. An optional AbortSignal
+// stops the chain (in-flight PUT and remaining parts) with an AbortError. The API has no endpoint to
+// abort a multipart upload: storage removes incomplete uploads through its lifecycle rule.
+export function uploadParts(file: File, parts: Array<Object>, partSize: number, signal: ?AbortSignal, onProgress: ?(done: number, total: number) => void) {
     if (signal && signal.aborted) {
         return Promise.reject(abortError());
     }
@@ -202,15 +242,11 @@ export function uploadParts(file: File, parts: Array<Object>, partSize: number, 
             const start = (part.partNumber - 1) * partSize;
             const blob = file.slice(start, start + partSize);
 
-            return fetch(part.url, signal ? {method: 'PUT', body: blob, signal} : {method: 'PUT', body: blob}).then((response) => {
-                if (!response.ok) {
-                    throw new Error('Part upload failed (' + response.status + ')');
-                }
-                const etag = response.headers.get('ETag');
-                if (!etag) {
-                    throw new Error('Missing ETag on uploaded part — check bucket CORS (expose ETag).');
-                }
+            return putPart(part.url, blob, signal).then((etag) => {
                 etags.push({partNumber: part.partNumber, etag});
+                if (onProgress) {
+                    onProgress(etags.length, parts.length);
+                }
 
                 return etags;
             });

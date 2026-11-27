@@ -49,7 +49,8 @@ var _utils = require("sulu-admin-bundle/utils");
 var _api = require("../services/api");
 var _VideoDetail = _interopRequireDefault(require("../components/VideoDetail"));
 var _VideoPager = _interopRequireDefault(require("../services/VideoPager"));
-var _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9, _descriptor0, _descriptor1, _descriptor10, _descriptor11, _descriptor12, _descriptor13, _descriptor14, _descriptor15, _descriptor16, _descriptor17, _descriptor18, _descriptor19, _descriptor20, _descriptor21, _descriptor22, _descriptor23, _descriptor24;
+var _UploadProgress = _interopRequireDefault(require("../components/UploadProgress"));
+var _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9, _descriptor0, _descriptor1, _descriptor10, _descriptor11, _descriptor12, _descriptor13, _descriptor14, _descriptor15, _descriptor16, _descriptor17, _descriptor18, _descriptor19, _descriptor20, _descriptor21, _descriptor22, _descriptor23, _descriptor24, _descriptor25, _descriptor26, _descriptor27;
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _initializerDefineProperty(e, i, r, l) { r && Object.defineProperty(e, i, { enumerable: r.enumerable, configurable: r.configurable, writable: r.writable, value: r.initializer ? r.initializer.call(l) : void 0 }); }
 function _classCallCheck(a, n) { if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function"); }
@@ -86,10 +87,12 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
     _initializerDefineProperty(_this, "error", _descriptor9, _this);
     _initializerDefineProperty(_this, "uploading", _descriptor0, _this);
     _initializerDefineProperty(_this, "uploadStatus", _descriptor1, _this);
-    _initializerDefineProperty(_this, "ingestSourceUrl", _descriptor10, _this);
-    _initializerDefineProperty(_this, "ingestTitle", _descriptor11, _this);
-    _initializerDefineProperty(_this, "ingesting", _descriptor12, _this);
-    _initializerDefineProperty(_this, "ingestStatus", _descriptor13, _this);
+    _initializerDefineProperty(_this, "uploadPercent", _descriptor10, _this);
+    _initializerDefineProperty(_this, "uploadCancellable", _descriptor11, _this);
+    _initializerDefineProperty(_this, "ingestSourceUrl", _descriptor12, _this);
+    _initializerDefineProperty(_this, "ingestTitle", _descriptor13, _this);
+    _initializerDefineProperty(_this, "ingesting", _descriptor14, _this);
+    _initializerDefineProperty(_this, "ingestStatus", _descriptor15, _this);
     // Hidden file input driven by the toolbar "upload" button (Sulu media pattern).
     _this.fileInputRef = /*#__PURE__*/_react["default"].createRef();
     // Aborts a running browser upload when the view is left (it must not create a video afterwards).
@@ -104,13 +107,13 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
         _this.error = 428 === state.error.status ? (0, _utils.translate)('scale_videooptimizer.not_configured') : state.error.message || String(state.error);
       }
     }));
-    _initializerDefineProperty(_this, "selectLibrary", _descriptor14, _this);
-    _initializerDefineProperty(_this, "showAll", _descriptor15, _this);
-    _initializerDefineProperty(_this, "loadMore", _descriptor16, _this);
-    _initializerDefineProperty(_this, "open", _descriptor17, _this);
-    _initializerDefineProperty(_this, "back", _descriptor18, _this);
-    _initializerDefineProperty(_this, "onChanged", _descriptor19, _this);
-    _initializerDefineProperty(_this, "onDeleted", _descriptor20, _this);
+    _initializerDefineProperty(_this, "selectLibrary", _descriptor16, _this);
+    _initializerDefineProperty(_this, "showAll", _descriptor17, _this);
+    _initializerDefineProperty(_this, "loadMore", _descriptor18, _this);
+    _initializerDefineProperty(_this, "open", _descriptor19, _this);
+    _initializerDefineProperty(_this, "back", _descriptor20, _this);
+    _initializerDefineProperty(_this, "onChanged", _descriptor21, _this);
+    _initializerDefineProperty(_this, "onDeleted", _descriptor22, _this);
     // Opens the native file dialog from the toolbar button (a real user gesture, so allowed).
     _this.triggerFileDialog = function () {
       if (_this.fileInputRef.current) {
@@ -128,10 +131,13 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
     };
     // Presigned multipart upload: token stays server-side, parts go straight to storage, then we
     // poll until processing finishes. Mirrors the field-overlay upload flow.
-    _initializerDefineProperty(_this, "startUpload", _descriptor21, _this);
-    _initializerDefineProperty(_this, "handleIngestUrlChange", _descriptor22, _this);
-    _initializerDefineProperty(_this, "handleIngestTitleChange", _descriptor23, _this);
-    _initializerDefineProperty(_this, "startIngest", _descriptor24, _this);
+    _initializerDefineProperty(_this, "startUpload", _descriptor23, _this);
+    // Cancel button: stops the running part upload. Nothing is created in VideoOptimizer, and storage
+    // discards the incomplete multipart upload on its own (the API has no abort endpoint).
+    _initializerDefineProperty(_this, "cancelUpload", _descriptor24, _this);
+    _initializerDefineProperty(_this, "handleIngestUrlChange", _descriptor25, _this);
+    _initializerDefineProperty(_this, "handleIngestTitleChange", _descriptor26, _this);
+    _initializerDefineProperty(_this, "startIngest", _descriptor27, _this);
     return _this;
   }
   _inherits(Videos, _React$Component);
@@ -293,9 +299,11 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
         type: "button",
         className: "vo-back",
         onClick: this.showAll
-      }, "\u2190 ", (0, _utils.translate)('scale_videooptimizer.show_all'))), this.uploadStatus && /*#__PURE__*/_react["default"].createElement("div", {
-        className: "vo-upload-status"
-      }, this.uploadStatus), activeLibrary && this.renderIngestForm(), this.loadingVideos ? /*#__PURE__*/_react["default"].createElement(_components.Loader, null) : this.renderVideoGrid()), this.error && /*#__PURE__*/_react["default"].createElement("div", {
+      }, "\u2190 ", (0, _utils.translate)('scale_videooptimizer.show_all'))), /*#__PURE__*/_react["default"].createElement(_UploadProgress["default"], {
+        status: this.uploadStatus,
+        percent: this.uploadPercent,
+        onCancel: this.uploadCancellable ? this.cancelUpload : null
+      }), activeLibrary && this.renderIngestForm(), this.loadingVideos ? /*#__PURE__*/_react["default"].createElement(_components.Loader, null) : this.renderVideoGrid()), this.error && /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-message vo-message--error"
       }, this.error));
     }
@@ -377,35 +385,49 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
   initializer: function initializer() {
     return null;
   }
-}), _descriptor10 = _applyDecoratedDescriptor(_class2.prototype, "ingestSourceUrl", [_mobx.observable], {
-  configurable: true,
-  enumerable: true,
-  writable: true,
-  initializer: function initializer() {
-    return '';
-  }
-}), _descriptor11 = _applyDecoratedDescriptor(_class2.prototype, "ingestTitle", [_mobx.observable], {
-  configurable: true,
-  enumerable: true,
-  writable: true,
-  initializer: function initializer() {
-    return '';
-  }
-}), _descriptor12 = _applyDecoratedDescriptor(_class2.prototype, "ingesting", [_mobx.observable], {
-  configurable: true,
-  enumerable: true,
-  writable: true,
-  initializer: function initializer() {
-    return false;
-  }
-}), _descriptor13 = _applyDecoratedDescriptor(_class2.prototype, "ingestStatus", [_mobx.observable], {
+}), _descriptor10 = _applyDecoratedDescriptor(_class2.prototype, "uploadPercent", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return null;
   }
-}), _descriptor14 = _applyDecoratedDescriptor(_class2.prototype, "selectLibrary", [_mobx.action], {
+}), _descriptor11 = _applyDecoratedDescriptor(_class2.prototype, "uploadCancellable", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return false;
+  }
+}), _descriptor12 = _applyDecoratedDescriptor(_class2.prototype, "ingestSourceUrl", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return '';
+  }
+}), _descriptor13 = _applyDecoratedDescriptor(_class2.prototype, "ingestTitle", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return '';
+  }
+}), _descriptor14 = _applyDecoratedDescriptor(_class2.prototype, "ingesting", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return false;
+  }
+}), _descriptor15 = _applyDecoratedDescriptor(_class2.prototype, "ingestStatus", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return null;
+  }
+}), _descriptor16 = _applyDecoratedDescriptor(_class2.prototype, "selectLibrary", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
@@ -420,7 +442,7 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
       });
     };
   }
-}), _descriptor15 = _applyDecoratedDescriptor(_class2.prototype, "showAll", [_mobx.action], {
+}), _descriptor17 = _applyDecoratedDescriptor(_class2.prototype, "showAll", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
@@ -435,7 +457,7 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
       });
     };
   }
-}), _descriptor16 = _applyDecoratedDescriptor(_class2.prototype, "loadMore", [_mobx.action], {
+}), _descriptor18 = _applyDecoratedDescriptor(_class2.prototype, "loadMore", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
@@ -445,7 +467,7 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
       _this7.pager.loadMore();
     };
   }
-}), _descriptor17 = _applyDecoratedDescriptor(_class2.prototype, "open", [_mobx.action], {
+}), _descriptor19 = _applyDecoratedDescriptor(_class2.prototype, "open", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
@@ -455,7 +477,7 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
       _this8.selected = video;
     };
   }
-}), _descriptor18 = _applyDecoratedDescriptor(_class2.prototype, "back", [_mobx.action], {
+}), _descriptor20 = _applyDecoratedDescriptor(_class2.prototype, "back", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
@@ -465,7 +487,7 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
       _this9.selected = null;
     };
   }
-}), _descriptor19 = _applyDecoratedDescriptor(_class2.prototype, "onChanged", [_mobx.action], {
+}), _descriptor21 = _applyDecoratedDescriptor(_class2.prototype, "onChanged", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
@@ -476,7 +498,7 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
       _this0.pager.replace(video);
     };
   }
-}), _descriptor20 = _applyDecoratedDescriptor(_class2.prototype, "onDeleted", [_mobx.action], {
+}), _descriptor22 = _applyDecoratedDescriptor(_class2.prototype, "onDeleted", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
@@ -488,7 +510,7 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
       _this1.pager.remove(id);
     };
   }
-}), _descriptor21 = _applyDecoratedDescriptor(_class2.prototype, "startUpload", [_mobx.action], {
+}), _descriptor23 = _applyDecoratedDescriptor(_class2.prototype, "startUpload", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
@@ -501,13 +523,19 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
       _this10.uploading = true;
       _this10.error = null;
       _this10.uploadStatus = (0, _utils.translate)('scale_videooptimizer.uploading');
+      _this10.uploadPercent = 0;
+      _this10.uploadCancellable = true;
       (0, _api.initiateUpload)({
         libraryId: libraryId,
         filename: file.name,
         contentType: file.type || 'application/octet-stream',
         fileSize: file.size
       }).then(function (upload) {
-        return (0, _api.uploadParts)(file, upload.parts || [], upload.partSize, controller.signal).then(function (parts) {
+        return (0, _api.uploadParts)(file, upload.parts || [], upload.partSize, controller.signal, (0, _mobx.action)(function (done, total) {
+          if (_this10.uploadController === controller) {
+            _this10.uploadPercent = Math.round(done / total * 100);
+          }
+        })).then(function (parts) {
           if (controller.signal.aborted) {
             throw (0, _api.abortError)();
           }
@@ -524,6 +552,8 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
             throw (0, _api.abortError)();
           }
           _this10.uploadStatus = (0, _utils.translate)('scale_videooptimizer.processing');
+          _this10.uploadPercent = null;
+          _this10.uploadCancellable = false;
         })).then(function () {
           return (0, _api.pollVideo)(upload.uuid, function (v) {
             return v.status === 'ready' || v.status === 'failed';
@@ -537,6 +567,8 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
           _this10.uploadController = null;
           _this10.uploading = false;
           _this10.uploadStatus = null;
+          _this10.uploadPercent = null;
+          _this10.uploadCancellable = false;
           if (video.status === 'failed') {
             _this10.error = (0, _api.failureMessage)(video);
             return;
@@ -551,65 +583,85 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
         _this10.uploadController = null;
         _this10.uploading = false;
         _this10.uploadStatus = null;
+        _this10.uploadPercent = null;
+        _this10.uploadCancellable = false;
         _this10.error = (0, _api.errorText)(e);
       }));
     };
   }
-}), _descriptor22 = _applyDecoratedDescriptor(_class2.prototype, "handleIngestUrlChange", [_mobx.action], {
+}), _descriptor24 = _applyDecoratedDescriptor(_class2.prototype, "cancelUpload", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this11 = this;
-    return function (event) {
-      _this11.ingestSourceUrl = event.target.value;
+    return function () {
+      if (!_this11.uploadController) {
+        return;
+      }
+      _this11.uploadController.abort();
+      _this11.uploadController = null;
+      _this11.uploading = false;
+      _this11.uploadStatus = null;
+      _this11.uploadPercent = null;
+      _this11.uploadCancellable = false;
     };
   }
-}), _descriptor23 = _applyDecoratedDescriptor(_class2.prototype, "handleIngestTitleChange", [_mobx.action], {
+}), _descriptor25 = _applyDecoratedDescriptor(_class2.prototype, "handleIngestUrlChange", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this12 = this;
     return function (event) {
-      _this12.ingestTitle = event.target.value;
+      _this12.ingestSourceUrl = event.target.value;
     };
   }
-}), _descriptor24 = _applyDecoratedDescriptor(_class2.prototype, "startIngest", [_mobx.action], {
+}), _descriptor26 = _applyDecoratedDescriptor(_class2.prototype, "handleIngestTitleChange", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this13 = this;
+    return function (event) {
+      _this13.ingestTitle = event.target.value;
+    };
+  }
+}), _descriptor27 = _applyDecoratedDescriptor(_class2.prototype, "startIngest", [_mobx.action], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    var _this14 = this;
     return function () {
-      if (!_this13.ingestSourceUrl.trim() || !_this13.activeLibraryId) {
+      if (!_this14.ingestSourceUrl.trim() || !_this14.activeLibraryId) {
         return;
       }
-      _this13.ingesting = true;
-      _this13.error = null;
-      _this13.ingestStatus = (0, _utils.translate)('scale_videooptimizer.processing');
+      _this14.ingesting = true;
+      _this14.error = null;
+      _this14.ingestStatus = (0, _utils.translate)('scale_videooptimizer.processing');
       (0, _api.ingestVideoUrl)({
-        library_id: _this13.activeLibraryId,
-        source_url: _this13.ingestSourceUrl.trim(),
-        title: _this13.ingestTitle.trim() || undefined
+        library_id: _this14.activeLibraryId,
+        source_url: _this14.ingestSourceUrl.trim(),
+        title: _this14.ingestTitle.trim() || undefined
       }).then(function (result) {
         return (0, _api.pollVideo)(result.uuid, function (v) {
           return v.status === 'ready' || v.status === 'failed';
         }).then((0, _mobx.action)(function (video) {
-          _this13.ingesting = false;
-          _this13.ingestStatus = null;
+          _this14.ingesting = false;
+          _this14.ingestStatus = null;
           if (video.status === 'failed') {
-            _this13.error = (0, _api.failureMessage)(video);
+            _this14.error = (0, _api.failureMessage)(video);
             return;
           }
-          _this13.ingestSourceUrl = '';
-          _this13.ingestTitle = '';
-          _this13.pager.prepend(video);
+          _this14.ingestSourceUrl = '';
+          _this14.ingestTitle = '';
+          _this14.pager.prepend(video);
         }));
       })["catch"]((0, _mobx.action)(function (e) {
-        _this13.ingesting = false;
-        _this13.ingestStatus = null;
-        _this13.error = (0, _api.errorText)(e);
+        _this14.ingesting = false;
+        _this14.ingestStatus = null;
+        _this14.error = (0, _api.errorText)(e);
       }));
     };
   }

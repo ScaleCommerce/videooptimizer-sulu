@@ -13,6 +13,7 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 - API transport errors and timeouts become a neutral 502 message (the upstream URL is only logged); embed lookups while rendering no longer wait for `Retry-After` ([#20](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/20))
 
 ### Added
+- Admin uploads show the progress, retry a failing part up to three times with backoff and can be cancelled with a button ([#18](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/18))
 - Admin video lists (Videos view and selection overlay) load 60 videos per page with "Load more"; edits, deletions and uploads keep the loaded pages ([#19](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/19))
 - `VideoOptimizerClient::listVideosPage()` and `GET /videooptimizer/videos?limit=&cursor=&tags=` return one page plus `next_cursor`/`has_more`; without `limit`/`cursor` the route still returns every video ([#19](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/19))
 - Admin explains rejected tokens and missing permissions in the editor's language and keeps the API's own message for plan limits and suspended organizations ([#20](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/20))

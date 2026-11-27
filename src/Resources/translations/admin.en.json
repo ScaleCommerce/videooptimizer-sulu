@@ -111,5 +111,6 @@
     "scale_videooptimizer.error_token_rejected": "VideoOptimizer rejected the API token. Check the token under VideoOptimizer > Settings.",
     "scale_videooptimizer.error_token_forbidden": "The API token is not permitted to do this. Check the token permissions in VideoOptimizer.",
     "scale_videooptimizer.error_unreachable": "VideoOptimizer could not be reached or did not respond in time. Please try again in a moment.",
-    "scale_videooptimizer.load_more": "Load more"
+    "scale_videooptimizer.load_more": "Load more",
+    "scale_videooptimizer.cancel_upload": "Cancel upload"
 }

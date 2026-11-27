@@ -23,6 +23,7 @@ import {
 } from '../services/api';
 import VideoDetail from '../components/VideoDetail';
 import VideoPager from '../services/VideoPager';
+import UploadProgress from '../components/UploadProgress';
 
 @observer
 class Videos extends React.Component<*> {
@@ -38,6 +39,8 @@ class Videos extends React.Component<*> {
     @observable error = null;
     @observable uploading = false;
     @observable uploadStatus = null;
+    @observable uploadPercent = null;
+    @observable uploadCancellable = false;
     @observable ingestSourceUrl = '';
     @observable ingestTitle = '';
     @observable ingesting = false;
@@ -137,6 +140,8 @@ class Videos extends React.Component<*> {
         this.uploading = true;
         this.error = null;
         this.uploadStatus = translate('scale_videooptimizer.uploading');
+        this.uploadPercent = 0;
+        this.uploadCancellable = true;
 
         initiateUpload({
             libraryId,
@@ -144,7 +149,11 @@ class Videos extends React.Component<*> {
             contentType: file.type || 'application/octet-stream',
             fileSize: file.size,
         })
-            .then((upload) => uploadParts(file, upload.parts || [], upload.partSize, controller.signal)
+            .then((upload) => uploadParts(file, upload.parts || [], upload.partSize, controller.signal, action((done, total) => {
+                if (this.uploadController === controller) {
+                    this.uploadPercent = Math.round(done / total * 100);
+                }
+            }))
                 .then((parts) => {
                     if (controller.signal.aborted) {
                         throw abortError();
@@ -164,6 +173,8 @@ class Videos extends React.Component<*> {
                         throw abortError();
                     }
                     this.uploadStatus = translate('scale_videooptimizer.processing');
+                    this.uploadPercent = null;
+                    this.uploadCancellable = false;
                 }))
                 .then(() => pollVideo(upload.uuid, (v) => v.status === 'ready' || v.status === 'failed', {signal: controller.signal}))
                 .then(action((video) => {
@@ -173,6 +184,8 @@ class Videos extends React.Component<*> {
                     this.uploadController = null;
                     this.uploading = false;
                     this.uploadStatus = null;
+                    this.uploadPercent = null;
+                    this.uploadCancellable = false;
                     if (video.status === 'failed') {
                         this.error = failureMessage(video);
                         return;
@@ -187,8 +200,24 @@ class Videos extends React.Component<*> {
                 this.uploadController = null;
                 this.uploading = false;
                 this.uploadStatus = null;
+                this.uploadPercent = null;
+                this.uploadCancellable = false;
                 this.error = errorText(e);
             }));
+    };
+
+    // Cancel button: stops the running part upload. Nothing is created in VideoOptimizer, and storage
+    // discards the incomplete multipart upload on its own (the API has no abort endpoint).
+    @action cancelUpload = () => {
+        if (!this.uploadController) {
+            return;
+        }
+        this.uploadController.abort();
+        this.uploadController = null;
+        this.uploading = false;
+        this.uploadStatus = null;
+        this.uploadPercent = null;
+        this.uploadCancellable = false;
     };
 
     @action handleIngestUrlChange = (event: SyntheticInputEvent<HTMLInputElement>) => {
@@ -349,7 +378,7 @@ class Videos extends React.Component<*> {
                             )}
                         </div>
 
-                        {this.uploadStatus && <div className="vo-upload-status">{this.uploadStatus}</div>}
+                        <UploadProgress status={this.uploadStatus} percent={this.uploadPercent} onCancel={this.uploadCancellable ? this.cancelUpload : null} />
 
                         {activeLibrary && this.renderIngestForm()}
 

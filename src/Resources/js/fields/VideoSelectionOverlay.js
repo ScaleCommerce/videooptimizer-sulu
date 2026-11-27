@@ -8,6 +8,7 @@ import {translate} from 'sulu-admin-bundle/utils';
 import {getLibraries, getVideoPage, initiateUpload, uploadParts, completeUpload, isAbortError, abortError, ingestVideoUrl, pollVideo, posterFor, bustCache, failureMessage, errorText} from '../services/api';
 import VideoDetail from '../components/VideoDetail';
 import VideoPager from '../services/VideoPager';
+import UploadProgress from '../components/UploadProgress';
 
 @observer
 class VideoSelectionOverlay extends React.Component<*> {
@@ -22,6 +23,8 @@ class VideoSelectionOverlay extends React.Component<*> {
     @observable loadingVideos = false;
     @observable uploading = false;
     @observable uploadStatus = null;
+    @observable uploadPercent = null;
+    @observable uploadCancellable = false;
     @observable ingestSourceUrl = '';
     @observable ingestTitle = '';
     @observable ingesting = false;
@@ -59,8 +62,15 @@ class VideoSelectionOverlay extends React.Component<*> {
             this.uploadController = null;
             this.uploading = false;
             this.uploadStatus = null;
+            this.uploadPercent = null;
+            this.uploadCancellable = false;
         }
     }
+
+    // Cancel button of the upload tab (same effect as closing the overlay).
+    @action cancelUpload = () => {
+        this.abortUpload();
+    };
 
     componentDidUpdate(prevProps: *) {
         if (!this.props.open && prevProps.open) {
@@ -187,6 +197,8 @@ class VideoSelectionOverlay extends React.Component<*> {
         this.uploading = true;
         this.error = null;
         this.uploadStatus = translate('scale_videooptimizer.uploading');
+        this.uploadPercent = 0;
+        this.uploadCancellable = true;
 
         initiateUpload({
             libraryId: this.activeLibraryId,
@@ -194,7 +206,11 @@ class VideoSelectionOverlay extends React.Component<*> {
             contentType: file.type || 'application/octet-stream',
             fileSize: file.size,
         })
-            .then((upload) => uploadParts(file, upload.parts || [], upload.partSize, controller.signal)
+            .then((upload) => uploadParts(file, upload.parts || [], upload.partSize, controller.signal, action((done, total) => {
+                if (this.uploadController === controller) {
+                    this.uploadPercent = Math.round(done / total * 100);
+                }
+            }))
                 .then((parts) => {
                     if (controller.signal.aborted) {
                         throw abortError();
@@ -214,6 +230,8 @@ class VideoSelectionOverlay extends React.Component<*> {
                         throw abortError();
                     }
                     this.uploadStatus = translate('scale_videooptimizer.processing');
+                    this.uploadPercent = null;
+                    this.uploadCancellable = false;
                 }))
                 .then(() => pollVideo(upload.uuid, (v) => v.status === 'ready' || v.status === 'failed', {signal: controller.signal}))
                 .then(action((video) => {
@@ -223,6 +241,8 @@ class VideoSelectionOverlay extends React.Component<*> {
                     this.uploadController = null;
                     this.uploading = false;
                     this.uploadStatus = null;
+                    this.uploadPercent = null;
+                    this.uploadCancellable = false;
                     if (video.status === 'failed') {
                         this.error = failureMessage(video);
                         return;
@@ -237,6 +257,8 @@ class VideoSelectionOverlay extends React.Component<*> {
                 this.uploadController = null;
                 this.uploading = false;
                 this.uploadStatus = null;
+                this.uploadPercent = null;
+                this.uploadCancellable = false;
                 this.error = errorText(e);
             }));
     };
@@ -407,7 +429,7 @@ class VideoSelectionOverlay extends React.Component<*> {
             <div className="vo-uploader">
                 <p className="vo-hint">{translate('scale_videooptimizer.upload_hint')}</p>
                 <input type="file" accept="video/*" disabled={this.uploading} onChange={this.handleFileChange} />
-                {this.uploadStatus && <div className="vo-upload-status">{this.uploadStatus}</div>}
+                <UploadProgress status={this.uploadStatus} percent={this.uploadPercent} onCancel={this.uploadCancellable ? this.cancelUpload : null} />
 
                 <label className="vo-label">{translate('scale_videooptimizer.ingest_from_url')}</label>
                 <input

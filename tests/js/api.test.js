@@ -175,6 +175,74 @@ describe('uploadParts', () => {
     });
 });
 
+describe('uploadParts progress and retry', () => {
+    const file = new Blob(['abcdefghij']);
+    const parts = [{partNumber: 1, url: 'https://s3/1'}, {partNumber: 2, url: 'https://s3/2'}];
+    const ok = (etag) => ({ok: true, status: 200, headers: {get: () => etag}});
+
+    it('reports every finished part', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => ok('"e"')));
+        const progress = [];
+
+        await uploadParts(file, parts, 6, undefined, (done, total) => progress.push([done, total]));
+
+        expect(progress).toEqual([[1, 2], [2, 2]]);
+    });
+
+    it('retries a failing part with backoff and then succeeds', async () => {
+        vi.useFakeTimers();
+        const fetchMock = vi
+            .fn()
+            .mockRejectedValueOnce(new TypeError('network'))
+            .mockResolvedValueOnce({ok: false, status: 503, headers: {get: () => null}})
+            .mockResolvedValue(ok('"e"'));
+        vi.stubGlobal('fetch', fetchMock);
+
+        const promise = uploadParts(file, [parts[0]], 6);
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        await vi.advanceTimersByTimeAsync(2000);
+
+        await expect(promise).resolves.toEqual([{partNumber: 1, etag: '"e"'}]);
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        vi.useRealTimers();
+    });
+
+    it('gives up after three attempts with the last error', async () => {
+        vi.useFakeTimers();
+        const fetchMock = vi.fn(async () => ({ok: false, status: 500, headers: {get: () => null}}));
+        vi.stubGlobal('fetch', fetchMock);
+
+        const promise = uploadParts(file, [parts[0]], 6);
+        const assertion = expect(promise).rejects.toThrow('Part upload failed (500)');
+        await vi.advanceTimersByTimeAsync(10000);
+
+        await assertion;
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        vi.useRealTimers();
+    });
+
+    it('does not retry a missing ETag (bucket CORS problem)', async () => {
+        const fetchMock = vi.fn(async () => ok(null));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(uploadParts(file, [parts[0]], 6)).rejects.toThrow(/ETag/);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not retry once the upload was cancelled', async () => {
+        const controller = new AbortController();
+        const fetchMock = vi.fn(async () => {
+            controller.abort();
+            throw new DOMException('aborted', 'AbortError');
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(uploadParts(file, parts, 6, controller.signal)).rejects.toBeTruthy();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+});
+
 describe('pollVideo', () => {
     it('polls until the predicate matches', async () => {
         vi.useFakeTimers();
