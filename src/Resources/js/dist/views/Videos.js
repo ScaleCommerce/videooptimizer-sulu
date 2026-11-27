@@ -510,13 +510,18 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
             parts: parts
           });
         }).then((0, _mobx.action)(function () {
+          if (_this11.uploadController !== controller) {
+            throw (0, _api.abortError)();
+          }
           _this11.uploadStatus = (0, _utils.translate)('scale_videooptimizer.processing');
         })).then(function () {
           return (0, _api.pollVideo)(upload.uuid, function (v) {
             return v.status === 'ready' || v.status === 'failed';
+          }, {
+            signal: controller.signal
           });
         }).then((0, _mobx.action)(function (video) {
-          if (controller.signal.aborted) {
+          if (_this11.uploadController !== controller) {
             return;
           }
           _this11.uploadController = null;
@@ -530,12 +535,10 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
           _this11.open(video);
         }));
       })["catch"]((0, _mobx.action)(function (e) {
-        if (_this11.uploadController === controller) {
-          _this11.uploadController = null;
-        }
-        if ((0, _api.isAbortError)(e)) {
+        if (_this11.uploadController !== controller || (0, _api.isAbortError)(e)) {
           return;
         }
+        _this11.uploadController = null;
         _this11.uploading = false;
         _this11.uploadStatus = null;
         _this11.error = (0, _api.errorText)(e);

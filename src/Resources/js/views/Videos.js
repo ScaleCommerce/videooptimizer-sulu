@@ -150,10 +150,15 @@ class Videos extends React.Component<*> {
                         parts,
                     });
                 })
-                .then(action(() => { this.uploadStatus = translate('scale_videooptimizer.processing'); }))
-                .then(() => pollVideo(upload.uuid, (v) => v.status === 'ready' || v.status === 'failed'))
+                .then(action(() => {
+                    if (this.uploadController !== controller) {
+                        throw abortError();
+                    }
+                    this.uploadStatus = translate('scale_videooptimizer.processing');
+                }))
+                .then(() => pollVideo(upload.uuid, (v) => v.status === 'ready' || v.status === 'failed', {signal: controller.signal}))
                 .then(action((video) => {
-                    if (controller.signal.aborted) {
+                    if (this.uploadController !== controller) {
                         return;
                     }
                     this.uploadController = null;
@@ -167,12 +172,10 @@ class Videos extends React.Component<*> {
                     this.open(video);
                 })))
             .catch(action((e) => {
-                if (this.uploadController === controller) {
-                    this.uploadController = null;
-                }
-                if (isAbortError(e)) {
+                if (this.uploadController !== controller || isAbortError(e)) {
                     return;
                 }
+                this.uploadController = null;
                 this.uploading = false;
                 this.uploadStatus = null;
                 this.error = errorText(e);

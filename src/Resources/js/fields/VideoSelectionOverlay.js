@@ -187,16 +187,17 @@ class VideoSelectionOverlay extends React.Component<*> {
                     });
                 })
                 .then(action(() => {
+                    if (this.uploadController !== controller) {
+                        throw abortError();
+                    }
                     this.uploadStatus = translate('scale_videooptimizer.processing');
                 }))
-                .then(() => pollVideo(upload.uuid, (v) => v.status === 'ready' || v.status === 'failed'))
+                .then(() => pollVideo(upload.uuid, (v) => v.status === 'ready' || v.status === 'failed', {signal: controller.signal}))
                 .then(action((video) => {
-                    if (controller.signal.aborted) {
+                    if (this.uploadController !== controller) {
                         return;
                     }
-                    if (this.uploadController === controller) {
-                        this.uploadController = null;
-                    }
+                    this.uploadController = null;
                     this.uploading = false;
                     this.uploadStatus = null;
                     if (video.status === 'failed') {
@@ -206,14 +207,13 @@ class VideoSelectionOverlay extends React.Component<*> {
                     this.chooseVideo(video);
                 })))
             .catch(action((e) => {
-                if (this.uploadController === controller) {
-                    this.uploadController = null;
-                }
-                this.uploading = false;
-                this.uploadStatus = null;
-                if (isAbortError(e)) {
+                // Superseded, aborted or unmounted: a newer upload or the closed view owns the state.
+                if (this.uploadController !== controller || isAbortError(e)) {
                     return;
                 }
+                this.uploadController = null;
+                this.uploading = false;
+                this.uploadStatus = null;
                 this.error = errorText(e);
             }));
     };

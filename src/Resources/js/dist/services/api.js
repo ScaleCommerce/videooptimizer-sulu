@@ -295,10 +295,20 @@ function pollVideo(uuid, predicate) {
   // Gives up instead of polling forever (default 30 min at the default interval).
   var maxAttempts = options.maxAttempts || 600;
   var attempts = 0;
+  var signal = options.signal;
   return new Promise(function (resolve, reject) {
     var _tick = function tick() {
+      // An aborted signal (overlay closed, view left) stops polling.
+      if (signal && signal.aborted) {
+        reject(abortError());
+        return;
+      }
       attempts += 1;
       getVideo(uuid).then(function (video) {
+        if (signal && signal.aborted) {
+          reject(abortError());
+          return;
+        }
         if (options.onTick) {
           options.onTick(video);
         }

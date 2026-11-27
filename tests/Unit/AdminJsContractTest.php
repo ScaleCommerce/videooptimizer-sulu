@@ -45,6 +45,8 @@ final class AdminJsContractTest extends TestCase
             $code = self::read($root . $file);
             self::assertStringContainsString('new AbortController()', $code, $file);
             self::assertStringContainsString('componentWillUnmount', $code, $file);
+            self::assertStringContainsString('uploadController !== controller', $code, $file . ': callbacks must ignore a superseded or aborted upload.');
+            self::assertMatchesRegularExpression('/signal:\s*controller\.signal/', $code, $file . ': polling must stop on abort.');
             self::assertMatchesRegularExpression('/signal\.aborted/', $code, $file);
             self::assertMatchesRegularExpression('/uploadParts\)?\([^)]*controller\.signal\)/', $code, $file);
             self::assertSame(1, preg_match('/completeUpload\)?\(\{/', $code, $m, \PREG_OFFSET_CAPTURE), $file);
@@ -64,6 +66,7 @@ final class AdminJsContractTest extends TestCase
         self::assertStringContainsString('posterContentType', $api);
         self::assertStringContainsString('mimeType', $api);
         self::assertMatchesRegularExpression('/webp/', $api);
+        self::assertStringContainsString('poster_unsupported_type', self::read($root . 'components/VideoDetail.js'));
         self::assertMatchesRegularExpression('/posterContentType\)?\(blob\.type, media\)/', self::read($root . 'components/VideoDetail.js'));
     }
 }

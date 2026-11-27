@@ -655,18 +655,21 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
             parts: parts
           });
         }).then((0, _mobx.action)(function () {
+          if (_this15.uploadController !== controller) {
+            throw (0, _api.abortError)();
+          }
           _this15.uploadStatus = (0, _utils.translate)('scale_videooptimizer.processing');
         })).then(function () {
           return (0, _api.pollVideo)(upload.uuid, function (v) {
             return v.status === 'ready' || v.status === 'failed';
+          }, {
+            signal: controller.signal
           });
         }).then((0, _mobx.action)(function (video) {
-          if (controller.signal.aborted) {
+          if (_this15.uploadController !== controller) {
             return;
           }
-          if (_this15.uploadController === controller) {
-            _this15.uploadController = null;
-          }
+          _this15.uploadController = null;
           _this15.uploading = false;
           _this15.uploadStatus = null;
           if (video.status === 'failed') {
@@ -676,14 +679,13 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
           _this15.chooseVideo(video);
         }));
       })["catch"]((0, _mobx.action)(function (e) {
-        if (_this15.uploadController === controller) {
-          _this15.uploadController = null;
-        }
-        _this15.uploading = false;
-        _this15.uploadStatus = null;
-        if ((0, _api.isAbortError)(e)) {
+        // Superseded, aborted or unmounted: a newer upload or the closed view owns the state.
+        if (_this15.uploadController !== controller || (0, _api.isAbortError)(e)) {
           return;
         }
+        _this15.uploadController = null;
+        _this15.uploading = false;
+        _this15.uploadStatus = null;
         _this15.error = (0, _api.errorText)(e);
       }));
     };

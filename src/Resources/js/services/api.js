@@ -249,10 +249,23 @@ export function pollVideo(uuid: string, predicate: (video: Object) => boolean, o
     const maxAttempts = options.maxAttempts || 600;
     let attempts = 0;
 
+    const signal = options.signal;
+
     return new Promise((resolve, reject) => {
         const tick = () => {
+            // An aborted signal (overlay closed, view left) stops polling.
+            if (signal && signal.aborted) {
+                reject(abortError());
+
+                return;
+            }
             attempts += 1;
             getVideo(uuid).then((video) => {
+                if (signal && signal.aborted) {
+                    reject(abortError());
+
+                    return;
+                }
                 if (options.onTick) {
                     options.onTick(video);
                 }
