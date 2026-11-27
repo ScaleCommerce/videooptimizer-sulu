@@ -391,7 +391,12 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
         style: {
           padding: '4px 0 0'
         }
-      }, (0, _utils.translate)('scale_videooptimizer.encoding_quality_help')), !isNew && (this.qualityChanged() || this.forceReprocessSuggestedFor === this.activeId) && /*#__PURE__*/_react["default"].createElement("div", {
+      }, (0, _utils.translate)('scale_videooptimizer.encoding_quality_help')), !isNew && /*#__PURE__*/_react["default"].createElement("div", {
+        className: "vo-hint",
+        style: {
+          padding: '4px 0 0'
+        }
+      }, (0, _utils.translate)('scale_videooptimizer.encoding_quality_apply_note')), !isNew && (this.qualityChanged() || this.forceReprocessSuggestedFor === this.activeId) && /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-hint",
         style: {
           padding: '12px 0 0'
