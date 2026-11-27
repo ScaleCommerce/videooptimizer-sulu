@@ -19,6 +19,8 @@ The admin UI source lives under `src/Resources/js` (React 17 + MobX) and is ship
 cd src/Resources/js && npm install && npm run build
 ```
 
+JavaScript tests (Vitest, specs in `tests/js`) run with `npm test` in the same directory.
+
 CI verifies `dist/` is in sync with the source, so a stale build fails the pipeline.
 
 ## Expectations for a pull request

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Scale\VideoOptimizerBundle\Service;
 
 use Scale\VideoOptimizerBundle\Api\VideoOptimizerClient;
+use Scale\VideoOptimizerBundle\Api\VideoOptimizerException;
+use Sulu\Bundle\HttpCacheBundle\ReferenceStore\ReferenceStoreInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
@@ -23,10 +25,14 @@ class VideoOptimizerEmbedResolver
     /** Cache lifetime for failures and videos without sources (not ready yet), so they recover quickly. */
     private const TTL_UNAVAILABLE = 60;
 
+    /** Cache key of the service-wide flag set while the API is unreachable or rate limiting (fail fast). */
+    private const API_DOWN_KEY = 'vo_embed_api_down';
+
     public function __construct(
         private VideoOptimizerClient $client,
         private CacheInterface $cache,
         private ?EmbedRenderState $renderState = null,
+        private ?ReferenceStoreInterface $referenceStore = null,
     ) {
     }
 
@@ -35,6 +41,10 @@ class VideoOptimizerEmbedResolver
      */
     public function getSources(string $uuid): array
     {
+        // Tags the rendered page with the video (tag = its UUID), so a webhook can invalidate exactly the
+        // cached pages that show it.
+        $this->referenceStore?->add($uuid, 'video_optimizer');
+
         $result = $this->lookup($uuid);
         if ([] === $result['sources']) {
             // The page is rendered without this video: do not let the HTTP cache keep it for long.
@@ -50,10 +60,21 @@ class VideoOptimizerEmbedResolver
     private function lookup(string $uuid): array
     {
         try {
-            return $this->cache->get(self::cacheKey($uuid), function (ItemInterface $item) use ($uuid): array {
+            return $this->cache->get(self::cacheKey($uuid), function (ItemInterface $item, bool &$save) use ($uuid): array {
+                // While the API is flagged as down, do not ask it again for videos that are not cached:
+                // neither cache the skipped video nor prolong the flag.
+                if ($this->apiDown()) {
+                    $save = false;
+
+                    return self::unavailable();
+                }
+
                 try {
                     $sources = self::extractSources($this->client->getEmbed($uuid));
-                } catch (\Throwable) {
+                } catch (\Throwable $e) {
+                    if ($e instanceof VideoOptimizerException && \in_array($e->getStatusCode(), [429, 502, 503, 504], true)) {
+                        $this->markApiDown();
+                    }
                     // Remember a failure only briefly: it stops a broken API from being hit on every
                     // render, yet a transient error does not hide the video for long.
                     $item->expiresAfter(self::TTL_UNAVAILABLE);
@@ -68,6 +89,36 @@ class VideoOptimizerEmbedResolver
         } catch (\Throwable) {
             // The cache itself failed: render without it.
             return self::unavailable();
+        }
+    }
+
+    private function apiDown(): bool
+    {
+        try {
+            /** @var mixed $flag */
+            $flag = $this->cache->get(self::API_DOWN_KEY, static function (ItemInterface $item, bool &$save): mixed {
+                $save = false;
+
+                return false;
+            });
+
+            return true === $flag;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    private function markApiDown(): void
+    {
+        try {
+            $this->cache->delete(self::API_DOWN_KEY);
+            $this->cache->get(self::API_DOWN_KEY, static function (ItemInterface $item): bool {
+                $item->expiresAfter(self::TTL_UNAVAILABLE);
+
+                return true;
+            });
+        } catch (\Throwable) {
+            // Without the flag every uncached video simply asks the API itself.
         }
     }
 

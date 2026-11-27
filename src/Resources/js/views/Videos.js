@@ -8,7 +8,8 @@ import {withToolbar} from 'sulu-admin-bundle/containers';
 import {translate} from 'sulu-admin-bundle/utils';
 import {
     getLibraries,
-    getAllVideos,
+    getTags,
+    getVideoPage,
     initiateUpload,
     uploadParts,
     isAbortError,
@@ -22,11 +23,18 @@ import {
     bustCache,
 } from '../services/api';
 import VideoDetail from '../components/VideoDetail';
+import VideoPager from '../services/VideoPager';
+import UploadProgress from '../components/UploadProgress';
+import TagFilter from '../components/TagFilter';
 
 @observer
 class Videos extends React.Component<*> {
     @observable loading = true;
     @observable loadingVideos = false;
+    @observable loadingMore = false;
+    @observable hasMore = false;
+    @observable tags = [];
+    @observable activeTag = '';
     @observable libraries = [];
     // null = show videos from every library; a library id = filter to that library.
     @observable activeLibraryId = null;
@@ -35,6 +43,8 @@ class Videos extends React.Component<*> {
     @observable error = null;
     @observable uploading = false;
     @observable uploadStatus = null;
+    @observable uploadPercent = null;
+    @observable uploadCancellable = false;
     @observable ingestSourceUrl = '';
     @observable ingestTitle = '';
     @observable ingesting = false;
@@ -53,12 +63,27 @@ class Videos extends React.Component<*> {
         }
     }
 
+    // Pages the video list with the API cursor; the loaded pages survive edits, deletions and uploads.
+    pager = new VideoPager(getVideoPage, action((state) => {
+        this.videos = state.items;
+        this.hasMore = state.hasMore;
+        this.loadingVideos = state.loading;
+        this.loadingMore = state.loadingMore;
+        if (state.error) {
+            this.error = 428 === state.error.status
+                ? translate('scale_videooptimizer.not_configured')
+                : (state.error.message || String(state.error));
+        }
+    }));
+
     componentDidMount() {
-        Promise.all([getLibraries(), getAllVideos()])
-            .then(action(([libraries, videos]) => {
+        getLibraries()
+            .then(action((libraries) => {
                 this.libraries = libraries;
-                this.videos = videos;
                 this.loading = false;
+                this.pager.load(this.filters());
+                // Tags only feed the filter: without them the list still works.
+                getTags().then(action((tags) => { this.tags = tags; })).catch(() => {});
             }))
             .catch(action((e) => {
                 this.loading = false;
@@ -68,39 +93,42 @@ class Videos extends React.Component<*> {
             }));
     }
 
-    reloadVideos() {
-        this.loadingVideos = true;
-        getAllVideos()
-            .then(action((videos) => { this.videos = videos; this.loadingVideos = false; }))
-            .catch(action((e) => { this.loadingVideos = false; this.error = e.message || String(e); }));
+    filters() {
+        return {libraryId: this.activeLibraryId, tags: this.activeTag || null};
     }
 
     @action selectLibrary = (id) => {
         this.activeLibraryId = id;
         this.selected = null;
+        this.error = null;
+        this.pager.load(this.filters());
     };
 
     @action showAll = () => {
         this.activeLibraryId = null;
         this.selected = null;
+        this.error = null;
+        this.pager.load(this.filters());
+    };
+
+    @action selectTag = (tag) => {
+        this.activeTag = tag;
+        this.error = null;
+        this.pager.load(this.filters());
+    };
+
+    @action loadMore = () => {
+        this.pager.loadMore();
     };
 
     activeLibrary() {
         return this.libraries.find((l) => l.id === this.activeLibraryId) || null;
     }
 
-    visibleVideos() {
-        if (!this.activeLibraryId) {
-            return this.videos;
-        }
-
-        return this.videos.filter((video) => video.library_id === this.activeLibraryId);
-    }
-
     @action open = (video) => { this.selected = video; };
     @action back = () => { this.selected = null; };
-    @action onChanged = (video) => { this.selected = video; this.videos = this.videos.map((v) => v.uuid === video.uuid ? video : v); };
-    @action onDeleted = () => { const id = this.selected.uuid; this.selected = null; this.videos = this.videos.filter((v) => v.uuid !== id); };
+    @action onChanged = (video) => { this.selected = video; this.pager.replace(video); };
+    @action onDeleted = () => { const id = this.selected.uuid; this.selected = null; this.pager.remove(id); };
 
     // Opens the native file dialog from the toolbar button (a real user gesture, so allowed).
     triggerFileDialog = () => {
@@ -128,6 +156,8 @@ class Videos extends React.Component<*> {
         this.uploading = true;
         this.error = null;
         this.uploadStatus = translate('scale_videooptimizer.uploading');
+        this.uploadPercent = 0;
+        this.uploadCancellable = true;
 
         initiateUpload({
             libraryId,
@@ -135,11 +165,17 @@ class Videos extends React.Component<*> {
             contentType: file.type || 'application/octet-stream',
             fileSize: file.size,
         })
-            .then((upload) => uploadParts(file, upload.parts || [], upload.partSize, controller.signal)
+            .then((upload) => uploadParts(file, upload.parts || [], upload.partSize, controller.signal, action((done, total) => {
+                if (this.uploadController === controller) {
+                    this.uploadPercent = Math.round(done / total * 100);
+                }
+            }))
                 .then((parts) => {
                     if (controller.signal.aborted) {
                         throw abortError();
                     }
+                    // Past this point the video is being created: Cancel would only leave a stray upload.
+                    action(() => { this.uploadCancellable = false; })();
 
                     return completeUpload({
                         libraryId,
@@ -155,6 +191,8 @@ class Videos extends React.Component<*> {
                         throw abortError();
                     }
                     this.uploadStatus = translate('scale_videooptimizer.processing');
+                    this.uploadPercent = null;
+                    this.uploadCancellable = false;
                 }))
                 .then(() => pollVideo(upload.uuid, (v) => v.status === 'ready' || v.status === 'failed', {signal: controller.signal}))
                 .then(action((video) => {
@@ -164,11 +202,13 @@ class Videos extends React.Component<*> {
                     this.uploadController = null;
                     this.uploading = false;
                     this.uploadStatus = null;
+                    this.uploadPercent = null;
+                    this.uploadCancellable = false;
                     if (video.status === 'failed') {
                         this.error = failureMessage(video);
                         return;
                     }
-                    this.reloadVideos();
+                    this.pager.prepend(video);
                     this.open(video);
                 })))
             .catch(action((e) => {
@@ -178,8 +218,24 @@ class Videos extends React.Component<*> {
                 this.uploadController = null;
                 this.uploading = false;
                 this.uploadStatus = null;
+                this.uploadPercent = null;
+                this.uploadCancellable = false;
                 this.error = errorText(e);
             }));
+    };
+
+    // Cancel button: stops the running part upload. Nothing is created in VideoOptimizer, and storage
+    // discards the incomplete multipart upload on its own (the API has no abort endpoint).
+    @action cancelUpload = () => {
+        if (!this.uploadController) {
+            return;
+        }
+        this.uploadController.abort();
+        this.uploadController = null;
+        this.uploading = false;
+        this.uploadStatus = null;
+        this.uploadPercent = null;
+        this.uploadCancellable = false;
     };
 
     @action handleIngestUrlChange = (event: SyntheticInputEvent<HTMLInputElement>) => {
@@ -213,7 +269,7 @@ class Videos extends React.Component<*> {
                     }
                     this.ingestSourceUrl = '';
                     this.ingestTitle = '';
-                    this.reloadVideos();
+                    this.pager.prepend(video);
                 })))
             .catch(action((e) => {
                 this.ingesting = false;
@@ -242,21 +298,30 @@ class Videos extends React.Component<*> {
     }
 
     renderVideoGrid() {
-        const videos = this.visibleVideos();
+        const videos = this.videos;
 
         if (videos.length === 0) {
             return <div className="vo-empty">{translate('scale_videooptimizer.no_videos_anywhere')}</div>;
         }
 
         return (
-            <div className="vo-video-grid">
-                {videos.map((video) => (
-                    <button key={video.uuid} type="button" className="vo-video" onClick={() => this.open(video)}>
-                        {posterFor(video) ? <img src={bustCache(posterFor(video))} alt="" /> : <span className="vo-video-ph">▶</span>}
-                        <span className="vo-video-title">{video.title || video.uuid}</span>
-                    </button>
-                ))}
-            </div>
+            <React.Fragment>
+                <div className="vo-video-grid">
+                    {videos.map((video) => (
+                        <button key={video.uuid} type="button" className="vo-video" onClick={() => this.open(video)}>
+                            {posterFor(video) ? <img src={bustCache(posterFor(video))} alt="" /> : <span className="vo-video-ph">▶</span>}
+                            <span className="vo-video-title">{video.title || video.uuid}</span>
+                        </button>
+                    ))}
+                </div>
+                {this.hasMore && (
+                    <div className="vo-load-more">
+                        <Button skin="secondary" onClick={this.loadMore} loading={this.loadingMore}>
+                            {translate('scale_videooptimizer.load_more')}
+                        </Button>
+                    </div>
+                )}
+            </React.Fragment>
         );
     }
 
@@ -331,9 +396,11 @@ class Videos extends React.Component<*> {
                             )}
                         </div>
 
-                        {this.uploadStatus && <div className="vo-upload-status">{this.uploadStatus}</div>}
+                        <UploadProgress status={this.uploadStatus} percent={this.uploadPercent} onCancel={this.uploadCancellable ? this.cancelUpload : null} />
 
                         {activeLibrary && this.renderIngestForm()}
+
+                        <TagFilter tags={this.tags} value={this.activeTag} onChange={this.selectTag} />
 
                         {this.loadingVideos ? <Loader /> : this.renderVideoGrid()}
                     </React.Fragment>

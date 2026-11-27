@@ -5,7 +5,6 @@ require("core-js/modules/es.symbol.js");
 require("core-js/modules/es.symbol.description.js");
 require("core-js/modules/es.symbol.iterator.js");
 require("core-js/modules/es.symbol.to-primitive.js");
-require("core-js/modules/es.array.filter.js");
 require("core-js/modules/es.array.for-each.js");
 require("core-js/modules/es.array.from.js");
 require("core-js/modules/es.array.is-array.js");
@@ -15,7 +14,6 @@ require("core-js/modules/es.array.reverse.js");
 require("core-js/modules/es.array.slice.js");
 require("core-js/modules/es.date.to-primitive.js");
 require("core-js/modules/es.function.bind.js");
-require("core-js/modules/es.function.name.js");
 require("core-js/modules/es.number.constructor.js");
 require("core-js/modules/es.object.create.js");
 require("core-js/modules/es.object.define-properties.js");
@@ -30,7 +28,6 @@ require("core-js/modules/es.regexp.exec.js");
 require("core-js/modules/es.regexp.test.js");
 require("core-js/modules/es.regexp.to-string.js");
 require("core-js/modules/es.string.iterator.js");
-require("core-js/modules/esnext.iterator.filter.js");
 require("core-js/modules/esnext.iterator.for-each.js");
 require("core-js/modules/esnext.iterator.reduce.js");
 require("core-js/modules/web.dom-collections.for-each.js");
@@ -40,8 +37,11 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports["default"] = void 0;
 require("core-js/modules/es.array.concat.js");
+require("core-js/modules/es.array.filter.js");
+require("core-js/modules/es.array.join.js");
 require("core-js/modules/es.array.map.js");
 require("core-js/modules/es.date.to-string.js");
+require("core-js/modules/es.function.name.js");
 require("core-js/modules/es.number.is-nan.js");
 require("core-js/modules/es.object.to-string.js");
 require("core-js/modules/es.parse-int.js");
@@ -49,6 +49,7 @@ require("core-js/modules/es.promise.js");
 require("core-js/modules/es.string.pad-start.js");
 require("core-js/modules/es.string.trim.js");
 require("core-js/modules/esnext.iterator.constructor.js");
+require("core-js/modules/esnext.iterator.filter.js");
 require("core-js/modules/esnext.iterator.map.js");
 var _react = _interopRequireDefault(require("react"));
 var _mobxReact = require("mobx-react");
@@ -56,9 +57,11 @@ var _mobx = require("mobx");
 var _components = require("sulu-admin-bundle/components");
 var _utils = require("sulu-admin-bundle/utils");
 var _stores = require("sulu-admin-bundle/stores");
+var _VideoSubtitles = _interopRequireDefault(require("./VideoSubtitles"));
 var _SingleMediaSelectionOverlay = _interopRequireDefault(require("sulu-media-bundle/containers/SingleMediaSelectionOverlay"));
 var _api = require("../services/api");
-var _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9, _descriptor0, _descriptor1, _descriptor10, _descriptor11, _descriptor12, _descriptor13, _descriptor14, _descriptor15, _descriptor16, _descriptor17, _descriptor18, _descriptor19, _descriptor20, _descriptor21, _descriptor22, _descriptor23;
+var _videoMeta = require("../services/videoMeta");
+var _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9, _descriptor0, _descriptor1, _descriptor10, _descriptor11, _descriptor12, _descriptor13, _descriptor14, _descriptor15, _descriptor16, _descriptor17, _descriptor18, _descriptor19, _descriptor20, _descriptor21, _descriptor22, _descriptor23, _descriptor24, _descriptor25, _descriptor26, _descriptor27, _descriptor28, _descriptor29, _descriptor30;
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
@@ -110,51 +113,65 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
     _initializerDefineProperty(_this, "thumbnails", _descriptor2, _this);
     _initializerDefineProperty(_this, "title", _descriptor3, _this);
     _initializerDefineProperty(_this, "options", _descriptor4, _this);
-    _initializerDefineProperty(_this, "busy", _descriptor5, _this);
+    _initializerDefineProperty(_this, "tagsText", _descriptor5, _this);
+    _initializerDefineProperty(_this, "knownTags", _descriptor6, _this);
+    _initializerDefineProperty(_this, "metadata", _descriptor7, _this);
+    _initializerDefineProperty(_this, "busy", _descriptor8, _this);
     // null | 'save' | 'thumb' | 'poster' | 'delete'
-    _initializerDefineProperty(_this, "status", _descriptor6, _this);
-    _initializerDefineProperty(_this, "error", _descriptor7, _this);
-    _initializerDefineProperty(_this, "confirmDelete", _descriptor8, _this);
-    _initializerDefineProperty(_this, "mediaOverlayOpen", _descriptor9, _this);
-    _initializerDefineProperty(_this, "playing", _descriptor0, _this);
+    _initializerDefineProperty(_this, "status", _descriptor9, _this);
+    _initializerDefineProperty(_this, "error", _descriptor0, _this);
+    _initializerDefineProperty(_this, "confirmDelete", _descriptor1, _this);
+    _initializerDefineProperty(_this, "mediaOverlayOpen", _descriptor10, _this);
+    _initializerDefineProperty(_this, "playing", _descriptor11, _this);
     // Locale for Sulu's media selection overlay: use the form's locale when embedded in a field,
     // otherwise fall back to the user's current content locale (standalone videos view).
     _this.mediaLocale = _this.props.locale || _mobx.observable.box(_stores.userStore.contentLocale);
     // Plain (non-observable) flag — guards async continuations after unmount, no @action needed.
     _this._unmounted = false;
-    _initializerDefineProperty(_this, "play", _descriptor1, _this);
-    _initializerDefineProperty(_this, "refresh", _descriptor10, _this);
-    _initializerDefineProperty(_this, "handleTitleChange", _descriptor11, _this);
-    _initializerDefineProperty(_this, "toggleOption", _descriptor12, _this);
-    _initializerDefineProperty(_this, "save", _descriptor13, _this);
-    _initializerDefineProperty(_this, "pickThumbnail", _descriptor14, _this);
+    _initializerDefineProperty(_this, "play", _descriptor12, _this);
+    _initializerDefineProperty(_this, "refresh", _descriptor13, _this);
+    _initializerDefineProperty(_this, "handleTitleChange", _descriptor14, _this);
+    _initializerDefineProperty(_this, "toggleOption", _descriptor15, _this);
+    _initializerDefineProperty(_this, "handleTagsChange", _descriptor16, _this);
+    _initializerDefineProperty(_this, "handleMetadataChange", _descriptor17, _this);
+    _initializerDefineProperty(_this, "addMetadataRow", _descriptor18, _this);
+    _initializerDefineProperty(_this, "removeMetadataRow", _descriptor19, _this);
+    _initializerDefineProperty(_this, "save", _descriptor20, _this);
+    _initializerDefineProperty(_this, "pickThumbnail", _descriptor21, _this);
     // Re-activates the already-uploaded custom poster (source='custom') so the editor can switch
     // back to it after picking a generated thumbnail — without re-uploading.
-    _initializerDefineProperty(_this, "pickCustomPoster", _descriptor15, _this);
+    _initializerDefineProperty(_this, "pickCustomPoster", _descriptor22, _this);
     _this.handlePosterFile = function (event) {
       var file = event.target.files && event.target.files[0];
       if (file) {
         _this.uploadPosterBlob(file);
       }
     };
-    _initializerDefineProperty(_this, "openMediaOverlay", _descriptor16, _this);
-    _initializerDefineProperty(_this, "closeMediaOverlay", _descriptor17, _this);
+    _initializerDefineProperty(_this, "openMediaOverlay", _descriptor23, _this);
+    _initializerDefineProperty(_this, "closeMediaOverlay", _descriptor24, _this);
     // Picks an image from the Sulu media library and uploads it as the custom poster: the browser
     // fetches the (same-origin) media file and feeds it through the presigned poster pipeline.
-    _initializerDefineProperty(_this, "handleMediaSelect", _descriptor18, _this);
+    _initializerDefineProperty(_this, "handleMediaSelect", _descriptor25, _this);
     // Runs the presigned custom-poster pipeline for any File/Blob; the API activates it once processed.
-    _initializerDefineProperty(_this, "uploadPosterBlob", _descriptor19, _this);
-    _initializerDefineProperty(_this, "removeCustomPoster", _descriptor20, _this);
-    _initializerDefineProperty(_this, "askDelete", _descriptor21, _this);
-    _initializerDefineProperty(_this, "cancelDelete", _descriptor22, _this);
-    _initializerDefineProperty(_this, "doDelete", _descriptor23, _this);
+    _initializerDefineProperty(_this, "uploadPosterBlob", _descriptor26, _this);
+    _initializerDefineProperty(_this, "removeCustomPoster", _descriptor27, _this);
+    _initializerDefineProperty(_this, "askDelete", _descriptor28, _this);
+    _initializerDefineProperty(_this, "cancelDelete", _descriptor29, _this);
+    _initializerDefineProperty(_this, "doDelete", _descriptor30, _this);
     return _this;
   }
   _inherits(VideoDetail, _React$Component);
   return _createClass(VideoDetail, [{
     key: "componentDidMount",
     value: function componentDidMount() {
+      var _this2 = this;
       this.loadThumbnails();
+      // Existing tags are only suggestions: a failed lookup must not get in the editor's way.
+      (0, _api.getTags)().then((0, _mobx.action)(function (tags) {
+        if (!_this2._unmounted) {
+          _this2.knownTags = tags;
+        }
+      }))["catch"](function () {});
     }
   }, {
     key: "componentWillUnmount",
@@ -164,17 +181,17 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
   }, {
     key: "loadThumbnails",
     value: function loadThumbnails() {
-      var _this2 = this;
+      var _this3 = this;
       (0, _api.getThumbnails)(this.video.uuid).then((0, _mobx.action)(function (thumbnails) {
-        if (_this2._unmounted) {
+        if (_this3._unmounted) {
           return;
         }
-        _this2.thumbnails = thumbnails;
+        _this3.thumbnails = thumbnails;
       }))["catch"]((0, _mobx.action)(function (e) {
-        if (_this2._unmounted) {
+        if (_this3._unmounted) {
           return;
         }
-        _this2.error = e.message || String(e);
+        _this3.error = e.message || String(e);
       }));
     }
   }, {
@@ -260,7 +277,7 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
   }, {
     key: "render",
     value: function render() {
-      var _this3 = this;
+      var _this4 = this;
       var source = this.video.poster && this.video.poster.source;
       var customStatus = this.video.poster && this.video.poster.custom_status;
       var customUrl = this.video.poster && this.video.poster.custom_url;
@@ -288,9 +305,9 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
           key: t.index,
           type: "button",
           className: "vo-thumb",
-          disabled: _this3.busy === 'thumb',
+          disabled: _this4.busy === 'thumb',
           onClick: function onClick() {
-            return _this3.pickThumbnail(t.index);
+            return _this4.pickThumbnail(t.index);
           }
         }, /*#__PURE__*/_react["default"].createElement("img", {
           src: (0, _api.bustCache)(t.url),
@@ -324,6 +341,8 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
         types: ['image'],
         onClose: this.closeMediaOverlay,
         onConfirm: this.handleMediaSelect
+      }), /*#__PURE__*/_react["default"].createElement(_VideoSubtitles["default"], {
+        uuid: this.video.uuid
       }), /*#__PURE__*/_react["default"].createElement("label", {
         className: "vo-label"
       }, (0, _utils.translate)('sulu_admin.title')), /*#__PURE__*/_react["default"].createElement("input", {
@@ -333,6 +352,66 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
         onChange: this.handleTitleChange
       }), /*#__PURE__*/_react["default"].createElement("label", {
         className: "vo-label"
+      }, (0, _utils.translate)('scale_videooptimizer.tags')), /*#__PURE__*/_react["default"].createElement("input", {
+        type: "text",
+        className: "vo-input",
+        list: "vo-known-tags",
+        value: this.tagsText,
+        placeholder: (0, _utils.translate)('scale_videooptimizer.tags_placeholder'),
+        onChange: this.handleTagsChange
+      }), /*#__PURE__*/_react["default"].createElement("datalist", {
+        id: "vo-known-tags"
+      }, this.knownTags.map(function (tag) {
+        return /*#__PURE__*/_react["default"].createElement("option", {
+          key: tag.name,
+          value: tag.name
+        });
+      })), /*#__PURE__*/_react["default"].createElement("div", {
+        className: "vo-hint",
+        style: {
+          padding: '4px 0 0'
+        }
+      }, (0, _utils.translate)('scale_videooptimizer.tags_help')), /*#__PURE__*/_react["default"].createElement("label", {
+        className: "vo-label"
+      }, (0, _utils.translate)('scale_videooptimizer.metadata')), /*#__PURE__*/_react["default"].createElement("div", {
+        className: "vo-metadata"
+      }, this.metadata.map(function (row, index) {
+        return /*#__PURE__*/_react["default"].createElement("div", {
+          key: index,
+          className: "vo-metadata__row"
+        }, /*#__PURE__*/_react["default"].createElement("input", {
+          type: "text",
+          className: "vo-input vo-input--auto",
+          placeholder: (0, _utils.translate)('scale_videooptimizer.metadata_key'),
+          value: row.key,
+          onChange: function onChange(event) {
+            return _this4.handleMetadataChange(index, 'key', event.target.value);
+          }
+        }), /*#__PURE__*/_react["default"].createElement("input", {
+          type: "text",
+          className: "vo-input vo-input--auto",
+          placeholder: (0, _utils.translate)('scale_videooptimizer.metadata_value'),
+          value: row.value,
+          onChange: function onChange(event) {
+            return _this4.handleMetadataChange(index, 'value', event.target.value);
+          }
+        }), /*#__PURE__*/_react["default"].createElement(_components.Button, {
+          skin: "link",
+          onClick: function onClick() {
+            return _this4.removeMetadataRow(index);
+          }
+        }, (0, _utils.translate)('scale_videooptimizer.remove_video')));
+      }), /*#__PURE__*/_react["default"].createElement(_components.Button, {
+        skin: "secondary",
+        onClick: this.addMetadataRow,
+        disabled: this.metadata.length >= _videoMeta.MAX_METADATA
+      }, (0, _utils.translate)('scale_videooptimizer.metadata_add'))), /*#__PURE__*/_react["default"].createElement("div", {
+        className: "vo-hint",
+        style: {
+          padding: '4px 0 0'
+        }
+      }, (0, _utils.translate)('scale_videooptimizer.metadata_help')), /*#__PURE__*/_react["default"].createElement("label", {
+        className: "vo-label"
       }, (0, _utils.translate)('scale_videooptimizer.player_options')), /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-option-checks"
       }, OPTION_KEYS.map(function (key) {
@@ -341,9 +420,9 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
           className: "vo-check"
         }, /*#__PURE__*/_react["default"].createElement("input", {
           type: "checkbox",
-          checked: !!_this3.options[key],
+          checked: !!_this4.options[key],
           onChange: function onChange() {
-            return _this3.toggleOption(key);
+            return _this4.toggleOption(key);
           }
         }), (0, _utils.translate)('scale_videooptimizer.option_' + key));
       })), /*#__PURE__*/_react["default"].createElement("div", {
@@ -355,7 +434,7 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
       }, (0, _utils.translate)('sulu_admin.save')), this.props.onUse && /*#__PURE__*/_react["default"].createElement(_components.Button, {
         skin: "primary",
         onClick: function onClick() {
-          return _this3.props.onUse(_this3.video);
+          return _this4.props.onUse(_this4.video);
         }
       }, (0, _utils.translate)('scale_videooptimizer.use_video')), /*#__PURE__*/_react["default"].createElement(_components.Button, {
         skin: "link",
@@ -401,320 +480,252 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
   initializer: function initializer() {
     return _objectSpread({}, this.props.video.options || {});
   }
-}), _descriptor5 = _applyDecoratedDescriptor(_class2.prototype, "busy", [_mobx.observable], {
+}), _descriptor5 = _applyDecoratedDescriptor(_class2.prototype, "tagsText", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return (this.props.video.tags || []).join(', ');
+  }
+}), _descriptor6 = _applyDecoratedDescriptor(_class2.prototype, "knownTags", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return [];
+  }
+}), _descriptor7 = _applyDecoratedDescriptor(_class2.prototype, "metadata", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return (0, _videoMeta.metadataRows)(this.props.video.metadata);
+  }
+}), _descriptor8 = _applyDecoratedDescriptor(_class2.prototype, "busy", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return null;
   }
-}), _descriptor6 = _applyDecoratedDescriptor(_class2.prototype, "status", [_mobx.observable], {
+}), _descriptor9 = _applyDecoratedDescriptor(_class2.prototype, "status", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return null;
   }
-}), _descriptor7 = _applyDecoratedDescriptor(_class2.prototype, "error", [_mobx.observable], {
+}), _descriptor0 = _applyDecoratedDescriptor(_class2.prototype, "error", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return null;
   }
-}), _descriptor8 = _applyDecoratedDescriptor(_class2.prototype, "confirmDelete", [_mobx.observable], {
+}), _descriptor1 = _applyDecoratedDescriptor(_class2.prototype, "confirmDelete", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return false;
   }
-}), _descriptor9 = _applyDecoratedDescriptor(_class2.prototype, "mediaOverlayOpen", [_mobx.observable], {
+}), _descriptor10 = _applyDecoratedDescriptor(_class2.prototype, "mediaOverlayOpen", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return false;
   }
-}), _descriptor0 = _applyDecoratedDescriptor(_class2.prototype, "playing", [_mobx.observable], {
+}), _descriptor11 = _applyDecoratedDescriptor(_class2.prototype, "playing", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return false;
   }
-}), _descriptor1 = _applyDecoratedDescriptor(_class2.prototype, "play", [_mobx.action], {
-  configurable: true,
-  enumerable: true,
-  writable: true,
-  initializer: function initializer() {
-    var _this4 = this;
-    return function () {
-      _this4.playing = true;
-    };
-  }
-}), _descriptor10 = _applyDecoratedDescriptor(_class2.prototype, "refresh", [_mobx.action], {
+}), _descriptor12 = _applyDecoratedDescriptor(_class2.prototype, "play", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this5 = this;
-    return function (video) {
-      // The stable poster/thumbnail CDN URLs are cached; bump the cache-buster so the preview
-      // reflects the just-changed image instead of the browser's stale copy.
-      (0, _api.bumpCacheBust)();
-      // Drop back to the (updated) poster so a just-changed thumbnail is visible immediately.
-      _this5.playing = false;
-      _this5.video = video;
-      if (_this5.props.onChanged) {
-        _this5.props.onChanged(video);
-      }
+    return function () {
+      _this5.playing = true;
     };
   }
-}), _descriptor11 = _applyDecoratedDescriptor(_class2.prototype, "handleTitleChange", [_mobx.action], {
+}), _descriptor13 = _applyDecoratedDescriptor(_class2.prototype, "refresh", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this6 = this;
-    return function (event) {
-      _this6.title = event.target.value;
+    return function (video) {
+      // The stable poster/thumbnail CDN URLs are cached; bump the cache-buster so the preview
+      // reflects the just-changed image instead of the browser's stale copy.
+      (0, _api.bumpCacheBust)();
+      // Drop back to the (updated) poster so a just-changed thumbnail is visible immediately.
+      _this6.playing = false;
+      _this6.video = video;
+      if (_this6.props.onChanged) {
+        _this6.props.onChanged(video);
+      }
     };
   }
-}), _descriptor12 = _applyDecoratedDescriptor(_class2.prototype, "toggleOption", [_mobx.action], {
+}), _descriptor14 = _applyDecoratedDescriptor(_class2.prototype, "handleTitleChange", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this7 = this;
-    return function (key) {
-      _this7.options = _objectSpread(_objectSpread({}, _this7.options), {}, _defineProperty({}, key, !_this7.options[key]));
+    return function (event) {
+      _this7.title = event.target.value;
     };
   }
-}), _descriptor13 = _applyDecoratedDescriptor(_class2.prototype, "save", [_mobx.action], {
+}), _descriptor15 = _applyDecoratedDescriptor(_class2.prototype, "toggleOption", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this8 = this;
-    return function () {
-      _this8.busy = 'save';
-      _this8.error = null;
-      (0, _api.updateVideo)(_this8.video.uuid, {
-        title: _this8.title,
-        option: _this8.options
-      }).then((0, _mobx.action)(function (video) {
-        if (_this8._unmounted) {
-          return;
-        }
-        _this8.busy = null;
-        _this8.refresh(video);
-      }))["catch"]((0, _mobx.action)(function (e) {
-        if (_this8._unmounted) {
-          return;
-        }
-        _this8.busy = null;
-        _this8.error = e.message || String(e);
-      }));
+    return function (key) {
+      _this8.options = _objectSpread(_objectSpread({}, _this8.options), {}, _defineProperty({}, key, !_this8.options[key]));
     };
   }
-}), _descriptor14 = _applyDecoratedDescriptor(_class2.prototype, "pickThumbnail", [_mobx.action], {
+}), _descriptor16 = _applyDecoratedDescriptor(_class2.prototype, "handleTagsChange", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this9 = this;
-    return function (index) {
-      _this9.busy = 'thumb';
-      _this9.error = null;
-      (0, _api.selectThumbnail)(_this9.video.uuid, index).then(function () {
-        return (0, _api.pollVideo)(_this9.video.uuid, function (v) {
-          return (v.poster && v.poster.source) === 'thumbnail';
-        }, {
-          maxAttempts: POSTER_POLL_ATTEMPTS
-        });
-      }).then((0, _mobx.action)(function (video) {
-        if (_this9._unmounted) {
-          return;
-        }
-        _this9.busy = null;
-        _this9.refresh(video);
-      }))["catch"]((0, _mobx.action)(function (e) {
-        if (_this9._unmounted) {
-          return;
-        }
-        _this9.busy = null;
-        _this9.error = e.message || String(e);
-      }));
+    return function (event) {
+      _this9.tagsText = event.target.value;
     };
   }
-}), _descriptor15 = _applyDecoratedDescriptor(_class2.prototype, "pickCustomPoster", [_mobx.action], {
+}), _descriptor17 = _applyDecoratedDescriptor(_class2.prototype, "handleMetadataChange", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this0 = this;
-    return function () {
-      _this0.busy = 'thumb';
-      _this0.error = null;
-      (0, _api.selectPoster)(_this0.video.uuid, {
-        source: 'custom'
-      }).then(function () {
-        return (0, _api.pollVideo)(_this0.video.uuid, function (v) {
-          return (v.poster && v.poster.source) === 'custom';
-        }, {
-          maxAttempts: POSTER_POLL_ATTEMPTS
-        });
-      }).then((0, _mobx.action)(function (video) {
-        if (_this0._unmounted) {
-          return;
-        }
-        _this0.busy = null;
-        _this0.refresh(video);
-      }))["catch"]((0, _mobx.action)(function (e) {
-        if (_this0._unmounted) {
-          return;
-        }
-        _this0.busy = null;
-        _this0.error = e.message || String(e);
-      }));
+    return function (index, field, value) {
+      _this0.metadata = _this0.metadata.map(function (row, i) {
+        return i === index ? _objectSpread(_objectSpread({}, row), {}, _defineProperty({}, field, value)) : row;
+      });
     };
   }
-}), _descriptor16 = _applyDecoratedDescriptor(_class2.prototype, "openMediaOverlay", [_mobx.action], {
+}), _descriptor18 = _applyDecoratedDescriptor(_class2.prototype, "addMetadataRow", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this1 = this;
     return function () {
-      _this1.mediaOverlayOpen = true;
+      _this1.metadata = _this1.metadata.concat([{
+        key: '',
+        value: ''
+      }]);
     };
   }
-}), _descriptor17 = _applyDecoratedDescriptor(_class2.prototype, "closeMediaOverlay", [_mobx.action], {
+}), _descriptor19 = _applyDecoratedDescriptor(_class2.prototype, "removeMetadataRow", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this10 = this;
-    return function () {
-      _this10.mediaOverlayOpen = false;
+    return function (index) {
+      _this10.metadata = _this10.metadata.filter(function (row, i) {
+        return i !== index;
+      });
     };
   }
-}), _descriptor18 = _applyDecoratedDescriptor(_class2.prototype, "handleMediaSelect", [_mobx.action], {
+}), _descriptor20 = _applyDecoratedDescriptor(_class2.prototype, "save", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this11 = this;
-    return function (media) {
-      _this11.mediaOverlayOpen = false;
-      if (!media || !media.url) {
+    return function () {
+      var tags = (0, _videoMeta.parseTags)(_this11.tagsText);
+      var problem = (0, _videoMeta.validateTags)(tags) || (0, _videoMeta.validateMetadata)(_this11.metadata);
+      if (problem) {
+        _this11.error = (0, _utils.translate)(problem);
         return;
       }
-      _this11.busy = 'poster';
+      // Tags replace the whole set and metadata is merged by the API: send only what changed.
+      var payload = {
+        title: _this11.title,
+        option: _this11.options
+      };
+      if (!(0, _videoMeta.sameTags)(tags, _this11.video.tags || [])) {
+        payload.tags = tags;
+      }
+      var patch = (0, _videoMeta.metadataPatch)(_this11.video.metadata, _this11.metadata);
+      if (patch) {
+        payload.metadata = patch;
+      }
+      _this11.busy = 'save';
       _this11.error = null;
-      _this11.status = (0, _utils.translate)('scale_videooptimizer.uploading');
-      fetch(media.url, {
-        credentials: 'same-origin'
-      }).then(function (response) {
-        if (!response.ok) {
-          throw new Error('Could not load media (' + response.status + ')');
-        }
-        return response.blob();
-      }).then(function (blob) {
-        var type = (0, _api.posterContentType)(blob.type, media);
-        if (!type) {
-          throw new Error((0, _utils.translate)('scale_videooptimizer.poster_unsupported_type'));
-        }
-        return _this11.uploadPosterBlob(type === blob.type ? blob : new Blob([blob], {
-          type: type
-        }));
-      })["catch"]((0, _mobx.action)(function (e) {
+      (0, _api.updateVideo)(_this11.video.uuid, payload).then((0, _mobx.action)(function (video) {
         if (_this11._unmounted) {
           return;
         }
         _this11.busy = null;
-        _this11.status = null;
+        _this11.tagsText = (video.tags || []).join(', ');
+        _this11.metadata = (0, _videoMeta.metadataRows)(video.metadata);
+        _this11.refresh(video);
+      }))["catch"]((0, _mobx.action)(function (e) {
+        if (_this11._unmounted) {
+          return;
+        }
+        _this11.busy = null;
         _this11.error = e.message || String(e);
       }));
     };
   }
-}), _descriptor19 = _applyDecoratedDescriptor(_class2.prototype, "uploadPosterBlob", [_mobx.action], {
+}), _descriptor21 = _applyDecoratedDescriptor(_class2.prototype, "pickThumbnail", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this12 = this;
-    return function (blob) {
-      _this12.busy = 'poster';
+    return function (index) {
+      _this12.busy = 'thumb';
       _this12.error = null;
-      _this12.status = (0, _utils.translate)('scale_videooptimizer.uploading');
-      (0, _api.initiatePosterUpload)(_this12.video.uuid, {
-        contentType: blob.type,
-        fileSize: blob.size
-      }).then(function (data) {
-        return (0, _api.uploadPoster)(data.uploadUrl, blob).then(function () {
-          return (0, _api.completePosterUpload)(_this12.video.uuid, data.key);
-        });
-      }).then((0, _mobx.action)(function () {
-        if (_this12._unmounted) {
-          return;
-        }
-        _this12.status = (0, _utils.translate)('scale_videooptimizer.processing');
-      })).then(function () {
+      (0, _api.selectThumbnail)(_this12.video.uuid, index).then(function () {
         return (0, _api.pollVideo)(_this12.video.uuid, function (v) {
-          var status = v.poster && v.poster.custom_status;
-          return status === 'ready' || status === 'failed';
+          return (v.poster && v.poster.source) === 'thumbnail';
         }, {
           maxAttempts: POSTER_POLL_ATTEMPTS
-        });
-      }).then(function (video) {
-        if (video.poster && video.poster.custom_status === 'failed') {
-          throw new Error((0, _utils.translate)('scale_videooptimizer.poster_failed'));
-        }
-        // A processed custom poster normally becomes the active one on its own. Only if it did
-        // not, activate it once explicitly.
-        if ((video.poster && video.poster.source) === 'custom') {
-          return video;
-        }
-        return (0, _api.selectPoster)(_this12.video.uuid, {
-          source: 'custom'
-        }).then(function () {
-          return (0, _api.pollVideo)(_this12.video.uuid, function (v) {
-            return (v.poster && v.poster.source) === 'custom';
-          }, {
-            maxAttempts: POSTER_POLL_ATTEMPTS
-          });
         });
       }).then((0, _mobx.action)(function (video) {
         if (_this12._unmounted) {
           return;
         }
         _this12.busy = null;
-        _this12.status = null;
         _this12.refresh(video);
       }))["catch"]((0, _mobx.action)(function (e) {
         if (_this12._unmounted) {
           return;
         }
         _this12.busy = null;
-        _this12.status = null;
         _this12.error = e.message || String(e);
       }));
     };
   }
-}), _descriptor20 = _applyDecoratedDescriptor(_class2.prototype, "removeCustomPoster", [_mobx.action], {
+}), _descriptor22 = _applyDecoratedDescriptor(_class2.prototype, "pickCustomPoster", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this13 = this;
     return function () {
-      _this13.busy = 'poster';
+      _this13.busy = 'thumb';
       _this13.error = null;
-      (0, _api.deletePoster)(_this13.video.uuid).then(function () {
+      (0, _api.selectPoster)(_this13.video.uuid, {
+        source: 'custom'
+      }).then(function () {
         return (0, _api.pollVideo)(_this13.video.uuid, function (v) {
-          return (v.poster && v.poster.source) !== 'custom';
+          return (v.poster && v.poster.source) === 'custom';
         }, {
           maxAttempts: POSTER_POLL_ATTEMPTS
         });
@@ -733,50 +744,203 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
       }));
     };
   }
-}), _descriptor21 = _applyDecoratedDescriptor(_class2.prototype, "askDelete", [_mobx.action], {
+}), _descriptor23 = _applyDecoratedDescriptor(_class2.prototype, "openMediaOverlay", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this14 = this;
     return function () {
-      _this14.confirmDelete = true;
+      _this14.mediaOverlayOpen = true;
     };
   }
-}), _descriptor22 = _applyDecoratedDescriptor(_class2.prototype, "cancelDelete", [_mobx.action], {
+}), _descriptor24 = _applyDecoratedDescriptor(_class2.prototype, "closeMediaOverlay", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this15 = this;
     return function () {
-      _this15.confirmDelete = false;
+      _this15.mediaOverlayOpen = false;
     };
   }
-}), _descriptor23 = _applyDecoratedDescriptor(_class2.prototype, "doDelete", [_mobx.action], {
+}), _descriptor25 = _applyDecoratedDescriptor(_class2.prototype, "handleMediaSelect", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this16 = this;
-    return function () {
-      _this16.busy = 'delete';
-      (0, _api.deleteVideo)(_this16.video.uuid).then((0, _mobx.action)(function () {
+    return function (media) {
+      _this16.mediaOverlayOpen = false;
+      if (!media || !media.url) {
+        return;
+      }
+      _this16.busy = 'poster';
+      _this16.error = null;
+      _this16.status = (0, _utils.translate)('scale_videooptimizer.uploading');
+      fetch(media.url, {
+        credentials: 'same-origin'
+      }).then(function (response) {
+        if (!response.ok) {
+          throw new Error('Could not load media (' + response.status + ')');
+        }
+        return response.blob();
+      }).then(function (blob) {
+        var type = (0, _api.posterContentType)(blob.type, media);
+        if (!type) {
+          throw new Error((0, _utils.translate)('scale_videooptimizer.poster_unsupported_type'));
+        }
+        return _this16.uploadPosterBlob(type === blob.type ? blob : new Blob([blob], {
+          type: type
+        }));
+      })["catch"]((0, _mobx.action)(function (e) {
         if (_this16._unmounted) {
           return;
         }
         _this16.busy = null;
-        _this16.confirmDelete = false;
-        if (_this16.props.onDeleted) {
-          _this16.props.onDeleted();
+        _this16.status = null;
+        _this16.error = e.message || String(e);
+      }));
+    };
+  }
+}), _descriptor26 = _applyDecoratedDescriptor(_class2.prototype, "uploadPosterBlob", [_mobx.action], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    var _this17 = this;
+    return function (blob) {
+      _this17.busy = 'poster';
+      _this17.error = null;
+      _this17.status = (0, _utils.translate)('scale_videooptimizer.uploading');
+      (0, _api.initiatePosterUpload)(_this17.video.uuid, {
+        contentType: blob.type,
+        fileSize: blob.size
+      }).then(function (data) {
+        return (0, _api.uploadPoster)(data.uploadUrl, blob).then(function () {
+          return (0, _api.completePosterUpload)(_this17.video.uuid, data.key);
+        });
+      }).then((0, _mobx.action)(function () {
+        if (_this17._unmounted) {
+          return;
+        }
+        _this17.status = (0, _utils.translate)('scale_videooptimizer.processing');
+      })).then(function () {
+        return (0, _api.pollVideo)(_this17.video.uuid, function (v) {
+          var status = v.poster && v.poster.custom_status;
+          return status === 'ready' || status === 'failed';
+        }, {
+          maxAttempts: POSTER_POLL_ATTEMPTS
+        });
+      }).then(function (video) {
+        if (video.poster && video.poster.custom_status === 'failed') {
+          throw new Error((0, _utils.translate)('scale_videooptimizer.poster_failed'));
+        }
+        // A processed custom poster normally becomes the active one on its own. Only if it did
+        // not, activate it once explicitly.
+        if ((video.poster && video.poster.source) === 'custom') {
+          return video;
+        }
+        return (0, _api.selectPoster)(_this17.video.uuid, {
+          source: 'custom'
+        }).then(function () {
+          return (0, _api.pollVideo)(_this17.video.uuid, function (v) {
+            return (v.poster && v.poster.source) === 'custom';
+          }, {
+            maxAttempts: POSTER_POLL_ATTEMPTS
+          });
+        });
+      }).then((0, _mobx.action)(function (video) {
+        if (_this17._unmounted) {
+          return;
+        }
+        _this17.busy = null;
+        _this17.status = null;
+        _this17.refresh(video);
+      }))["catch"]((0, _mobx.action)(function (e) {
+        if (_this17._unmounted) {
+          return;
+        }
+        _this17.busy = null;
+        _this17.status = null;
+        _this17.error = e.message || String(e);
+      }));
+    };
+  }
+}), _descriptor27 = _applyDecoratedDescriptor(_class2.prototype, "removeCustomPoster", [_mobx.action], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    var _this18 = this;
+    return function () {
+      _this18.busy = 'poster';
+      _this18.error = null;
+      (0, _api.deletePoster)(_this18.video.uuid).then(function () {
+        return (0, _api.pollVideo)(_this18.video.uuid, function (v) {
+          return (v.poster && v.poster.source) !== 'custom';
+        }, {
+          maxAttempts: POSTER_POLL_ATTEMPTS
+        });
+      }).then((0, _mobx.action)(function (video) {
+        if (_this18._unmounted) {
+          return;
+        }
+        _this18.busy = null;
+        _this18.refresh(video);
+      }))["catch"]((0, _mobx.action)(function (e) {
+        if (_this18._unmounted) {
+          return;
+        }
+        _this18.busy = null;
+        _this18.error = e.message || String(e);
+      }));
+    };
+  }
+}), _descriptor28 = _applyDecoratedDescriptor(_class2.prototype, "askDelete", [_mobx.action], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    var _this19 = this;
+    return function () {
+      _this19.confirmDelete = true;
+    };
+  }
+}), _descriptor29 = _applyDecoratedDescriptor(_class2.prototype, "cancelDelete", [_mobx.action], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    var _this20 = this;
+    return function () {
+      _this20.confirmDelete = false;
+    };
+  }
+}), _descriptor30 = _applyDecoratedDescriptor(_class2.prototype, "doDelete", [_mobx.action], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    var _this21 = this;
+    return function () {
+      _this21.busy = 'delete';
+      (0, _api.deleteVideo)(_this21.video.uuid).then((0, _mobx.action)(function () {
+        if (_this21._unmounted) {
+          return;
+        }
+        _this21.busy = null;
+        _this21.confirmDelete = false;
+        if (_this21.props.onDeleted) {
+          _this21.props.onDeleted();
         }
       }))["catch"]((0, _mobx.action)(function (e) {
-        if (_this16._unmounted) {
+        if (_this21._unmounted) {
           return;
         }
-        _this16.busy = null;
-        _this16.confirmDelete = false;
-        _this16.error = e.message || String(e);
+        _this21.busy = null;
+        _this21.confirmDelete = false;
+        _this21.error = e.message || String(e);
       }));
     };
   }

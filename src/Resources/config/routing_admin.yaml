@@ -21,6 +21,11 @@ scale_videooptimizer_settings_token_delete:
     methods: [DELETE]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SettingsController::deleteToken'
 
+scale_videooptimizer_settings_webhook_secret_delete:
+    path: /videooptimizer/settings/webhook-secret
+    methods: [DELETE]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SettingsController::deleteWebhookSecret'
+
 scale_videooptimizer_encodings_get:
     path: /videooptimizer/encodings
     methods: [GET]
@@ -130,3 +135,53 @@ scale_videooptimizer_video_poster_delete:
     methods: [DELETE]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::posterDelete'
     requirements: { uuid: '[0-9a-fA-F\-]+' }
+
+scale_videooptimizer_video_subtitles_list:
+    path: /videooptimizer/videos/{uuid}/subtitles
+    methods: [GET]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SubtitleController::list'
+    requirements: { uuid: '[0-9a-fA-F\-]+' }
+
+scale_videooptimizer_video_subtitles_upload:
+    path: /videooptimizer/videos/{uuid}/subtitles
+    methods: [POST]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SubtitleController::upload'
+    requirements: { uuid: '[0-9a-fA-F\-]+' }
+
+scale_videooptimizer_video_subtitles_download:
+    path: /videooptimizer/videos/{uuid}/subtitles/{language}
+    methods: [GET]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SubtitleController::download'
+    requirements: { uuid: '[0-9a-fA-F\-]+', language: '[A-Za-z0-9_\-]{1,35}' }
+
+scale_videooptimizer_video_subtitles_delete:
+    path: /videooptimizer/videos/{uuid}/subtitles/{language}
+    methods: [DELETE]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SubtitleController::delete'
+    requirements: { uuid: '[0-9a-fA-F\-]+', language: '[A-Za-z0-9_\-]{1,35}' }
+
+scale_videooptimizer_subtitle_languages_list:
+    path: /videooptimizer/subtitle-languages
+    methods: [GET]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SubtitleController::languages'
+
+scale_videooptimizer_subtitle_languages_create:
+    path: /videooptimizer/subtitle-languages
+    methods: [POST]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SubtitleController::createLanguage'
+
+scale_videooptimizer_subtitle_languages_delete:
+    path: /videooptimizer/subtitle-languages/{code}
+    methods: [DELETE]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SubtitleController::deleteLanguage'
+    requirements: { code: '[A-Za-z0-9_\-]{1,35}' }
+
+scale_videooptimizer_tags_list:
+    path: /videooptimizer/tags
+    methods: [GET]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\VideoController::tags'
+
+scale_videooptimizer_savings_get:
+    path: /videooptimizer/savings
+    methods: [GET]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SavingsController::get'

@@ -162,6 +162,175 @@ class AdminControllersTest extends TestCase
         $resolver->checkProphecyMethodsPredictions();
     }
 
+    /**
+     * @return iterable<string, array{int, string, string, string, bool}>
+     */
+    public static function upstreamAuthErrors(): iterable
+    {
+        yield '401 rejected token' => [401, 'Unauthorized', 'token_rejected', 'The VideoOptimizer API rejected the API token. Check the token under VideoOptimizer > Settings.', false];
+        yield '403 plan limit keeps the API message' => [403, 'Library limit of your plan reached.', 'token_forbidden', 'Library limit of your plan reached.', true];
+        yield '403 without message gets a hint' => [403, '', 'token_forbidden', 'The VideoOptimizer API token is not permitted to perform this action. Check the token permissions in VideoOptimizer.', false];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('upstreamAuthErrors')]
+    public function testUpstreamAuthErrorsNeverReachTheAdminAs401Or403(int $upstream, string $apiMessage, string $code, string $message, bool $upstreamText): void
+    {
+        $body = '' === $apiMessage ? '{}' : json_encode(['message' => $apiMessage], JSON_THROW_ON_ERROR);
+        $controller = new VideoController($this->client(fn () => new MockResponse($body, ['http_code' => $upstream])));
+
+        $response = $controller->get('5c0a1e6e-7d3b-4c2a-9f10-0000000000de');
+
+        // Sulu's admin treats a 401 as an expired session and would log the editor out.
+        self::assertSame(502, $response->getStatusCode());
+        $decoded = json_decode((string) $response->getContent(), true);
+        self::assertSame($code, $decoded['code']);
+        self::assertSame($message, $decoded['message']);
+        self::assertSame($upstreamText, $decoded['upstream'] ?? false);
+    }
+
+    public function testVideoListIsPagedWhenALimitOrCursorIsGiven(): void
+    {
+        $urls = [];
+        $controller = new VideoController($this->client(function (string $m, string $u) use (&$urls): MockResponse {
+            $urls[] = $u;
+
+            return new MockResponse(json_encode([
+                'data' => [['uuid' => 'a']],
+                'pagination' => ['next_cursor' => 'n1', 'has_more' => true],
+            ], JSON_THROW_ON_ERROR));
+        }));
+
+        $response = $controller->list(new Request(['library_id' => 'lib', 'limit' => '60', 'cursor' => 'c0', 'tags' => 'promo']));
+
+        self::assertSame(
+            ['_embedded' => ['videos' => [['uuid' => 'a']]], 'next_cursor' => 'n1', 'has_more' => true],
+            json_decode((string) $response->getContent(), true),
+        );
+        self::assertCount(1, $urls);
+        self::assertStringContainsString('cursor=c0', $urls[0]);
+        self::assertStringContainsString('tags=promo', $urls[0]);
+    }
+
+    public function testVideoListWithoutPagingParametersStillReturnsEveryVideo(): void
+    {
+        $calls = 0;
+        $controller = new VideoController($this->client(function () use (&$calls): MockResponse {
+            ++$calls;
+
+            return new MockResponse(json_encode([
+                'data' => [['uuid' => 'v' . $calls]],
+                'pagination' => ['next_cursor' => 1 === $calls ? 'n' : null, 'has_more' => 1 === $calls],
+            ], JSON_THROW_ON_ERROR));
+        }));
+
+        $decoded = json_decode((string) $controller->list(new Request())->getContent(), true);
+
+        self::assertSame([['uuid' => 'v1'], ['uuid' => 'v2']], $decoded['_embedded']['videos']);
+        self::assertArrayNotHasKey('has_more', $decoded);
+    }
+
+    public function testTagsAreListedForTheFilterAndTheEditor(): void
+    {
+        $controller = new VideoController($this->client(fn () => new MockResponse(json_encode(['data' => [['name' => 'promo', 'video_count' => 3], 'junk']], JSON_THROW_ON_ERROR))));
+
+        self::assertSame(
+            ['_embedded' => ['tags' => [['name' => 'promo', 'video_count' => 3]]]],
+            json_decode((string) $controller->tags()->getContent(), true),
+        );
+    }
+
+    public function testPatchForwardsTagsAndMetadata(): void
+    {
+        $bodies = [];
+        $controller = new VideoController($this->client(function (string $m, string $u, array $o) use (&$bodies): MockResponse {
+            $bodies[] = json_decode((string) $o['body'], true);
+
+            return new MockResponse('{"data":{}}');
+        }));
+
+        $response = $controller->patch(new Request(content: json_encode([
+            'title' => 'T', 'tags' => [' Promo ', 'promo', '', '2026'], 'metadata' => ['cms_id' => '42', 'old_key' => null],
+        ], JSON_THROW_ON_ERROR)), '5c0a1e6e-7d3b-4c2a-9f10-0000000000de');
+        $controller->patch(new Request(content: '{"metadata":null,"tags":[]}'), '5c0a1e6e-7d3b-4c2a-9f10-0000000000de');
+        $controller->patch(new Request(content: '{"title":"Only","metadata":{}}'), '5c0a1e6e-7d3b-4c2a-9f10-0000000000de');
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame(['title' => 'T', 'tags' => ['Promo', '2026'], 'metadata' => ['cms_id' => '42', 'old_key' => null]], $bodies[0]);
+        self::assertSame(['metadata' => null, 'tags' => []], $bodies[1]);
+        self::assertSame(['title' => 'Only'], $bodies[2], 'An empty metadata object changes nothing and must not be sent as a list.');
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function invalidPatches(): iterable
+    {
+        yield 'tags not a list' => ['{"tags":"promo"}'];
+        yield 'tag with a comma' => ['{"tags":["a,b"]}'];
+        yield 'tag too long' => ['{"tags":["' . str_repeat('a', 51) . '"]}'];
+        yield 'too many tags' => ['{"tags":[' . implode(',', array_map(static fn (int $i): string => '"t' . $i . '"', range(1, 21))) . ']}'];
+        yield 'metadata not an object' => ['{"metadata":"x"}'];
+        yield 'metadata key upper case' => ['{"metadata":{"CmsId":"1"}}'];
+        yield 'metadata value too long' => ['{"metadata":{"k":"' . str_repeat('v', 65) . '"}}'];
+        yield 'metadata value not a string' => ['{"metadata":{"k":5}}'];
+        yield 'too many metadata keys' => ['{"metadata":{' . implode(',', array_map(static fn (int $i): string => '"k' . $i . '":"v"', range(1, 11))) . '}}'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidPatches')]
+    public function testPatchRejectsInvalidTagsAndMetadataWithoutCallingTheApi(string $body): void
+    {
+        $calls = 0;
+        $controller = new VideoController($this->client(function () use (&$calls): MockResponse {
+            ++$calls;
+
+            return new MockResponse('{}');
+        }));
+
+        self::assertSame(400, $controller->patch(new Request(content: $body), '5c0a1e6e-7d3b-4c2a-9f10-0000000000de')->getStatusCode());
+        self::assertSame(0, $calls);
+    }
+
+    public function testMetadataKeyLimitCountsOnlyEntriesThatRemain(): void
+    {
+        $controller = new VideoController($this->client(fn () => new MockResponse('{"data":{}}')));
+        $metadata = [];
+        for ($i = 1; $i <= 10; ++$i) {
+            $metadata['k' . $i] = 'v';
+        }
+        for ($i = 1; $i <= 5; ++$i) {
+            $metadata['old' . $i] = null;
+        }
+
+        $response = $controller->patch(new Request(content: json_encode(['metadata' => $metadata], JSON_THROW_ON_ERROR)), '5c0a1e6e-7d3b-4c2a-9f10-0000000000de');
+
+        self::assertSame(200, $response->getStatusCode(), 'Removals do not count towards the 10 keys.');
+    }
+
+    public function testUnreachableApiIsReportedAs502WithACode(): void
+    {
+        $controller = new LibraryController($this->client(fn () => new MockResponse('', ['error' => 'timeout'])));
+
+        $response = $controller->cget();
+
+        self::assertSame(502, $response->getStatusCode());
+        self::assertSame('unreachable', json_decode((string) $response->getContent(), true)['code']);
+    }
+
+    public function testConnectionTestExplainsARejectedToken(): void
+    {
+        $settings = $this->prophesize(SettingsManager::class);
+        $controller = new \Scale\VideoOptimizerBundle\Controller\Admin\SettingsController(
+            $settings->reveal(),
+            $this->client(fn () => new MockResponse('{}', ['http_code' => 401])),
+        );
+
+        $decoded = json_decode((string) $controller->test()->getContent(), true);
+
+        self::assertFalse($decoded['ok']);
+        self::assertSame('token_rejected', $decoded['code']);
+        self::assertStringContainsString('rejected the API token', $decoded['message']);
+    }
+
     private function client(callable $callback): VideoOptimizerClient
     {
         $settings = $this->prophesize(SettingsManager::class);

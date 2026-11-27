@@ -1,0 +1,6 @@
+# Public website routes of the VideoOptimizer bundle (imported by scale:videooptimizer:install into the website kernel).
+
+scale_videooptimizer_webhook:
+    path: /_videooptimizer/webhook
+    methods: [POST]
+    controller: 'Scale\VideoOptimizerBundle\Controller\WebhookController'

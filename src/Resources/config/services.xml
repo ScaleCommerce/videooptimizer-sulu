@@ -63,6 +63,7 @@
             <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
             <argument type="service" id="scale_video_optimizer.cache"/>
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\EmbedRenderState"/>
+            <argument type="service" id="sulu_http_cache.reference_store" on-invalid="null"/>
         </service>
 
         <!-- Runs late so it sees the lifetime Sulu's cache-lifetime enhancer already set. -->
@@ -89,10 +90,32 @@
         <service id="Scale\VideoOptimizerBundle\Controller\Admin\SettingsController" public="true">
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\SettingsManager"/>
             <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
+            <argument type="service" id="scale_video_optimizer.cache"/>
+            <tag name="controller.service_arguments"/>
+        </service>
+
+        <!-- Public webhook receiver (website kernel, route from routing_website.yaml) -->
+        <service id="Scale\VideoOptimizerBundle\Controller\WebhookController" public="true">
+            <argument type="service" id="Scale\VideoOptimizerBundle\Service\SettingsManager"/>
+            <argument type="service" id="Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver"/>
+            <argument type="service" id="scale_video_optimizer.cache"/>
+            <argument type="service" id="sulu_http_cache.cache_manager" on-invalid="null"/>
+            <argument type="service" id="logger" on-invalid="null"/>
             <tag name="controller.service_arguments"/>
         </service>
 
         <service id="Scale\VideoOptimizerBundle\Controller\Admin\LibraryController" public="true">
+            <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
+            <argument type="service" id="Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver"/>
+            <tag name="controller.service_arguments"/>
+        </service>
+
+        <service id="Scale\VideoOptimizerBundle\Controller\Admin\SavingsController" public="true">
+            <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
+            <tag name="controller.service_arguments"/>
+        </service>
+
+        <service id="Scale\VideoOptimizerBundle\Controller\Admin\SubtitleController" public="true">
             <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver"/>
             <tag name="controller.service_arguments"/>

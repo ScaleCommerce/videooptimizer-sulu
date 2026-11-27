@@ -26,6 +26,24 @@ class VideoController
         $libraryId = $request->query->get('library_id');
         $libraryId = \is_string($libraryId) && '' !== $libraryId ? $libraryId : null;
 
+        // Paged mode ("load more"): the admin sends limit and/or cursor and gets one page plus the next
+        // cursor. Without them every video is returned, as before.
+        if ($request->query->has('limit') || $request->query->has('cursor')) {
+            $cursor = $request->query->get('cursor');
+            $tags = $request->query->get('tags');
+
+            return $this->guard(function () use ($libraryId, $cursor, $tags, $request) {
+                $page = $this->client->listVideosPage(
+                    $libraryId,
+                    \is_string($cursor) ? $cursor : null,
+                    $request->query->getInt('limit', 60),
+                    \is_string($tags) ? $tags : null,
+                );
+
+                return new JsonResponse(['_embedded' => ['videos' => $page['videos']], 'next_cursor' => $page['next_cursor'], 'has_more' => $page['has_more']]);
+            });
+        }
+
         return $this->guard(fn () => new JsonResponse(['_embedded' => ['videos' => $this->client->listAllVideos($libraryId)]]));
     }
 
@@ -64,9 +82,20 @@ class VideoController
         return $this->guard(fn () => new JsonResponse($this->client->ingestVideoUrl($payload)));
     }
 
+    public function tags(): JsonResponse
+    {
+        return $this->guard(fn () => new JsonResponse(['_embedded' => ['tags' => $this->client->listTags()]]));
+    }
+
     public function patch(Request $request, string $uuid): JsonResponse
     {
-        return $this->guard(fn () => new JsonResponse($this->forgetAfter($uuid, $this->client->updateVideo($uuid, $this->decodeJson($request)))));
+        $payload = $this->decodeJson($request);
+        $invalid = $this->normalizeTagsAndMetadata($payload);
+        if (null !== $invalid) {
+            return new JsonResponse(['message' => $invalid], 400);
+        }
+
+        return $this->guard(fn () => new JsonResponse($this->forgetAfter($uuid, $this->client->updateVideo($uuid, $payload))));
     }
 
     public function delete(string $uuid): JsonResponse
@@ -140,6 +169,70 @@ class VideoController
     }
 
     /**
+     * Validates and normalizes `tags` (replaces the set: trimmed, no empties, case-insensitive unique, max. 20
+     * of 1-50 characters without commas) and `metadata` (max. 10 keys of `a-z0-9_.-`, string values of 1-64
+     * characters, null removes a key) the way the API demands, so editors get a clear 400 instead of a vague one.
+     *
+     * @param array<string, mixed> $payload
+     *
+     * @return string|null the error message, null when valid
+     */
+    private function normalizeTagsAndMetadata(array &$payload): ?string
+    {
+        if (\array_key_exists('tags', $payload)) {
+            if (!\is_array($payload['tags'])) {
+                return 'tags must be a list of names.';
+            }
+            $tags = [];
+            $seen = [];
+            foreach ($payload['tags'] as $tag) {
+                if (!\is_string($tag)) {
+                    return 'tags must be a list of names.';
+                }
+                $tag = trim($tag);
+                if ('' === $tag || isset($seen[mb_strtolower($tag)])) {
+                    continue;
+                }
+                if (mb_strlen($tag) > 50 || str_contains($tag, ',')) {
+                    return 'A tag has 1-50 characters and no comma.';
+                }
+                $seen[mb_strtolower($tag)] = true;
+                $tags[] = $tag;
+            }
+            if (\count($tags) > 20) {
+                return 'A video can have at most 20 tags.';
+            }
+            $payload['tags'] = $tags;
+        }
+
+        if (\array_key_exists('metadata', $payload) && [] === $payload['metadata']) {
+            // `{}` decodes to an empty array: nothing to change (and an empty array would be sent as a list).
+            unset($payload['metadata']);
+        }
+        if (\array_key_exists('metadata', $payload) && null !== $payload['metadata']) {
+            if (!\is_array($payload['metadata']) || array_is_list($payload['metadata']) && [] !== $payload['metadata']) {
+                return 'metadata must be an object.';
+            }
+            if (\count(array_filter($payload['metadata'], static fn ($value): bool => null !== $value)) > 10) {
+                return 'A video can have at most 10 metadata entries.';
+            }
+            foreach ($payload['metadata'] as $key => $value) {
+                if (1 !== preg_match('/^[a-z0-9][a-z0-9_.-]{0,39}$/', (string) $key)) {
+                    return 'A metadata key has 1-40 characters of a-z, 0-9, _, . and -.';
+                }
+                if (null === $value) {
+                    continue;
+                }
+                if (!\is_string($value) || '' !== $value && (mb_strlen(trim($value)) < 1 || mb_strlen($value) > 64 || 1 === preg_match('/[\x00-\x1F\x7F]/', $value))) {
+                    return 'A metadata value has 1-64 characters.';
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function decodeJson(Request $request): array
@@ -181,12 +274,7 @@ class VideoController
         try {
             return $callback();
         } catch (VideoOptimizerException $e) {
-            $body = ['message' => $e->getMessage()];
-            if (null !== $e->getApiCode()) {
-                $body['code'] = $e->getApiCode();
-            }
-
-            return new JsonResponse($body, $e->getStatusCode() ?: 502);
+            return ApiErrorResponse::create($e);
         }
     }
 }

@@ -7,15 +7,44 @@ const BASE = '/admin/api/videooptimizer';
 // Requester rejects with the raw Response object on non-2xx. Convert that into a
 // proper Error carrying the server's { message } and HTTP status, so views can show a
 // readable text and branch on "not configured" (428) vs "routes missing" (404).
-function toError(message, status, code) {
+function toError(message, status, code, upstream) {
     const error = new Error(message);
     error.status = status || null;
     error.code = code || null;
+    error.upstream = !!upstream;
 
     return error;
 }
 
-function messageForStatus(status, serverMessage) {
+// The proxy answers upstream auth problems and outages with a 502 and a code (never 401/403, which
+// would log the editor out of Sulu). Show those in the editor's language; a 403 keeps the API's own
+// text when it sent one (plan limit, trial restriction, suspended organization).
+function messageForCode(code, serverMessage, upstream) {
+    if ('token_rejected' === code) {
+        return translate('scale_videooptimizer.error_token_rejected');
+    }
+    if ('token_forbidden' === code) {
+        return upstream && serverMessage ? serverMessage : translate('scale_videooptimizer.error_token_forbidden');
+    }
+    if ('webhook_table_missing' === code) {
+        return translate('scale_videooptimizer.error_webhook_table_missing');
+    }
+    if ('subtitle_language_in_use' === code) {
+        return translate('scale_videooptimizer.error_subtitle_language_in_use');
+    }
+    if ('unreachable' === code) {
+        return translate('scale_videooptimizer.error_unreachable');
+    }
+
+    return null;
+}
+
+function messageForStatus(status, serverMessage, code, upstream) {
+    const byCode = messageForCode(code, serverMessage, upstream);
+    if (byCode) {
+        return byCode;
+    }
+
     if (404 === status) {
         // The proxy routes are not registered — a missing installation step, not a runtime failure.
         return 'The VideoOptimizer admin API is not reachable (404). Import its routes in '
@@ -32,7 +61,7 @@ function normalize(promise) {
 
             return rejection.json().then(
                 (data) => {
-                    throw toError(messageForStatus(status, data && data.message), status, data && data.code);
+                    throw toError(messageForStatus(status, data && data.message, data && data.code, data && data.upstream), status, data && data.code, data && data.upstream);
                 },
                 () => {
                     throw toError(messageForStatus(status, null), status);
@@ -79,6 +108,11 @@ export function clearToken() {
     return normalize(Requester.delete(BASE + '/settings/token'));
 }
 
+// Removes the stored webhook signing secret (the receiver then answers 503 again).
+export function clearWebhookSecret() {
+    return normalize(Requester.delete(BASE + '/settings/webhook-secret'));
+}
+
 export function getLibraries() {
     return normalize(Requester.get(BASE + '/libraries')).then((response) => response._embedded.libraries || []);
 }
@@ -117,6 +151,107 @@ export function getAllVideos() {
         .then((response) => response._embedded.videos || []);
 }
 
+// One page of the video list for "Load more": {videos, nextCursor, hasMore}. Optional filters: library, tags
+// (comma-separated, videos must carry all of them).
+export function getVideoPage({libraryId, tags, cursor, limit}: Object = {}) {
+    const query = ['limit=' + encodeURIComponent(String(limit || 60))];
+    if (libraryId) {
+        query.push('library_id=' + encodeURIComponent(libraryId));
+    }
+    if (cursor) {
+        query.push('cursor=' + encodeURIComponent(cursor));
+    }
+    if (tags) {
+        query.push('tags=' + encodeURIComponent(tags));
+    }
+
+    return normalize(Requester.get(BASE + '/videos?' + query.join('&'))).then((response) => ({
+        videos: (response._embedded && response._embedded.videos) || [],
+        nextCursor: response.next_cursor || null,
+        hasMore: !!response.has_more && !!response.next_cursor,
+    }));
+}
+
+// Savings compared to serving the original files: {traffic_available, compression, range, all_time}.
+// Optional {from, to} (YYYY-MM-DD, UTC), libraryId, videoUuid.
+export function getSavings({from, to, libraryId, videoUuid}: Object = {}) {
+    const query = [];
+    if (from && to) {
+        query.push('from=' + encodeURIComponent(from), 'to=' + encodeURIComponent(to));
+    }
+    if (libraryId) {
+        query.push('library_id=' + encodeURIComponent(libraryId));
+    }
+    if (videoUuid) {
+        query.push('video_uuid=' + encodeURIComponent(videoUuid));
+    }
+
+    return normalize(Requester.get(BASE + '/savings' + (query.length > 0 ? '?' + query.join('&') : '')));
+}
+
+// The organization's tags with their video counts, alphabetically: [{name, video_count}].
+export function getTags() {
+    return normalize(Requester.get(BASE + '/tags')).then((response) => (response._embedded && response._embedded.tags) || []);
+}
+
+// ---- Subtitles -------------------------------------------------------------------------------------
+
+// The API refuses subtitle files above 2 MB.
+export const SUBTITLE_MAX_BYTES = 2 * 1024 * 1024;
+
+export function getSubtitles(uuid: string) {
+    return normalize(Requester.get(BASE + '/videos/' + encodeURIComponent(uuid) + '/subtitles'))
+        .then((response) => (response._embedded && response._embedded.subtitles) || []);
+}
+
+// Reads a File/Blob as base64 (no data: prefix) — the proxy takes JSON, not multipart.
+export function fileToBase64(file: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = String(reader.result || '');
+            resolve(result.slice(result.indexOf(',') + 1));
+        };
+        reader.onerror = () => reject(reader.error || new Error('Could not read the file.'));
+        reader.readAsDataURL(file);
+    });
+}
+
+// Uploads an .srt/.vtt file for one of the organization's subtitle languages; replaces an existing one.
+export function uploadSubtitle(uuid: string, {file, language, kind, isDefault}: Object) {
+    if (file.size > SUBTITLE_MAX_BYTES) {
+        return Promise.reject(toError(translate('scale_videooptimizer.subtitle_too_large'), 413, 'subtitle_too_large'));
+    }
+
+    return fileToBase64(file).then((contentBase64) => normalize(Requester.post(
+        BASE + '/videos/' + encodeURIComponent(uuid) + '/subtitles',
+        // kind and isDefault are only sent when set: omitted values keep the existing track's settings.
+        Object.assign({language, filename: file.name, contentBase64}, kind ? {kind} : {}, typeof isDefault === 'boolean' ? {isDefault} : {})
+    )));
+}
+
+export function deleteSubtitle(uuid: string, language: string) {
+    return normalize(Requester.delete(BASE + '/videos/' + encodeURIComponent(uuid) + '/subtitles/' + encodeURIComponent(language)));
+}
+
+// Same-origin download link of the stored WebVTT file (the admin session authorizes it).
+export function subtitleDownloadUrl(uuid: string, language: string): string {
+    return BASE + '/videos/' + encodeURIComponent(uuid) + '/subtitles/' + encodeURIComponent(language);
+}
+
+export function getSubtitleLanguages() {
+    return normalize(Requester.get(BASE + '/subtitle-languages'))
+        .then((response) => (response._embedded && response._embedded.languages) || []);
+}
+
+export function createSubtitleLanguage(code: string, label: ?string) {
+    return normalize(Requester.post(BASE + '/subtitle-languages', {code, label: label || undefined}));
+}
+
+export function deleteSubtitleLanguage(code: string) {
+    return normalize(Requester.delete(BASE + '/subtitle-languages/' + encodeURIComponent(code)));
+}
+
 export function getVideo(uuid: string) {
     return normalize(Requester.get(BASE + '/videos/' + encodeURIComponent(uuid)));
 }
@@ -142,10 +277,50 @@ export function isAbortError(error: ?Object): boolean {
     return !!error && error.name === 'AbortError';
 }
 
+const PART_ATTEMPTS = 3;
+
+function wait(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// PUTs one part, retrying network errors and non-2xx answers with backoff (1 s, 2 s). A missing ETag is
+// a bucket CORS problem and an aborted upload was cancelled on purpose: neither is retried.
+function putPart(url: string, blob: Blob, signal: ?AbortSignal, attempt: number = 1) {
+    return fetch(url, signal ? {method: 'PUT', body: blob, signal} : {method: 'PUT', body: blob})
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error('Part upload failed (' + response.status + ')');
+            }
+            const etag = response.headers.get('ETag');
+            if (!etag) {
+                const error = new Error('Missing ETag on uploaded part — check bucket CORS (expose ETag).');
+                error.noRetry = true;
+                throw error;
+            }
+
+            return etag;
+        })
+        .catch((error) => {
+            if ((signal && signal.aborted) || error.noRetry || attempt >= PART_ATTEMPTS) {
+                throw error;
+            }
+
+            return wait(1000 * Math.pow(2, attempt - 1)).then(() => {
+                if (signal && signal.aborted) {
+                    throw abortError();
+                }
+
+                return putPart(url, blob, signal, attempt + 1);
+            });
+        });
+}
+
 // PUTs each file part to its presigned URL and collects the ETags the complete step needs.
-// Cross-origin, so no credentials; the bucket must expose ETag via CORS.
-// An optional AbortSignal stops the chain (in-flight PUT and remaining parts) with an AbortError.
-export function uploadParts(file: File, parts: Array<Object>, partSize: number, signal: ?AbortSignal) {
+// Cross-origin, so no credentials; the bucket must expose ETag via CORS. Every part is retried up to
+// three times; onProgress(finishedParts, totalParts) follows each finished part. An optional AbortSignal
+// stops the chain (in-flight PUT and remaining parts) with an AbortError. The API has no endpoint to
+// abort a multipart upload: storage removes incomplete uploads through its lifecycle rule.
+export function uploadParts(file: File, parts: Array<Object>, partSize: number, signal: ?AbortSignal, onProgress: ?(done: number, total: number) => void) {
     if (signal && signal.aborted) {
         return Promise.reject(abortError());
     }
@@ -158,15 +333,11 @@ export function uploadParts(file: File, parts: Array<Object>, partSize: number, 
             const start = (part.partNumber - 1) * partSize;
             const blob = file.slice(start, start + partSize);
 
-            return fetch(part.url, signal ? {method: 'PUT', body: blob, signal} : {method: 'PUT', body: blob}).then((response) => {
-                if (!response.ok) {
-                    throw new Error('Part upload failed (' + response.status + ')');
-                }
-                const etag = response.headers.get('ETag');
-                if (!etag) {
-                    throw new Error('Missing ETag on uploaded part — check bucket CORS (expose ETag).');
-                }
+            return putPart(part.url, blob, signal).then((etag) => {
                 etags.push({partNumber: part.partNumber, etag});
+                if (onProgress) {
+                    onProgress(etags.length, parts.length);
+                }
 
                 return etags;
             });

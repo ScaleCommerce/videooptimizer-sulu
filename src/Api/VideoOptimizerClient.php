@@ -111,11 +111,176 @@ class VideoOptimizerClient
     }
 
     /**
+     * Fetches ONE page of the org-wide video list (newest first) for the admin's "load more" paging.
+     *
+     * @param string|null $tags comma-separated tag names: only videos carrying all of them
+     *
+     * @return array{videos: array<int, array<string, mixed>>, next_cursor: ?string, has_more: bool}
+     */
+    public function listVideosPage(?string $libraryId, ?string $cursor, int $limit, ?string $tags = null): array
+    {
+        $query = ['limit' => max(1, min($limit, self::PAGE_LIMIT))];
+        if (null !== $libraryId && '' !== $libraryId) {
+            $query['library_id'] = $libraryId;
+        }
+        if (null !== $cursor && '' !== $cursor) {
+            $query['cursor'] = $cursor;
+        }
+        if (null !== $tags && '' !== trim($tags)) {
+            $query['tags'] = trim($tags);
+        }
+
+        $response = $this->request('GET', '/videos', ['query' => $query]);
+
+        $videos = [];
+        foreach (\is_array($response['data'] ?? null) ? $response['data'] : [] as $item) {
+            if (\is_array($item)) {
+                /** @var array<string, mixed> $item */
+                $videos[] = $item;
+            }
+        }
+        $pagination = \is_array($response['pagination'] ?? null) ? $response['pagination'] : [];
+        $next = \is_string($pagination['next_cursor'] ?? null) && '' !== $pagination['next_cursor'] ? $pagination['next_cursor'] : null;
+
+        return ['videos' => $videos, 'next_cursor' => $next, 'has_more' => true === ($pagination['has_more'] ?? false) && null !== $next];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function getVideo(string $uuid): array
     {
         return $this->requestData('GET', '/videos/' . rawurlencode($uuid));
+    }
+
+    /**
+     * What VideoOptimizer saves compared to serving the original files: file-size reduction of the encoded
+     * versions plus (when traffic data exists) the estimated bandwidth saved, for an optional date range
+     * and since the beginning. Covers the organization, or one library or video.
+     *
+     * @param string|null $from first UTC day of the range (YYYY-MM-DD), together with $to
+     * @param string|null $to   last UTC day of the range, inclusive
+     *
+     * @return array<string, mixed> {traffic_available, compression, range, all_time}
+     */
+    public function getSavings(?string $from = null, ?string $to = null, ?string $libraryId = null, ?string $videoUuid = null): array
+    {
+        $query = [];
+        foreach (['from' => $from, 'to' => $to] as $name => $date) {
+            if (null !== $date && '' !== $date) {
+                if (1 !== preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                    throw new VideoOptimizerException('"' . $name . '" must be a date like 2026-11-30.', 400);
+                }
+                $query[$name] = $date;
+            }
+        }
+        foreach (['library_id' => $libraryId, 'video_uuid' => $videoUuid] as $name => $id) {
+            if (null !== $id && '' !== $id) {
+                if (1 !== preg_match('/^[A-Za-z0-9-]{1,64}$/', $id)) {
+                    throw new VideoOptimizerException('"' . $name . '" is not a valid ID.', 400);
+                }
+                $query[$name] = $id;
+            }
+        }
+
+        return $this->requestData('GET', '/savings', [] === $query ? [] : ['query' => $query]);
+    }
+
+    /**
+     * The organization's tags with the number of videos carrying them, alphabetically.
+     *
+     * @return array<int, array{name?: string, video_count?: int}>
+     */
+    public function listTags(): array
+    {
+        /** @var array<int, array{name?: string, video_count?: int}> $tags */
+        $tags = $this->listOf($this->requestData('GET', '/tags'));
+
+        return $tags;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>> one entry per language: {language, label, kind, is_default, cue_count, source_format, origin, updated_at}
+     */
+    public function listSubtitles(string $uuid): array
+    {
+        return $this->listOf($this->requestData('GET', '/videos/' . rawurlencode($uuid) . '/subtitles'));
+    }
+
+    /**
+     * Uploads or replaces the subtitle of one language (SRT or WebVTT, max. 2 MB). The file is sent as a
+     * multipart form; the language must be one of the organization's subtitle languages.
+     *
+     * @return array<string, mixed> {subtitle, skipped_cues}
+     */
+    public function uploadSubtitle(string $uuid, string $filename, string $content, string $language, ?string $kind = null, ?bool $isDefault = null): array
+    {
+        $fields = ['language' => self::assertLanguageCode($language)];
+        if (\in_array($kind, ['subtitles', 'captions'], true)) {
+            $fields['kind'] = $kind;
+        }
+        if (null !== $isDefault) {
+            $fields['is_default'] = $isDefault ? 'true' : 'false';
+        }
+
+        $boundary = 'vo' . bin2hex(random_bytes(16));
+        $body = '';
+        foreach ($fields as $name => $value) {
+            $body .= '--' . $boundary . "\r\nContent-Disposition: form-data; name=\"" . $name . "\"\r\n\r\n" . $value . "\r\n";
+        }
+        // Whitelist the filename: it ends up inside a header line.
+        $safeName = trim((string) preg_replace('/[^A-Za-z0-9._ -]+/', '_', $filename));
+        $body .= '--' . $boundary . "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"" . ('' === $safeName ? 'subtitle.vtt' : $safeName) . "\"\r\nContent-Type: application/octet-stream\r\n\r\n" . $content . "\r\n";
+        $body .= '--' . $boundary . "--\r\n";
+
+        return $this->requestData('POST', '/videos/' . rawurlencode($uuid) . '/subtitles', [
+            'headers' => ['Content-Type' => 'multipart/form-data; boundary=' . $boundary],
+            'body' => $body,
+        ]);
+    }
+
+    /**
+     * The stored WebVTT file (SRT uploads come back converted).
+     */
+    public function downloadSubtitle(string $uuid, string $language): string
+    {
+        return $this->requestRaw('GET', '/videos/' . rawurlencode($uuid) . '/subtitles/' . rawurlencode(self::assertLanguageCode($language)));
+    }
+
+    public function deleteSubtitle(string $uuid, string $language): void
+    {
+        $this->request('DELETE', '/videos/' . rawurlencode($uuid) . '/subtitles/' . rawurlencode(self::assertLanguageCode($language)));
+    }
+
+    /**
+     * The organization's subtitle languages, in player order: {code, label, video_count}.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listSubtitleLanguages(): array
+    {
+        return $this->listOf($this->requestData('GET', '/subtitle-languages'));
+    }
+
+    /**
+     * @return array<string, mixed> {code, label}
+     */
+    public function createSubtitleLanguage(string $code, ?string $label = null): array
+    {
+        $payload = ['code' => self::assertLanguageCode($code)];
+        if (null !== $label && '' !== trim($label)) {
+            $payload['label'] = trim($label);
+        }
+
+        return $this->requestData('POST', '/subtitle-languages', ['json' => $payload]);
+    }
+
+    /**
+     * Refused with 409 `subtitle_language_in_use` while videos still carry subtitles in the language.
+     */
+    public function deleteSubtitleLanguage(string $code): void
+    {
+        $this->request('DELETE', '/subtitle-languages/' . rawurlencode(self::assertLanguageCode($code)));
     }
 
     /**
@@ -127,7 +292,7 @@ class VideoOptimizerClient
     {
         // Runs during page rendering: cap the request so a slow/hanging upstream falls back fast
         // to the poster / default frame instead of blocking the response.
-        return $this->requestData('GET', '/embed/' . rawurlencode($uuid), ['max_duration' => 3.0]);
+        return $this->requestData('GET', '/embed/' . rawurlencode($uuid), ['max_duration' => 3.0], false);
     }
 
     /**
@@ -156,7 +321,7 @@ class VideoOptimizerClient
     }
 
     /**
-     * @param array<string, mixed> $payload expects title and/or option{responsive,autoplay,preload,loop,muted}
+     * @param array<string, mixed> $payload expects title, option{responsive,autoplay,preload,loop,muted}, tags (replaces the set) and/or metadata (merged, null removes a key)
      *
      * @return array<string, mixed>
      */
@@ -284,9 +449,9 @@ class VideoOptimizerClient
      *
      * @return array<string, mixed>
      */
-    private function requestData(string $method, string $path, array $options = []): array
+    private function requestData(string $method, string $path, array $options = [], bool $retryOnRateLimit = true): array
     {
-        $response = $this->request($method, $path, $options);
+        $response = $this->request($method, $path, $options, $retryOnRateLimit);
         $payload = $response['data'] ?? null;
         if (!\is_array($payload)) {
             return [];
@@ -297,11 +462,79 @@ class VideoOptimizerClient
     }
 
     /**
+     * Keeps only the object entries of a `{ data: [...] }` list payload.
+     *
+     * @param array<mixed> $data
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function listOf(array $data): array
+    {
+        $items = [];
+        foreach ($data as $item) {
+            if (\is_array($item)) {
+                /** @var array<string, mixed> $item */
+                $items[] = $item;
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * BCP 47 tag as used in the subtitle endpoints (e.g. `de`, `en-US`, `de-x-simple`).
+     */
+    private static function assertLanguageCode(string $code): string
+    {
+        if (1 !== preg_match('/^[A-Za-z0-9_-]{1,35}$/', $code)) {
+            throw new VideoOptimizerException('Invalid subtitle language code.', 400);
+        }
+
+        return $code;
+    }
+
+    /**
      * @param array<string, mixed> $options
+     * @param bool                 $retryOnRateLimit wait for Retry-After once on a 429; off while rendering pages, where a sleep would hold the response open
      *
      * @return array<string, mixed>
      */
-    private function request(string $method, string $path, array $options = []): array
+    private function request(string $method, string $path, array $options = [], bool $retryOnRateLimit = true): array
+    {
+        [$status, $content] = $this->execute($method, $path, $options, $retryOnRateLimit);
+        $decoded = $this->decode($content);
+
+        if ($status >= 400) {
+            throw $this->failure($status, $decoded);
+        }
+
+        return $decoded;
+    }
+
+    /**
+     * Like request() for endpoints that answer with a file instead of JSON (e.g. a WebVTT download).
+     *
+     * @param array<string, mixed> $options
+     */
+    private function requestRaw(string $method, string $path, array $options = []): string
+    {
+        [$status, $content] = $this->execute($method, $path, $options, true);
+        if ($status >= 400) {
+            throw $this->failure($status, $this->decode($content));
+        }
+
+        return $content;
+    }
+
+    /**
+     * Sends the request with token, User-Agent and base URL checks; retries a 429 once. Redirects
+     * are not followed and reported as an error, so the token never leaves the configured host.
+     *
+     * @param array<string, mixed> $options
+     *
+     * @return array{0: int, 1: string} status and raw body
+     */
+    private function execute(string $method, string $path, array $options, bool $retryOnRateLimit): array
     {
         $token = $this->settingsManager->getApiToken();
         if (null === $token) {
@@ -338,11 +571,14 @@ class VideoOptimizerClient
                 $status = $response->getStatusCode();
                 $content = $response->getContent(false);
             } catch (\Throwable $e) {
-                throw new VideoOptimizerException('Could not reach VideoOptimizer: ' . $e->getMessage(), 0, $e);
+                // The transport message names the full upstream URL: log it, show a neutral text.
+                $this->logger?->warning('VideoOptimizer API could not be reached.', ['method' => $method, 'url' => $url, 'error' => $e->getMessage()]);
+
+                throw new VideoOptimizerException('The VideoOptimizer API could not be reached or did not respond in time.', 502, $e, 'unreachable');
             }
 
             // Respect Retry-After once on a rate-limited request; paginated loops can trip the limit.
-            if (429 === $status && 0 === $attempt) {
+            if (429 === $status && 0 === $attempt && $retryOnRateLimit) {
                 sleep($this->retryAfterSeconds($response));
 
                 continue;
@@ -351,33 +587,44 @@ class VideoOptimizerClient
             break;
         }
 
-        $decoded = '' === $content ? [] : json_decode($content, true);
-        if (!\is_array($decoded)) {
-            $decoded = [];
-        }
-        /** @var array<string, mixed> $decoded */
-
         if ($status >= 300 && $status < 400) {
-            // Redirects are not followed (the token must stay on the configured host).
             throw new VideoOptimizerException('VideoOptimizer returned an unexpected redirect (HTTP ' . $status . '); check the configured API base URL.', $status);
         }
 
-        if ($status >= 400) {
-            $message = 'VideoOptimizer request failed.';
-            foreach (['message', 'statusMessage'] as $key) {
-                if (\is_string($decoded[$key] ?? null) && '' !== $decoded[$key]) {
-                    $message = $decoded[$key];
+        return [$status, $content];
+    }
 
-                    break;
-                }
-            }
-            $data = $decoded['data'] ?? null;
-            $apiCode = \is_array($data) && \is_string($data['code'] ?? null) && '' !== $data['code'] ? $data['code'] : null;
-
-            throw new VideoOptimizerException($message, $status, null, $apiCode);
+    /**
+     * @return array<string, mixed>
+     */
+    private function decode(string $content): array
+    {
+        $decoded = '' === $content ? [] : json_decode($content, true);
+        if (!\is_array($decoded)) {
+            return [];
         }
 
+        /** @var array<string, mixed> $decoded */
         return $decoded;
+    }
+
+    /**
+     * @param array<string, mixed> $decoded
+     */
+    private function failure(int $status, array $decoded): VideoOptimizerException
+    {
+        $message = 'VideoOptimizer request failed.';
+        foreach (['message', 'statusMessage'] as $key) {
+            if (\is_string($decoded[$key] ?? null) && '' !== $decoded[$key]) {
+                $message = $decoded[$key];
+
+                break;
+            }
+        }
+        $data = $decoded['data'] ?? null;
+        $apiCode = \is_array($data) && \is_string($data['code'] ?? null) && '' !== $data['code'] ? $data['code'] : null;
+
+        return new VideoOptimizerException($message, $status, null, $apiCode);
     }
 
     /**

@@ -48,7 +48,7 @@ final class AdminJsContractTest extends TestCase
             self::assertStringContainsString('uploadController !== controller', $code, $file . ': callbacks must ignore a superseded or aborted upload.');
             self::assertMatchesRegularExpression('/signal:\s*controller\.signal/', $code, $file . ': polling must stop on abort.');
             self::assertMatchesRegularExpression('/signal\.aborted/', $code, $file);
-            self::assertMatchesRegularExpression('/uploadParts\)?\([^)]*controller\.signal\)/', $code, $file);
+            self::assertMatchesRegularExpression('/uploadParts\)?\(.*controller\.signal[,)]/s', $code, $file);
             self::assertSame(1, preg_match('/completeUpload\)?\(\{/', $code, $m, \PREG_OFFSET_CAPTURE), $file);
             self::assertLessThan(
                 $m[0][1],
@@ -68,5 +68,30 @@ final class AdminJsContractTest extends TestCase
         self::assertMatchesRegularExpression('/webp/', $api);
         self::assertStringContainsString('poster_unsupported_type', self::read($root . 'components/VideoDetail.js'));
         self::assertMatchesRegularExpression('/posterContentType\)?\(blob\.type, media\)/', self::read($root . 'components/VideoDetail.js'));
+    }
+
+    #[DataProvider('roots')]
+    public function testVideoListsPageWithTheApiCursorInsteadOfLoadingEverything(string $root): void
+    {
+        foreach (['fields/VideoSelectionOverlay.js', 'views/Videos.js'] as $file) {
+            $code = self::read($root . $file);
+            self::assertStringContainsString('VideoPager', $code, $file);
+            self::assertStringContainsString('getVideoPage', $code, $file);
+            self::assertStringNotContainsString('getAllVideos', $code, $file . ': the whole organization must not be loaded at once.');
+            self::assertStringContainsString('scale_videooptimizer.load_more', $code, $file);
+        }
+    }
+
+    #[DataProvider('roots')]
+    public function testUploadsShowProgressAndCanBeCancelled(string $root): void
+    {
+        self::assertStringContainsString('onProgress', self::read($root . 'services/api.js'));
+        foreach (['fields/VideoSelectionOverlay.js', 'views/Videos.js'] as $file) {
+            $code = self::read($root . $file);
+            self::assertStringContainsString('UploadProgress', $code, $file);
+            self::assertStringContainsString('cancelUpload', $code, $file);
+            self::assertStringContainsString('uploadPercent', $code, $file);
+        }
+        self::assertStringContainsString('scale_videooptimizer.cancel_upload', self::read($root . 'components/UploadProgress.js'));
     }
 }

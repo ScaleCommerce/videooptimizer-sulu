@@ -45,6 +45,70 @@ class VideoOptimizerClientTest extends TestCase
         self::assertStringContainsString('cursor=cursor-2', $requestedUrls[1], 'The second request must carry the next cursor.');
     }
 
+    public function testListTagsReturnsTheOrganizationsTags(): void
+    {
+        $url = '';
+        $httpClient = new MockHttpClient(function (string $method, string $u) use (&$url): MockResponse {
+            $url = $u;
+
+            return new MockResponse(json_encode(['data' => [['name' => 'promo', 'video_count' => 2], 'junk']], JSON_THROW_ON_ERROR));
+        });
+
+        self::assertSame([['name' => 'promo', 'video_count' => 2]], $this->client($httpClient)->listTags());
+        self::assertStringEndsWith('/api/v1/tags', $url);
+    }
+
+    public function testListVideosPageFetchesExactlyOnePageWithCursorLimitAndFilters(): void
+    {
+        $requestedUrls = [];
+        $httpClient = new MockHttpClient(function (string $method, string $url) use (&$requestedUrls): MockResponse {
+            $requestedUrls[] = $url;
+
+            return new MockResponse(json_encode([
+                'data' => [['uuid' => 'a'], 'junk', ['uuid' => 'b']],
+                'pagination' => ['next_cursor' => 'next-1', 'has_more' => true],
+            ], JSON_THROW_ON_ERROR));
+        });
+
+        $page = $this->client($httpClient)->listVideosPage('lib-7', 'cur-0', 60, 'promo,2026');
+
+        self::assertSame([['uuid' => 'a'], ['uuid' => 'b']], $page['videos']);
+        self::assertSame('next-1', $page['next_cursor']);
+        self::assertTrue($page['has_more']);
+        self::assertCount(1, $requestedUrls, 'Only the requested page is fetched.');
+        self::assertStringContainsString('limit=60', $requestedUrls[0]);
+        self::assertStringContainsString('cursor=cur-0', $requestedUrls[0]);
+        self::assertStringContainsString('library_id=lib-7', $requestedUrls[0]);
+        self::assertStringContainsString('tags=promo%2C2026', $requestedUrls[0]);
+    }
+
+    public function testListVideosPageOfTheLastPageHasNoCursor(): void
+    {
+        $httpClient = new MockHttpClient(fn () => new MockResponse(json_encode([
+            'data' => [['uuid' => 'a']],
+            'pagination' => ['next_cursor' => null, 'has_more' => false],
+        ], JSON_THROW_ON_ERROR)));
+
+        $page = $this->client($httpClient)->listVideosPage(null, null, 500);
+
+        self::assertFalse($page['has_more']);
+        self::assertNull($page['next_cursor']);
+    }
+
+    public function testListVideosPageCapsTheLimitAtTheApiMaximum(): void
+    {
+        $url = '';
+        $httpClient = new MockHttpClient(function (string $method, string $u) use (&$url): MockResponse {
+            $url = $u;
+
+            return new MockResponse('{"data":[]}');
+        });
+
+        $this->client($httpClient)->listVideosPage(null, null, 500);
+
+        self::assertStringContainsString('limit=100', $url);
+    }
+
     public function testListAllVideosHitsGlobalEndpointWithoutLibraryFilter(): void
     {
         $requestedUrls = [];
@@ -280,6 +344,57 @@ class VideoOptimizerClientTest extends TestCase
         $client->deleteVideo('v1');
 
         self::assertSame(array_fill(0, 3, 'VideoOptimizer-Sulu/1.7.3 (Sulu 3.0.7; PHP 8.3.14; +https://www.example.com)'), $userAgents);
+    }
+
+    public function testTransportErrorsBecomeANeutralBadGatewayWithoutTheUpstreamUrl(): void
+    {
+        $httpClient = new MockHttpClient(fn () => new MockResponse('', ['error' => 'Could not resolve host: api.videooptimizer.eu (secret-detail)']));
+
+        try {
+            $this->client($httpClient)->listLibraries();
+            self::fail('Expected an exception.');
+        } catch (VideoOptimizerException $e) {
+            self::assertSame(502, $e->getStatusCode());
+            self::assertSame('unreachable', $e->getApiCode());
+            self::assertStringNotContainsString('secret-detail', $e->getMessage());
+            self::assertStringNotContainsString('videooptimizer.eu', $e->getMessage());
+        }
+    }
+
+    public function testRateLimitedRequestIsRetriedOnceAfterRetryAfter(): void
+    {
+        $calls = 0;
+        $httpClient = new MockHttpClient(function () use (&$calls): MockResponse {
+            ++$calls;
+
+            return 1 === $calls
+                ? new MockResponse('{}', ['http_code' => 429, 'response_headers' => ['Retry-After: 0']])
+                : new MockResponse(json_encode(['data' => []], JSON_THROW_ON_ERROR));
+        });
+
+        self::assertSame([], $this->client($httpClient)->listLibraries());
+        self::assertSame(2, $calls);
+    }
+
+    public function testEmbedLookupDuringRenderingNeverSleepsOnRateLimit(): void
+    {
+        $calls = 0;
+        $httpClient = new MockHttpClient(function () use (&$calls): MockResponse {
+            ++$calls;
+
+            return new MockResponse('{}', ['http_code' => 429, 'response_headers' => ['Retry-After: 5']]);
+        });
+
+        $started = microtime(true);
+        try {
+            $this->client($httpClient)->getEmbed('v1');
+            self::fail('Expected an exception.');
+        } catch (VideoOptimizerException $e) {
+            self::assertSame(429, $e->getStatusCode());
+        }
+
+        self::assertSame(1, $calls);
+        self::assertLessThan(1.0, microtime(true) - $started);
     }
 
     private function client(MockHttpClient $httpClient): VideoOptimizerClient

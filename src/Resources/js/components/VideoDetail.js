@@ -5,12 +5,14 @@ import {observable, action} from 'mobx';
 import {Button, Dialog} from 'sulu-admin-bundle/components';
 import {translate} from 'sulu-admin-bundle/utils';
 import {userStore} from 'sulu-admin-bundle/stores';
+import VideoSubtitles from './VideoSubtitles';
 import SingleMediaSelectionOverlay from 'sulu-media-bundle/containers/SingleMediaSelectionOverlay';
 import {
     updateVideo, deleteVideo, getThumbnails, selectThumbnail,
     initiatePosterUpload, uploadPoster, completePosterUpload, selectPoster, deletePoster,
-    pollVideo, posterContentType, posterFor, bustCache, bumpCacheBust,
+    pollVideo, posterContentType, posterFor, bustCache, bumpCacheBust, getTags,
 } from '../services/api';
+import {parseTags, validateTags, metadataRows, validateMetadata, metadataPatch, sameTags, MAX_METADATA} from '../services/videoMeta';
 
 // Poster processing takes seconds; stop polling after ~3 minutes.
 const POSTER_POLL_ATTEMPTS = 60;
@@ -35,6 +37,9 @@ class VideoDetail extends React.Component<*> {
     @observable thumbnails = [];
     @observable title = this.props.video.title || '';
     @observable options = {...(this.props.video.options || {})};
+    @observable tagsText = (this.props.video.tags || []).join(', ');
+    @observable knownTags = [];
+    @observable metadata = metadataRows(this.props.video.metadata);
     @observable busy = null; // null | 'save' | 'thumb' | 'poster' | 'delete'
     @observable status = null;
     @observable error = null;
@@ -51,6 +56,10 @@ class VideoDetail extends React.Component<*> {
 
     componentDidMount() {
         this.loadThumbnails();
+        // Existing tags are only suggestions: a failed lookup must not get in the editor's way.
+        getTags()
+            .then(action((tags) => { if (!this._unmounted) { this.knownTags = tags; } }))
+            .catch(() => {});
     }
 
     componentWillUnmount() {
@@ -87,13 +96,42 @@ class VideoDetail extends React.Component<*> {
 
     @action toggleOption = (key) => { this.options = {...this.options, [key]: !this.options[key]}; };
 
+    @action handleTagsChange = (event) => { this.tagsText = event.target.value; };
+
+    @action handleMetadataChange = (index, field, value) => {
+        this.metadata = this.metadata.map((row, i) => (i === index ? {...row, [field]: value} : row));
+    };
+
+    @action addMetadataRow = () => { this.metadata = this.metadata.concat([{key: '', value: ''}]); };
+
+    @action removeMetadataRow = (index) => { this.metadata = this.metadata.filter((row, i) => i !== index); };
+
     @action save = () => {
+        const tags = parseTags(this.tagsText);
+        const problem = validateTags(tags) || validateMetadata(this.metadata);
+        if (problem) {
+            this.error = translate(problem);
+
+            return;
+        }
+        // Tags replace the whole set and metadata is merged by the API: send only what changed.
+        const payload = {title: this.title, option: this.options};
+        if (!sameTags(tags, this.video.tags || [])) {
+            payload.tags = tags;
+        }
+        const patch = metadataPatch(this.video.metadata, this.metadata);
+        if (patch) {
+            payload.metadata = patch;
+        }
+
         this.busy = 'save';
         this.error = null;
-        updateVideo(this.video.uuid, {title: this.title, option: this.options})
+        updateVideo(this.video.uuid, payload)
             .then(action((video) => {
                 if (this._unmounted) { return; }
                 this.busy = null;
+                this.tagsText = (video.tags || []).join(', ');
+                this.metadata = metadataRows(video.metadata);
                 this.refresh(video);
             }))
             .catch(action((e) => {
@@ -374,8 +412,51 @@ class VideoDetail extends React.Component<*> {
                     onConfirm={this.handleMediaSelect}
                 />
 
+                <VideoSubtitles uuid={this.video.uuid} />
+
                 <label className="vo-label">{translate('sulu_admin.title')}</label>
                 <input type="text" className="vo-input" value={this.title} onChange={this.handleTitleChange} />
+
+                <label className="vo-label">{translate('scale_videooptimizer.tags')}</label>
+                <input
+                    type="text"
+                    className="vo-input"
+                    list="vo-known-tags"
+                    value={this.tagsText}
+                    placeholder={translate('scale_videooptimizer.tags_placeholder')}
+                    onChange={this.handleTagsChange}
+                />
+                <datalist id="vo-known-tags">
+                    {this.knownTags.map((tag) => <option key={tag.name} value={tag.name} />)}
+                </datalist>
+                <div className="vo-hint" style={{padding: '4px 0 0'}}>{translate('scale_videooptimizer.tags_help')}</div>
+
+                <label className="vo-label">{translate('scale_videooptimizer.metadata')}</label>
+                <div className="vo-metadata">
+                    {this.metadata.map((row, index) => (
+                        <div key={index} className="vo-metadata__row">
+                            <input
+                                type="text"
+                                className="vo-input vo-input--auto"
+                                placeholder={translate('scale_videooptimizer.metadata_key')}
+                                value={row.key}
+                                onChange={(event) => this.handleMetadataChange(index, 'key', event.target.value)}
+                            />
+                            <input
+                                type="text"
+                                className="vo-input vo-input--auto"
+                                placeholder={translate('scale_videooptimizer.metadata_value')}
+                                value={row.value}
+                                onChange={(event) => this.handleMetadataChange(index, 'value', event.target.value)}
+                            />
+                            <Button skin="link" onClick={() => this.removeMetadataRow(index)}>{translate('scale_videooptimizer.remove_video')}</Button>
+                        </div>
+                    ))}
+                    <Button skin="secondary" onClick={this.addMetadataRow} disabled={this.metadata.length >= MAX_METADATA}>
+                        {translate('scale_videooptimizer.metadata_add')}
+                    </Button>
+                </div>
+                <div className="vo-hint" style={{padding: '4px 0 0'}}>{translate('scale_videooptimizer.metadata_help')}</div>
 
                 <label className="vo-label">{translate('scale_videooptimizer.player_options')}</label>
                 <div className="vo-option-checks">
