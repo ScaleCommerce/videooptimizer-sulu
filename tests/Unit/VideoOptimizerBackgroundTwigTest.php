@@ -18,7 +18,7 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
     public function testRendersVideoTagWithHlsAndPoster(): void
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
-        $resolver->getSources('abc')->willReturn([
+        $resolver->getSources('abc')->willReturn(['sources' => [],
             'poster' => 'https://cdn.example.net/poster.jpg',
             'hlsUrl' => 'https://cdn.example.net/master.m3u8',
         ]);
@@ -68,7 +68,7 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
     public function testBackgroundVideoIsHiddenFromAssistiveTechnology(): void
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
-        $resolver->getSources('abc')->willReturn([
+        $resolver->getSources('abc')->willReturn(['sources' => [],
             'poster' => 'https://cdn.example.net/poster.jpg',
             'hlsUrl' => 'https://cdn.example.net/master.m3u8',
         ]);
@@ -84,7 +84,7 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
     public function testBackgroundIsDeferredByDefaultAndEagerOnlyWhenAsked(): void
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
-        $resolver->getSources('abc')->willReturn([
+        $resolver->getSources('abc')->willReturn(['sources' => [],
             'poster' => 'https://cdn.example.net/poster.jpg',
             'hlsUrl' => 'https://cdn.example.net/master.m3u8',
         ]);
@@ -105,7 +105,7 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
     public function testPriorityImpliesEagerAndPreloadsThePoster(): void
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
-        $resolver->getSources('abc')->willReturn([
+        $resolver->getSources('abc')->willReturn(['sources' => [],
             'poster' => 'https://cdn.example.net/poster.jpg',
             'hlsUrl' => 'https://cdn.example.net/master.m3u8',
         ]);
@@ -123,7 +123,7 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
     public function testPriorityWithoutPosterEmitsNoPreloadLink(): void
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
-        $resolver->getSources('abc')->willReturn(['poster' => null, 'hlsUrl' => null]);
+        $resolver->getSources('abc')->willReturn(['poster' => null, 'hlsUrl' => null, 'sources' => []]);
         $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
 
         self::assertStringNotContainsString('rel="preload"', $ext->renderBackground(['uuid' => 'abc'], true));
@@ -132,7 +132,7 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
     public function testRenderBackgroundEmitsAssetSentinel(): void
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
-        $resolver->getSources('abc')->willReturn(['poster' => null, 'hlsUrl' => null]);
+        $resolver->getSources('abc')->willReturn(['poster' => null, 'hlsUrl' => null, 'sources' => []]);
 
         $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
 
@@ -144,7 +144,7 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
     public function testFallsBackToStoredPosterWhenResolverHasNone(): void
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
-        $resolver->getSources('abc')->willReturn(['poster' => null, 'hlsUrl' => null]);
+        $resolver->getSources('abc')->willReturn(['poster' => null, 'hlsUrl' => null, 'sources' => []]);
 
         $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
 
@@ -219,7 +219,7 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
     public function testSchemaRendersVideoObjectJsonLd(): void
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
-        $resolver->getSources('abc')->willReturn([
+        $resolver->getSources('abc')->willReturn(['sources' => [],
             'poster' => 'https://cdn.example.net/poster.jpg',
             'hlsUrl' => null,
             'width' => null,
@@ -241,7 +241,7 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
     public function testSchemaEscapesClosingScriptTagInName(): void
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
-        $resolver->getSources('abc')->willReturn(['poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null]);
+        $resolver->getSources('abc')->willReturn(['poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'sources' => []]);
         $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
 
         $html = $ext->schema(['uuid' => 'abc'], '</script><script>alert(1)</script>');

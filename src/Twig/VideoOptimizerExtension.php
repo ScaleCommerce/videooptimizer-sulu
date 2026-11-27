@@ -265,7 +265,7 @@ class VideoOptimizerExtension extends AbstractExtension
         $poster = self::posterFor($video, $sources['poster'] ?? null);
         $hlsUrl = $sources['hlsUrl'] ?? null;
         $mp4Url = null;
-        foreach ($sources['sources'] ?? [] as $source) {
+        foreach ($sources['sources'] as $source) {
             if (null === $mp4Url && str_starts_with(strtolower($source['type']), 'video/mp4')) {
                 $mp4Url = $source['src'];
             }
