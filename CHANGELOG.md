@@ -11,7 +11,7 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 
 ### Changed
 - `embed_base_url` now defaults to `https://player.videooptimizer.eu`; an explicitly configured value is kept ([#1](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/1))
-- Embed lookups are cached for 1 hour (was 24 hours), for 60 seconds when a video has no sources yet or the API fails, and are dropped when a video is changed or deleted in the admin ([#6](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/6))
+- Embed lookups are cached for 1 hour (was 24 hours), for 60 seconds when a video has no sources yet or the API fails, and are dropped when a video or its library is changed, deleted or reprocessed in the admin ([#6](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/6))
 - Custom poster upload no longer calls `poster/select`; the admin waits until the API has activated the poster ([#4](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/4))
 - Bundled hls.js updated to 1.7.4 ([#8](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/8))
 

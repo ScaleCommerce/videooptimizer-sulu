@@ -6,6 +6,7 @@ namespace Scale\VideoOptimizerBundle\Controller\Admin;
 
 use Scale\VideoOptimizerBundle\Api\VideoOptimizerClient;
 use Scale\VideoOptimizerBundle\Api\VideoOptimizerException;
+use Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -16,7 +17,7 @@ class LibraryController
 {
     private const ENCODING_QUALITIES = ['performance', 'quality'];
 
-    public function __construct(private VideoOptimizerClient $client)
+    public function __construct(private VideoOptimizerClient $client, private VideoOptimizerEmbedResolver $embedResolver)
     {
     }
 
@@ -48,7 +49,9 @@ class LibraryController
     public function delete(string $id): JsonResponse
     {
         return $this->guard(function () use ($id) {
+            $uuids = $this->videoUuids($id);
             $this->client->deleteLibrary($id);
+            $this->forgetAll($uuids);
 
             return new JsonResponse(null, 204);
         });
@@ -64,12 +67,50 @@ class LibraryController
         // Optional {"force": true}: re-encode finished renditions too (needed after changing encoding_quality).
         $force = true === ($this->payload($request)['force'] ?? false);
 
-        return $this->guard(fn () => new JsonResponse($this->client->reprocessLibrary($id, $force)));
+        return $this->guard(function () use ($id, $force) {
+            $result = $this->client->reprocessLibrary($id, $force);
+            $this->forgetAll($this->videoUuids($id));
+
+            return new JsonResponse($result);
+        });
     }
 
     public function encodings(): JsonResponse
     {
         return $this->guard(fn () => new JsonResponse($this->client->listEncodings()));
+    }
+
+    /**
+     * UUIDs of a library's videos, so their cached storefront embed data can be dropped. Best effort:
+     * when the list cannot be fetched the entries simply expire on their own.
+     *
+     * @return list<string>
+     */
+    private function videoUuids(string $id): array
+    {
+        try {
+            $uuids = [];
+            foreach ($this->client->listVideos($id) as $video) {
+                $uuid = $video['uuid'] ?? $video['id'] ?? null;
+                if (\is_string($uuid) && '' !== $uuid) {
+                    $uuids[] = $uuid;
+                }
+            }
+
+            return $uuids;
+        } catch (VideoOptimizerException) {
+            return [];
+        }
+    }
+
+    /**
+     * @param list<string> $uuids
+     */
+    private function forgetAll(array $uuids): void
+    {
+        foreach ($uuids as $uuid) {
+            $this->embedResolver->forget($uuid);
+        }
     }
 
     /**
