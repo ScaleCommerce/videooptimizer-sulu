@@ -79,6 +79,7 @@
 
         <service id="Scale\VideoOptimizerBundle\Controller\Admin\VideoController" public="true">
             <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
+            <argument type="service" id="Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver"/>
             <tag name="controller.service_arguments"/>
         </service>
     </services>

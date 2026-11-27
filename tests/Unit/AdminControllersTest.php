@@ -10,6 +10,7 @@ use Scale\VideoOptimizerBundle\Api\VideoOptimizerClient;
 use Scale\VideoOptimizerBundle\Controller\Admin\LibraryController;
 use Scale\VideoOptimizerBundle\Controller\Admin\VideoController;
 use Scale\VideoOptimizerBundle\Service\SettingsManager;
+use Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -71,12 +72,40 @@ class AdminControllersTest extends TestCase
         $controller = new VideoController($this->client(fn () => new MockResponse(
             json_encode(['statusCode' => 400, 'message' => 'No video platforms.', 'data' => ['code' => 'source_url_video_platform']], JSON_THROW_ON_ERROR),
             ['http_code' => 400],
-        )));
+        )), $this->prophesize(VideoOptimizerEmbedResolver::class)->reveal());
 
         $response = $controller->ingestUrl(new Request(content: '{"library_id":"l","source_url":"https://youtu.be/x"}'));
 
         self::assertSame(400, $response->getStatusCode());
         self::assertSame(['message' => 'No video platforms.', 'code' => 'source_url_video_platform'], json_decode((string) $response->getContent(), true));
+    }
+
+    public function testChangingOrDeletingAVideoDropsItsCachedEmbedData(): void
+    {
+        $uuid = '5c0a1e6e-7d3b-4c2a-9f10-0000000000de';
+        $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
+        $resolver->forget($uuid)->shouldBeCalledTimes(5);
+
+        $controller = new VideoController($this->client(fn () => new MockResponse(json_encode(['data' => ['uuid' => $uuid]], JSON_THROW_ON_ERROR))), $resolver->reveal());
+
+        $controller->patch(new Request(content: '{"title":"New"}'), $uuid);
+        $controller->selectThumbnail(new Request(content: '{"thumbnailIndex":2}'), $uuid);
+        $controller->posterComplete(new Request(content: '{"key":"k"}'), $uuid);
+        $controller->posterSelect(new Request(content: '{"source":"custom"}'), $uuid);
+        $controller->delete($uuid);
+
+        $resolver->checkProphecyMethodsPredictions();
+    }
+
+    public function testApiErrorLeavesTheCachedEmbedDataAlone(): void
+    {
+        $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
+        $resolver->forget('u')->shouldNotBeCalled();
+
+        $controller = new VideoController($this->client(fn () => new MockResponse('{}', ['http_code' => 500])), $resolver->reveal());
+        $controller->patch(new Request(content: '{}'), 'u');
+
+        $resolver->checkProphecyMethodsPredictions();
     }
 
     private function client(callable $callback): VideoOptimizerClient
