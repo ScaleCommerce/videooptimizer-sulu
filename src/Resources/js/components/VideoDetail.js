@@ -9,7 +9,7 @@ import SingleMediaSelectionOverlay from 'sulu-media-bundle/containers/SingleMedi
 import {
     updateVideo, deleteVideo, getThumbnails, selectThumbnail,
     initiatePosterUpload, uploadPoster, completePosterUpload, selectPoster, deletePoster,
-    pollVideo, posterFor, bustCache, bumpCacheBust,
+    pollVideo, posterContentType, posterFor, bustCache, bumpCacheBust,
 } from '../services/api';
 
 // Poster processing takes seconds; stop polling after ~3 minutes.
@@ -166,7 +166,14 @@ class VideoDetail extends React.Component<*> {
                 }
                 return response.blob();
             })
-            .then((blob) => this.uploadPosterBlob(blob))
+            .then((blob) => {
+                const type = posterContentType(blob.type, media);
+                if (!type) {
+                    throw new Error(translate('scale_videooptimizer.poster_failed'));
+                }
+
+                return this.uploadPosterBlob(type === blob.type ? blob : new Blob([blob], {type}));
+            })
             .catch(action((e) => {
                 if (this._unmounted) { return; }
                 this.busy = null;

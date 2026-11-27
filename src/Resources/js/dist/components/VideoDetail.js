@@ -622,7 +622,13 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
         }
         return response.blob();
       }).then(function (blob) {
-        return _this11.uploadPosterBlob(blob);
+        var type = (0, _api.posterContentType)(blob.type, media);
+        if (!type) {
+          throw new Error((0, _utils.translate)('scale_videooptimizer.poster_failed'));
+        }
+        return _this11.uploadPosterBlob(type === blob.type ? blob : new Blob([blob], {
+          type: type
+        }));
       })["catch"]((0, _mobx.action)(function (e) {
         if (_this11._unmounted) {
           return;
