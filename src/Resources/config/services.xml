@@ -37,6 +37,7 @@
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\SettingsManager"/>
             <argument>%scale_video_optimizer.api_base_url%</argument>
             <argument type="service" id="Scale\VideoOptimizerBundle\Api\UserAgentProvider"/>
+            <argument type="service" id="logger" on-invalid="null"/>
         </service>
 
         <service id="Scale\VideoOptimizerBundle\Admin\VideoOptimizerAdmin">
@@ -54,15 +55,27 @@
             <argument>%scale_video_optimizer.cache_directory%</argument>
         </service>
 
+        <service id="Scale\VideoOptimizerBundle\Service\EmbedRenderState">
+            <tag name="kernel.reset" method="reset"/>
+        </service>
+
         <service id="Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver">
             <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
             <argument type="service" id="scale_video_optimizer.cache"/>
+            <argument type="service" id="Scale\VideoOptimizerBundle\Service\EmbedRenderState"/>
+        </service>
+
+        <!-- Runs late so it sees the lifetime Sulu's cache-lifetime enhancer already set. -->
+        <service id="Scale\VideoOptimizerBundle\EventListener\EmbedPageCacheListener">
+            <argument type="service" id="Scale\VideoOptimizerBundle\Service\EmbedRenderState"/>
+            <tag name="kernel.event_listener" event="kernel.response" method="onKernelResponse" priority="-1000"/>
         </service>
 
         <service id="Scale\VideoOptimizerBundle\Twig\VideoOptimizerExtension">
             <argument>%scale_video_optimizer.embed_base_url%</argument>
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver"/>
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\SettingsManager"/>
+            <argument type="service" id="logger" on-invalid="null"/>
             <tag name="twig.extension"/>
         </service>
 

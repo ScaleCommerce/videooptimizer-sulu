@@ -26,6 +26,7 @@ class VideoOptimizerEmbedResolver
     public function __construct(
         private VideoOptimizerClient $client,
         private CacheInterface $cache,
+        private ?EmbedRenderState $renderState = null,
     ) {
     }
 
@@ -33,6 +34,20 @@ class VideoOptimizerEmbedResolver
      * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, sources: array<int, array{src:string,type:string,label:string}>}
      */
     public function getSources(string $uuid): array
+    {
+        $result = $this->lookup($uuid);
+        if ([] === $result['sources']) {
+            // The page is rendered without this video: do not let the HTTP cache keep it for long.
+            $this->renderState?->markDegraded();
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, sources: array<int, array{src:string,type:string,label:string}>}
+     */
+    private function lookup(string $uuid): array
     {
         try {
             return $this->cache->get(self::cacheKey($uuid), function (ItemInterface $item) use ($uuid): array {

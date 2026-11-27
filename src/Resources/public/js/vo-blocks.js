@@ -47,22 +47,73 @@
 
     // Wires an HLS master (data-hls) to a <video>: native HLS in Safari, hls.js everywhere else
     // that supports MSE. Shared by the background-hero video and the native <video> player.
-    function attachHls(video, baseUrl) {
+    // The MP4 fallback is the <source> children of a native player or a data-mp4 attribute: it is
+    // used once when hls.js, native HLS or the missing support fails. With opts.play (or autoplay)
+    // playback starts only after the source is attached, never before.
+    function attachHls(video, baseUrl, opts) {
+        var wantPlay = !!((opts && opts.play) || video.autoplay);
         var src = video.getAttribute('data-hls');
+        var hls = null;
+        var fellBack = false;
+
+        function play() {
+            if (wantPlay) {
+                var result = video.play();
+                if (result && result.catch) {
+                    result.catch(function () {}); // autoplay-policy rejections are expected/harmless
+                }
+            }
+        }
+
+        function useMp4() {
+            if (fellBack) {
+                return;
+            }
+            var mp4 = video.getAttribute('data-mp4');
+            var hasSources = !!video.querySelector('source');
+            if (!hasSources && !mp4) {
+                return;
+            }
+            fellBack = true;
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            video.removeAttribute('data-hls');
+            if (hasSources) {
+                video.removeAttribute('src');
+                video.load();
+            } else {
+                video.src = mp4;
+            }
+            play();
+        }
+
         if (!src) {
+            play();
             return;
         }
         if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.addEventListener('error', useMp4, {once: true});
             video.src = src; // Safari: native HLS
+            play();
             return;
         }
         loadHls(baseUrl).then(function () {
-            if (window.Hls && window.Hls.isSupported()) {
-                var hls = new window.Hls();
-                hls.loadSource(src);
-                hls.attachMedia(video);
+            if (!window.Hls || !window.Hls.isSupported()) {
+                useMp4();
+                return;
             }
-        });
+            hls = new window.Hls();
+            hls.on(window.Hls.Events.ERROR, function (event, data) {
+                if (data && data.fatal) {
+                    useMp4();
+                }
+            });
+            hls.on(window.Hls.Events.MANIFEST_PARSED, play);
+            hls.loadSource(src);
+            hls.attachMedia(video);
+        }, useMp4);
     }
 
     function initBackgroundVideos(baseUrl) {
@@ -168,8 +219,7 @@
 
         whenNearViewport(videos, function (video) {
             video.removeAttribute('data-vo-native-autoload');
-            attachHls(video, baseUrl);
-            video.play().catch(function () {}); // autoplay-policy rejections are expected/harmless
+            attachHls(video, baseUrl, {play: true});
         });
     }
 
@@ -180,9 +230,9 @@
         if (!video) {
             return null;
         }
-        attachHls(video, baseUrl);
+        // Plays once the source is attached (inside the click for native HLS / MP4).
+        attachHls(video, baseUrl, {play: true});
         video.removeAttribute('data-hls'); // avoid re-wiring hls.js if revealed again
-        video.play().catch(function () {}); // user-gesture play(); ignore autoplay-policy rejections
         return video;
     }
 
@@ -221,11 +271,10 @@
             var video = holder ? holder.querySelector('video') : null;
 
             if (video) {
-                attachHls(video, baseUrl);
-                video.removeAttribute('data-hls');
                 slot.replaceChildren(video); // moves the <video> node into the lightbox slot
                 nativeHolder = holder;
-                video.play().catch(function () {});
+                attachHls(video, baseUrl, {play: true});
+                video.removeAttribute('data-hls');
             } else {
                 slot.replaceChildren(embedIframe(trigger.getAttribute('data-vo-lightbox')));
             }

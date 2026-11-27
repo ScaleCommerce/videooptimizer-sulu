@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Scale\VideoOptimizerBundle\Twig;
 
+use Psr\Log\LoggerInterface;
+use Scale\VideoOptimizerBundle\Api\BaseUrlGuard;
 use Scale\VideoOptimizerBundle\EventListener\AssetInjectionListener;
 use Scale\VideoOptimizerBundle\Service\SettingsManager;
 use Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver;
@@ -25,6 +27,7 @@ class VideoOptimizerExtension extends AbstractExtension
         private string $embedBaseUrl,
         private VideoOptimizerEmbedResolver $embedResolver,
         private SettingsManager $settingsManager,
+        private ?LoggerInterface $logger = null,
     ) {
     }
 
@@ -188,6 +191,15 @@ class VideoOptimizerExtension extends AbstractExtension
             return null;
         }
 
+        try {
+            BaseUrlGuard::assertHttps($this->embedBaseUrl, 'embed base URL');
+        } catch (\InvalidArgumentException $e) {
+            // Render without the video instead of pointing visitors (or an iframe) at an unsafe host.
+            $this->logger?->warning($e->getMessage(), ['url' => $this->embedBaseUrl]);
+
+            return null;
+        }
+
         $url = rtrim($this->embedBaseUrl, '/') . '/embed/' . rawurlencode($uuid);
 
         // Only append boolean player params that are explicitly on/off; any other value
@@ -252,6 +264,7 @@ class VideoOptimizerExtension extends AbstractExtension
         $sources = $this->embedResolver->getSources($uuid);
         $poster = self::posterFor($video, $sources['poster'] ?? null);
         $hlsUrl = $sources['hlsUrl'] ?? null;
+        $mp4Url = self::fallbackMp4($sources['sources']);
         $posterAttr = null !== $poster ? htmlspecialchars($poster, \ENT_QUOTES) : null;
 
         $preload = $priority && null !== $posterAttr
@@ -259,10 +272,12 @@ class VideoOptimizerExtension extends AbstractExtension
             : '';
 
         return AssetInjectionListener::SENTINEL . $preload . \sprintf(
-            '<video class="vo-bg-hero__video" muted autoplay loop playsinline aria-hidden="true" preload="%s"%s%s%s></video>',
+            '<video class="vo-bg-hero__video" muted autoplay loop playsinline aria-hidden="true" preload="%s"%s%s%s%s></video>',
             $priority ? 'auto' : 'metadata',
             null !== $posterAttr ? \sprintf(' poster="%s"', $posterAttr) : '',
             null !== $hlsUrl ? \sprintf(' data-hls="%s"', htmlspecialchars($hlsUrl, \ENT_QUOTES)) : '',
+            // Fallback for vo-blocks.js when HLS fails or is unsupported.
+            null !== $hlsUrl && null !== $mp4Url ? \sprintf(' data-mp4="%s"', htmlspecialchars($mp4Url, \ENT_QUOTES)) : '',
             // Absence is the default (deferred), so custom markup inherits it without changes.
             $eager || $priority ? ' data-vo-hls-eager' : '',
         );
@@ -392,6 +407,34 @@ class VideoOptimizerExtension extends AbstractExtension
             'duration' => $resolved['duration'] ?? null,
             'theme' => $resolved['theme'] ?? null,
         ];
+    }
+
+    /**
+     * MP4 for the script's HLS fallback: the 720p rendition, else the largest up to 1080p, else the first.
+     *
+     * @param array<int, array{src:string,type:string,label:string}> $sources
+     */
+    private static function fallbackMp4(array $sources): ?string
+    {
+        $first = null;
+        $best = null;
+        $bestHeight = 0;
+        foreach ($sources as $source) {
+            if (!str_starts_with(strtolower($source['type']), 'video/mp4')) {
+                continue;
+            }
+            $first ??= $source['src'];
+            $height = 1 === preg_match('/(\d{3,4})\s*p/i', $source['label'] . ' ' . $source['src'], $m) ? (int) $m[1] : 0;
+            if (720 === $height) {
+                return $source['src'];
+            }
+            if ($height <= 1080 && $height > $bestHeight) {
+                $best = $source['src'];
+                $bestHeight = $height;
+            }
+        }
+
+        return $best ?? $first;
     }
 
     /**

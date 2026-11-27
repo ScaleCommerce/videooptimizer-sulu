@@ -514,7 +514,7 @@ class VideoOptimizerBlockRenderTest extends TestCase
     public function testBackgroundHeroWithoutStoredVideoEagerRendersDeferred(): void
     {
         $resolver = $this->resolver();
-        $resolver->getSources('abc')->willReturn(['hlsUrl' => 'https://cdn.example.net/master.m3u8'] + $this->sources());
+        $resolver->getSources('abc')->willReturn(['hlsUrl' => 'https://cdn.example.net/master.m3u8', 'sources' => []] + $this->sources());
 
         $block = ['video' => ['uuid' => 'abc', 'title' => 'Clip'], 'headline' => 'Hello', 'priority' => null, 'videoEager' => null];
         $html = $this->render($resolver, 'vo_background_hero.html.twig', ['block' => $block]);

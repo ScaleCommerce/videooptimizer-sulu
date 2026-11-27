@@ -72,6 +72,7 @@
     "scale_videooptimizer.remove_custom_poster": "Eigenes Poster entfernen",
     "scale_videooptimizer.poster_source_custom": "Eigenes Bild",
     "scale_videooptimizer.poster_source_thumbnail": "Thumbnail",
+    "scale_videooptimizer.poster_unsupported_type": "Nicht unterstützter Bildtyp. Bitte JPEG, PNG oder WebP verwenden.",
     "scale_videooptimizer.poster_failed": "Das Poster konnte nicht verarbeitet werden.",
     "scale_videooptimizer.player_options": "Player-Optionen",
     "scale_videooptimizer.option_responsive": "Responsiv",

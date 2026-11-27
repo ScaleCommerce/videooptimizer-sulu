@@ -139,4 +139,16 @@ final class VoBlocksJsContractTest extends TestCase
         self::assertStringContainsString("document.readyState === 'loading'", $script);
         self::assertStringContainsString("addEventListener('DOMContentLoaded', init)", $script);
     }
+
+    public function testHlsFailuresFallBackToMp4AndPlaybackStartsAfterAttach(): void
+    {
+        $fn = self::fn('attachHls');
+        self::assertStringContainsString('Hls.Events.ERROR', $fn);
+        self::assertMatchesRegularExpression('/data\.fatal/', $fn, 'Only fatal hls.js errors may trigger the fallback.');
+        self::assertStringContainsString("getAttribute('data-mp4')", $fn);
+        self::assertStringContainsString('video.load()', $fn, 'Switching to <source> children needs a reload.');
+        self::assertStringContainsString('Hls.Events.MANIFEST_PARSED', $fn, 'play() must wait for the attached source.');
+        self::assertStringContainsString("addEventListener('error'", $fn, 'Native HLS errors must fall back too.');
+        self::assertSame(0, preg_match('/attachHls\([^)]*\);\s*video\.play\(\)/', self::script()), 'play() right after attachHls runs before the source is attached.');
+    }
 }

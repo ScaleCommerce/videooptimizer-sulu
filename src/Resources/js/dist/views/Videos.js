@@ -102,6 +102,8 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
     _initializerDefineProperty(_this, "ingestStatus", _descriptor11, _this);
     // Hidden file input driven by the toolbar "upload" button (Sulu media pattern).
     _this.fileInputRef = /*#__PURE__*/_react["default"].createRef();
+    // Aborts a running browser upload when the view is left (it must not create a video afterwards).
+    _this.uploadController = null;
     _initializerDefineProperty(_this, "selectLibrary", _descriptor12, _this);
     _initializerDefineProperty(_this, "showAll", _descriptor13, _this);
     _initializerDefineProperty(_this, "open", _descriptor14, _this);
@@ -133,6 +135,14 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
   }
   _inherits(Videos, _React$Component);
   return _createClass(Videos, [{
+    key: "componentWillUnmount",
+    value: function componentWillUnmount() {
+      if (this.uploadController) {
+        this.uploadController.abort();
+        this.uploadController = null;
+      }
+    }
+  }, {
     key: "componentDidMount",
     value: function componentDidMount() {
       var _this2 = this;
@@ -476,6 +486,8 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
     var _this11 = this;
     return function (file) {
       var libraryId = _this11.activeLibraryId;
+      var controller = new AbortController();
+      _this11.uploadController = controller;
       _this11.uploading = true;
       _this11.error = null;
       _this11.uploadStatus = (0, _utils.translate)('scale_videooptimizer.uploading');
@@ -485,7 +497,10 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
         contentType: file.type || 'application/octet-stream',
         fileSize: file.size
       }).then(function (upload) {
-        return (0, _api.uploadParts)(file, upload.parts || [], upload.partSize).then(function (parts) {
+        return (0, _api.uploadParts)(file, upload.parts || [], upload.partSize, controller.signal).then(function (parts) {
+          if (controller.signal.aborted) {
+            throw (0, _api.abortError)();
+          }
           return (0, _api.completeUpload)({
             libraryId: libraryId,
             uuid: upload.uuid,
@@ -495,12 +510,21 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
             parts: parts
           });
         }).then((0, _mobx.action)(function () {
+          if (_this11.uploadController !== controller) {
+            throw (0, _api.abortError)();
+          }
           _this11.uploadStatus = (0, _utils.translate)('scale_videooptimizer.processing');
         })).then(function () {
           return (0, _api.pollVideo)(upload.uuid, function (v) {
             return v.status === 'ready' || v.status === 'failed';
+          }, {
+            signal: controller.signal
           });
         }).then((0, _mobx.action)(function (video) {
+          if (_this11.uploadController !== controller) {
+            return;
+          }
+          _this11.uploadController = null;
           _this11.uploading = false;
           _this11.uploadStatus = null;
           if (video.status === 'failed') {
@@ -511,6 +535,10 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
           _this11.open(video);
         }));
       })["catch"]((0, _mobx.action)(function (e) {
+        if (_this11.uploadController !== controller || (0, _api.isAbortError)(e)) {
+          return;
+        }
+        _this11.uploadController = null;
         _this11.uploading = false;
         _this11.uploadStatus = null;
         _this11.error = (0, _api.errorText)(e);

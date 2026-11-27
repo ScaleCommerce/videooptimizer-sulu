@@ -5,7 +5,7 @@ import {observable, action} from 'mobx';
 import {Overlay, Loader, Button} from 'sulu-admin-bundle/components';
 import FolderList from 'sulu-admin-bundle/components/FolderList';
 import {translate} from 'sulu-admin-bundle/utils';
-import {getLibraries, getAllVideos, initiateUpload, uploadParts, completeUpload, ingestVideoUrl, pollVideo, posterFor, bustCache, failureMessage, errorText} from '../services/api';
+import {getLibraries, getAllVideos, initiateUpload, uploadParts, completeUpload, isAbortError, abortError, ingestVideoUrl, pollVideo, posterFor, bustCache, failureMessage, errorText} from '../services/api';
 import VideoDetail from '../components/VideoDetail';
 
 @observer
@@ -31,7 +31,26 @@ class VideoSelectionOverlay extends React.Component<*> {
         this.load();
     }
 
+    // Aborts a running browser upload (closing the overlay or unmounting must not create a video).
+    uploadController = null;
+
+    componentWillUnmount() {
+        this.abortUpload();
+    }
+
+    @action abortUpload() {
+        if (this.uploadController) {
+            this.uploadController.abort();
+            this.uploadController = null;
+            this.uploading = false;
+            this.uploadStatus = null;
+        }
+    }
+
     componentDidUpdate(prevProps: *) {
+        if (!this.props.open && prevProps.open) {
+            this.abortUpload();
+        }
         if (this.props.open && !prevProps.open) {
             this.closeManage();
             this.load();
@@ -139,6 +158,9 @@ class VideoSelectionOverlay extends React.Component<*> {
     };
 
     @action startUpload = (file) => {
+        this.abortUpload();
+        const controller = new AbortController();
+        this.uploadController = controller;
         this.uploading = true;
         this.error = null;
         this.uploadStatus = translate('scale_videooptimizer.uploading');
@@ -149,20 +171,33 @@ class VideoSelectionOverlay extends React.Component<*> {
             contentType: file.type || 'application/octet-stream',
             fileSize: file.size,
         })
-            .then((upload) => uploadParts(file, upload.parts || [], upload.partSize)
-                .then((parts) => completeUpload({
-                    libraryId: this.activeLibraryId,
-                    uuid: upload.uuid,
-                    key: upload.key,
-                    uploadId: upload.uploadId,
-                    title: file.name,
-                    parts,
-                }))
+            .then((upload) => uploadParts(file, upload.parts || [], upload.partSize, controller.signal)
+                .then((parts) => {
+                    if (controller.signal.aborted) {
+                        throw abortError();
+                    }
+
+                    return completeUpload({
+                        libraryId: this.activeLibraryId,
+                        uuid: upload.uuid,
+                        key: upload.key,
+                        uploadId: upload.uploadId,
+                        title: file.name,
+                        parts,
+                    });
+                })
                 .then(action(() => {
+                    if (this.uploadController !== controller) {
+                        throw abortError();
+                    }
                     this.uploadStatus = translate('scale_videooptimizer.processing');
                 }))
-                .then(() => pollVideo(upload.uuid, (v) => v.status === 'ready' || v.status === 'failed'))
+                .then(() => pollVideo(upload.uuid, (v) => v.status === 'ready' || v.status === 'failed', {signal: controller.signal}))
                 .then(action((video) => {
+                    if (this.uploadController !== controller) {
+                        return;
+                    }
+                    this.uploadController = null;
                     this.uploading = false;
                     this.uploadStatus = null;
                     if (video.status === 'failed') {
@@ -172,6 +207,11 @@ class VideoSelectionOverlay extends React.Component<*> {
                     this.chooseVideo(video);
                 })))
             .catch(action((e) => {
+                // Superseded, aborted or unmounted: a newer upload or the closed view owns the state.
+                if (this.uploadController !== controller || isAbortError(e)) {
+                    return;
+                }
+                this.uploadController = null;
                 this.uploading = false;
                 this.uploadStatus = null;
                 this.error = errorText(e);
