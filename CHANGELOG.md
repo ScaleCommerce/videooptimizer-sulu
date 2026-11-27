@@ -2,6 +2,23 @@
 
 All notable changes to this package. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Upgrade
+- Republish the bundle assets (`assets:install`) for the new `vo-blocks.js`/`vo-blocks.css`; add `<type ref="vo_single_video"/>`, `vo_video_chapters`, `vo_video_list` and `vo_video_detail` to your own page templates to offer the new blocks (the showcase template has them); rebuild the Sulu admin assets and hard-reload the admin for the encoding quality note ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25), [#31](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/31))
+- Embed cache key is `vo_embed_v4_<uuid>` (it carries the title now): cached embeds are looked up again once after the update ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))
+- The lightbox shows a native player letterboxed (`object-fit: contain`) instead of cropped; custom CSS for `.vo-lightbox .vo-native` is unaffected ([#27](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/27))
+
+### Added
+- Blocks `vo_single_video`, `vo_video_list` (library, tags, cursor paging, link to a detail page or lightbox) and `vo_video_detail` (`?vo_video=<uuid>` with default video, neutral not-found); `VideoListProvider` (2 min cache) and Twig functions `video_optimizer_videos|uuid|title|detail_url|duration|t` ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))
+- Block `vo_video_chapters`: 3 to 10 scene previews (thumbnails 0..9, start `floor(duration / 11 * (i + 1))`) that seek the native player or restart the hosted embed with `t`; Twig function `video_optimizer_scenes()` ([#26](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/26))
+- Format (original, 16:9, 9:16, 1:1, 4:5, 21:9) and focal point options on `vo_single_video` and `vo_media_split`; the hosted embed URL gets `fit=cover`; Twig functions `video_optimizer_format()` ([#27](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/27))
+- Floating mini player option on `vo_single_video` and `vo_video_chapters`: a playing direct player stays pinned bottom right when scrolled out of view, with close button, Escape and a height placeholder; off below 600px and while the lightbox is open ([#28](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/28))
+- Permanent note next to the encoding quality field: a changed quality only applies to existing videos after a reprocess with "Re-encode all qualities" ([#31](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/31))
+
+### Fixed
+- Reprocess answers 400 when `force` is present but not a boolean instead of silently treating it as false ([#30](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/30))
+
 ## [2.1.0] - 2026-11-28
 
 ### Upgrade

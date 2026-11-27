@@ -399,7 +399,7 @@ Subtitles are rendered as `<track kind srclang label src [default]>`; the `<vide
 
 ## 🧱 Content blocks
 
-Beyond the single field, the bundle ships four ready-to-use **Sulu content blocks** for richer
+Beyond the single field, the bundle ships eight ready-to-use **Sulu content blocks** for richer
 video-driven pages — each delivered as an XML template fragment plus a matching Twig view, so there's
 nothing to copy-paste.
 
@@ -409,6 +409,28 @@ nothing to copy-paste.
 | `vo_background_hero` | Full-bleed native `<video>` HLS background        | `blocks/vo_background_hero.html.twig`  |
 | `vo_spotlight`       | Poster that opens the video in a lightbox         | `blocks/vo_spotlight.html.twig`        |
 | `vo_video_grid`      | Repeatable grid of videos, each opening a lightbox | `blocks/vo_video_grid.html.twig`       |
+| `vo_single_video`    | One video with headline and caption; format, focal point, mini player | `blocks/vo_single_video.html.twig` |
+| `vo_video_chapters`  | Video with a row of scene previews that seek the player | `blocks/vo_video_chapters.html.twig` |
+| `vo_video_list`      | Paged cards of the videos of a library            | `blocks/vo_video_list.html.twig`       |
+| `vo_video_detail`    | The video named by `?vo_video=<uuid>` in the URL   | `blocks/vo_video_detail.html.twig`     |
+
+### Video list and video detail
+
+`vo_video_list` shows the finished videos of one library (**Library ID**, empty = all libraries; optional **Tags**, comma-separated) as cards with poster, title and duration, 12 per page (3 to 24). **More videos** and **First page** links page through the API cursor with `?vo_cursor=`. **Detail page URL** (e.g. `/video`) is the page that holds a `vo_video_detail` block: cards link to `<page>?vo_video=<uuid>`; without it a card opens the video in the lightbox. Each page is cached for two minutes. A page with several list blocks shares one `vo_cursor`.
+
+`vo_video_detail` shows the video from `?vo_video=<uuid>` (title, player, JSON-LD) or its **Default video** when the URL names none. An invalid or unknown uuid shows a neutral "not found" text (the page itself still answers 200; the block cannot change the status code or the page title, set those in your own template if you need them).
+
+### Chapters and scenes
+
+`vo_video_chapters` shows the player directly with 3 to 10 scene previews below it (default 5, spread evenly over the video; scroll horizontally on small screens). The previews are the video's auto-generated thumbnails (`GET /videos/{uuid}/thumbnails/{0..9}`, public); a scene starts at `floor(duration / 11 * (index + 1))` seconds, so the row is left out while the duration is unknown. **Scene titles** (one per line) replace "Scene n". A click seeks the native player (the source is attached on the first click, nothing loads before) or restarts the hosted embed with `t=<seconds>&autoplay=1`, and marks the scene with `aria-current`. Autoplay defaults to off for new blocks.
+
+### Format and focal point
+
+`vo_single_video` and `vo_media_split` have a **Format** option: original (video ratio), 16:9, 9:16, 1:1, 4:5 or 21:9. The video fills the area (`object-fit: cover` for the native player and the poster, `fit=cover` for the hosted embed); 9:16 and 4:5 are at most 420px wide and centred. **Focal point X/Y** (percent, default 50) sets `object-position` for the native player and the poster; the hosted embed always crops centred. The lightbox always shows the whole video.
+
+### Floating mini player
+
+`vo_single_video` and `vo_video_chapters` have a **Floating mini player** option (direct presentation only). Once the video plays and scrolls out of view, it stays pinned bottom right (320px wide, 16:9 or its format) with a close button; a placeholder keeps the page height. Only CSS classes toggle, the `<video>`/`<iframe>` is never moved. Closing pauses a native player and reloads a hosted embed without autoplay; Escape unpins, scrolling back unpins. Not active below 600px viewport width or while the lightbox is open. A hosted embed counts as started when it autoplays or the visitor clicked into it.
 
 ### Fastest path: the shipped showcase template
 

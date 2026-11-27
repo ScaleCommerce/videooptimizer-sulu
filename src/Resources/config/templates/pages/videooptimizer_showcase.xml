@@ -56,6 +56,10 @@
                 <type ref="vo_background_hero"/>
                 <type ref="vo_spotlight"/>
                 <type ref="vo_video_grid"/>
+                <type ref="vo_single_video"/>
+                <type ref="vo_video_chapters"/>
+                <type ref="vo_video_list"/>
+                <type ref="vo_video_detail"/>
             </types>
         </block>
     </properties>
