@@ -63,6 +63,7 @@
             <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
             <argument type="service" id="scale_video_optimizer.cache"/>
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\EmbedRenderState"/>
+            <argument type="service" id="Sulu\Bundle\HttpCacheBundle\ReferenceStore\ReferenceStoreInterface" on-invalid="null"/>
         </service>
 
         <!-- Runs late so it sees the lifetime Sulu's cache-lifetime enhancer already set. -->
@@ -89,6 +90,17 @@
         <service id="Scale\VideoOptimizerBundle\Controller\Admin\SettingsController" public="true">
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\SettingsManager"/>
             <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
+            <argument type="service" id="scale_video_optimizer.cache"/>
+            <tag name="controller.service_arguments"/>
+        </service>
+
+        <!-- Public webhook receiver (website kernel, route from routing_website.yaml) -->
+        <service id="Scale\VideoOptimizerBundle\Controller\WebhookController" public="true">
+            <argument type="service" id="Scale\VideoOptimizerBundle\Service\SettingsManager"/>
+            <argument type="service" id="Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver"/>
+            <argument type="service" id="scale_video_optimizer.cache"/>
+            <argument type="service" id="Sulu\Bundle\HttpCacheBundle\Cache\CacheManagerInterface" on-invalid="null"/>
+            <argument type="service" id="logger" on-invalid="null"/>
             <tag name="controller.service_arguments"/>
         </service>
 

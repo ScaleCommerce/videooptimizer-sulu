@@ -26,6 +26,9 @@ function messageForCode(code, serverMessage, upstream) {
     if ('token_forbidden' === code) {
         return upstream && serverMessage ? serverMessage : translate('scale_videooptimizer.error_token_forbidden');
     }
+    if ('webhook_table_missing' === code) {
+        return translate('scale_videooptimizer.error_webhook_table_missing');
+    }
     if ('subtitle_language_in_use' === code) {
         return translate('scale_videooptimizer.error_subtitle_language_in_use');
     }
@@ -103,6 +106,11 @@ export function testConnection() {
 
 export function clearToken() {
     return normalize(Requester.delete(BASE + '/settings/token'));
+}
+
+// Removes the stored webhook signing secret (the receiver then answers 503 again).
+export function clearWebhookSecret() {
+    return normalize(Requester.delete(BASE + '/settings/webhook-secret'));
 }
 
 export function getLibraries() {

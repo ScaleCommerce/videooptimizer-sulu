@@ -7,6 +7,7 @@ namespace Scale\VideoOptimizerBundle\Command;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Scale\VideoOptimizerBundle\Entity\VideoOptimizerSettings;
+use Scale\VideoOptimizerBundle\Entity\VideoOptimizerWebhook;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -21,7 +22,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  */
 #[AsCommand(
     name: 'scale:videooptimizer:install',
-    description: 'Wire the VideoOptimizer bundle into the project (routes, admin JS, settings table).',
+    description: 'Wire the VideoOptimizer bundle into the project (routes, admin JS, settings and webhook tables).',
 )]
 class InstallCommand extends Command
 {
@@ -29,6 +30,7 @@ class InstallCommand extends Command
     private const JS_DEPENDENCY_PATH = 'file:../../vendor/scalecommerce/videooptimizer-sulu/src/Resources/js';
     private const JS_IMPORT = "import 'videooptimizer-sulu';";
     private const TABLE = 'vo_settings';
+    private const WEBHOOK_TABLE = 'vo_webhook';
 
     public function __construct(
         private EntityManagerInterface $entityManager,
@@ -52,7 +54,7 @@ class InstallCommand extends Command
             $io->note('Dry run — no files or tables are changed.');
         }
 
-        foreach (['importRoutes', 'wireAdminDependency', 'wireAdminImport', 'createSettingsTable'] as $step) {
+        foreach (['importRoutes', 'importWebsiteRoutes', 'wireAdminDependency', 'wireAdminImport', 'createSettingsTable', 'createWebhookTable'] as $step) {
             [$status, $message] = $this->{$step}($dryRun);
             if ('done' === $status) {
                 $io->writeln(' <info>✓</info> ' . $message);
@@ -68,7 +70,7 @@ class InstallCommand extends Command
             // A newly written route file stays invisible to an already-warmed cache. Clearing it must be
             // a separate command: doing it from inside this running process would delete the cache this
             // process is still using and crash on shutdown.
-            'Clear the cache so the new routes are served: <comment>bin/adminconsole cache:clear</comment>',
+            'Clear the cache of both kernels so the new routes are served: <comment>bin/adminconsole cache:clear</comment> and <comment>bin/websiteconsole cache:clear</comment>',
             'Build the admin frontend: <comment>cd assets/admin && npm install && npm run build</comment>',
             'Open <comment>Settings → VideoOptimizer</comment> in the admin and paste your API token.',
         ]);
@@ -103,6 +105,35 @@ class InstallCommand extends Command
         }
 
         return ['done', 'Imported the admin API routes (config/routes/scale_videooptimizer_admin.yaml)'];
+    }
+
+    /**
+     * Public website route of the webhook receiver. The `_website` suffix makes Sulu load it in the website kernel only.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function importWebsiteRoutes(bool $dryRun): array
+    {
+        $file = $this->projectDir . '/config/routes/scale_videooptimizer_website.yaml';
+        if (is_file($file)) {
+            return ['skip', 'Website routes imported (webhook receiver)'];
+        }
+
+        $contents = <<<YAML
+            scale_videooptimizer_website:
+                resource: "@ScaleVideoOptimizerBundle/Resources/config/routing_website.yaml"
+
+            YAML;
+
+        if (!$dryRun) {
+            $dir = \dirname($file);
+            if (!is_dir($dir) && !mkdir($dir, 0o775, true) && !is_dir($dir)) {
+                return ['warn', 'Could not create ' . $dir];
+            }
+            file_put_contents($file, $contents);
+        }
+
+        return ['done', 'Imported the website routes of the webhook receiver (config/routes/scale_videooptimizer_website.yaml)'];
     }
 
     /**
@@ -178,5 +209,25 @@ class InstallCommand extends Command
         }
 
         return ['done', 'Created the settings table (' . self::TABLE . ')'];
+    }
+
+    /**
+     * The webhook signing secret lives in a table of its own, so an upgrade only needs this command to be re-run.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function createWebhookTable(bool $dryRun): array
+    {
+        $schemaManager = $this->entityManager->getConnection()->createSchemaManager();
+        if ($schemaManager->tablesExist([self::WEBHOOK_TABLE])) {
+            return ['skip', 'Webhook table (' . self::WEBHOOK_TABLE . ')'];
+        }
+
+        if (!$dryRun) {
+            $metadata = $this->entityManager->getClassMetadata(VideoOptimizerWebhook::class);
+            (new SchemaTool($this->entityManager))->createSchema([$metadata]);
+        }
+
+        return ['done', 'Created the webhook table (' . self::WEBHOOK_TABLE . ')'];
     }
 }

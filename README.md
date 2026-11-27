@@ -229,6 +229,25 @@ new admin labels show their raw translation key.
 > To pin a specific version instead of tracking `^1.0`, set the exact constraint in your `composer.json`
 > (e.g. `"scalecommerce/videooptimizer-sulu": "1.5.2"`).
 
+## Webhooks (optional)
+
+By default a changed video shows up on the website when its cached data expires (one hour; a minute for videos
+that are not ready yet). With a webhook VideoOptimizer tells your site right away, and the cached video data and
+the HTTP-cached pages that show the video are refreshed on `video.ready`, `video.failed`, `video.updated` and
+`video.deleted`.
+
+1. Run `bin/adminconsole scale:videooptimizer:install` (imports the website route and creates the `vo_webhook`
+   table) and clear the caches of both kernels (`bin/adminconsole cache:clear`, `bin/websiteconsole cache:clear`).
+2. In VideoOptimizer, create a webhook under **Organization → Webhooks** with the URL shown under
+   **Settings → VideoOptimizer → Webhook** (`https://<your-site>/_videooptimizer/webhook`).
+3. Paste the webhook's signing secret into the same settings page (stored encrypted, like the token) and use
+   "Send test" in VideoOptimizer: the settings page shows the last delivery.
+
+The receiver is fail-closed: without a secret it answers 503. Deliveries are verified with HMAC-SHA256
+(`X-VideoOptimizer-Signature` over `{timestamp}.{body}`), older than five minutes are rejected, retries and replays
+are acknowledged once, and bodies above 1 MiB are refused. Page invalidation uses Sulu's HTTP cache tags (the tag is
+the video UUID).
+
 ## Configuration (optional)
 
 The API and embed base URLs default to VideoOptimizer's production hosts. Override them (e.g. to point

@@ -2,6 +2,7 @@ import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {Requester} from 'sulu-admin-bundle/services';
 import {
     abortError,
+    clearWebhookSecret,
     bustCache,
     bumpCacheBust,
     errorText,
@@ -21,6 +22,7 @@ import {
     posterContentType,
     posterFor,
     reprocessLibrary,
+    saveSettings,
     updateVideo,
     uploadParts,
 } from '../../src/Resources/js/services/api';
@@ -143,6 +145,23 @@ describe('posters', () => {
         expect(bustCache('https://cdn/x.jpg')).toMatch(/^https:\/\/cdn\/x\.jpg\?_=\d+$/);
         expect(bustCache('https://cdn/x.jpg?w=1')).toMatch(/\?w=1&_=\d+$/);
         expect(bustCache(null)).toBeNull();
+    });
+});
+
+describe('webhook settings', () => {
+    it('removes the secret through its own route', async () => {
+        Requester.delete.mockResolvedValue({webhookConfigured: false});
+
+        expect(await clearWebhookSecret()).toEqual({webhookConfigured: false});
+        expect(Requester.delete).toHaveBeenCalledWith('/admin/api/videooptimizer/settings/webhook-secret');
+    });
+
+    it('explains a missing webhook table', async () => {
+        Requester.put.mockRejectedValue(rejection(409, {message: 'x', code: 'webhook_table_missing'}));
+
+        const error = await saveSettings({webhookSecret: 's'}).catch((e) => e);
+
+        expect(error.message).toBe('scale_videooptimizer.error_webhook_table_missing');
     });
 });
 

@@ -9,6 +9,7 @@ use Prophecy\PhpUnit\ProphecyTrait;
 use Scale\VideoOptimizerBundle\Api\VideoOptimizerClient;
 use Scale\VideoOptimizerBundle\Api\VideoOptimizerException;
 use Scale\VideoOptimizerBundle\Service\EmbedRenderState;
+use Sulu\Bundle\HttpCacheBundle\ReferenceStore\ReferenceStoreInterface;
 use Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Contracts\Cache\CacheInterface;
@@ -143,6 +144,20 @@ class VideoOptimizerEmbedResolverTest extends TestCase
         $resolver->getSources('missing');
 
         self::assertCount(1, $resolver->getSources('other')['sources']);
+    }
+
+    public function testRenderedVideosTagThePageSoAWebhookCanInvalidateIt(): void
+    {
+        $client = $this->prophesize(VideoOptimizerClient::class);
+        $client->getEmbed('abc')->willReturn(['sources' => []]);
+        $store = $this->prophesize(ReferenceStoreInterface::class);
+        $store->add('abc', 'video_optimizer')->shouldBeCalledTimes(2);
+
+        $resolver = new VideoOptimizerEmbedResolver($client->reveal(), new ArrayAdapter(), null, $store->reveal());
+        $resolver->getSources('abc');
+        $resolver->getPosterSrcset('abc');
+
+        $store->checkProphecyMethodsPredictions();
     }
 
     public function testForgetDropsTheCachedEntry(): void

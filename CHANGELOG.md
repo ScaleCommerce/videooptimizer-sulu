@@ -5,14 +5,12 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Upgrade
+- Webhooks (optional): re-run `bin/adminconsole scale:videooptimizer:install` (creates the `vo_webhook` table and `config/routes/scale_videooptimizer_website.yaml`) and clear both kernels' caches, or import `@ScaleVideoOptimizerBundle/Resources/config/routing_website.yaml` yourself; nothing changes without it ([#17](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/17))
 - Admin proxy routes answer an upstream 401/403 as HTTP 502 with `code` `token_rejected`/`token_forbidden` (and an unreachable API as 502 `unreachable`) instead of passing 401/403 through: custom admin code that branches on those statuses must use the `code` ([#20](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/20))
 - Uncached videos are not looked up for 60 s after the API failed (transport error, 429, 502, 503, 504): affected pages render without the video and stay cacheable for at most 60 s ([#20](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/20))
 
-### Changed
-- Selection overlay and Videos view filter by library on the API side; "ready only" and the title search apply to the loaded pages ([#19](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/19))
-- API transport errors and timeouts become a neutral 502 message (the upstream URL is only logged); embed lookups while rendering no longer wait for `Retry-After` ([#20](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/20))
-
 ### Added
+- Webhook receiver `POST /_videooptimizer/webhook` (HMAC-SHA256 signature, 5-minute replay window, duplicate detection, 1 MiB body limit) refreshes the embed cache and the HTTP-cached pages of a video on `video.ready`/`failed`/`updated`/`deleted`; Settings shows the URL to copy, takes the encrypted signing secret and shows the last delivery ([#17](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/17))
 - Libraries view shows the savings: optimized videos, file-size reduction and the estimated bandwidth saved (last 30 days and all time); route `GET videooptimizer/savings` ([#16](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/16))
 - Video detail: edit tags (with suggestions) and metadata key/value entries (e.g. CMS IDs), validated like the API does; video lists can be filtered by tag; `PATCH` of a video validates `tags`/`metadata` and `GET videooptimizer/tags` lists the tags ([#15](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/15))
 - Video detail: list, upload (.srt/.vtt, kind, default track), download and delete subtitles per video; Settings: manage the organization's subtitle languages, deleting a language that is still in use is explained ([#14](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/14))
@@ -22,6 +20,12 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 - `VideoOptimizerClient::listVideosPage()` and `GET /videooptimizer/videos?limit=&cursor=&tags=` return one page plus `next_cursor`/`has_more`; without `limit`/`cursor` the route still returns every video ([#19](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/19))
 - Admin explains rejected tokens and missing permissions in the editor's language and keeps the API's own message for plan limits and suspended organizations ([#20](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/20))
 - JavaScript tests (Vitest) for the admin API service and `vo-blocks.js`, run in CI next to PHPUnit and PHPStan ([#21](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/21))
+
+### Changed
+- Rendered videos tag the page with the video UUID in Sulu's reference store (when the HTTP cache bundle is present) ([#17](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/17))
+- `scale:videooptimizer:install`/`uninstall` also handle the website route import and the `vo_webhook` table ([#17](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/17))
+- Selection overlay and Videos view filter by library on the API side; "ready only" and the title search apply to the loaded pages ([#19](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/19))
+- API transport errors and timeouts become a neutral 502 message (the upstream URL is only logged); embed lookups while rendering no longer wait for `Retry-After` ([#20](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/20))
 
 ## [1.8.2] - 2026-11-27
 

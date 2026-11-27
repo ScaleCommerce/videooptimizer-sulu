@@ -37,8 +37,9 @@ var _mobx = require("mobx");
 var _components = require("sulu-admin-bundle/components");
 var _utils = require("sulu-admin-bundle/utils");
 var _SubtitleLanguages = _interopRequireDefault(require("../components/SubtitleLanguages"));
+var _WebhookSettings = _interopRequireDefault(require("../components/WebhookSettings"));
 var _api = require("../services/api");
-var _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9, _descriptor0, _descriptor1, _descriptor10, _descriptor11, _descriptor12, _descriptor13, _descriptor14, _descriptor15;
+var _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9, _descriptor0, _descriptor1, _descriptor10, _descriptor11, _descriptor12, _descriptor13, _descriptor14, _descriptor15, _descriptor16, _descriptor17, _descriptor18, _descriptor19;
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _initializerDefineProperty(e, i, r, l) { r && Object.defineProperty(e, i, { enumerable: r.enumerable, configurable: r.configurable, writable: r.writable, value: r.initializer ? r.initializer.call(l) : void 0 }); }
 function _classCallCheck(a, n) { if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function"); }
@@ -71,15 +72,20 @@ var Settings = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functio
     _initializerDefineProperty(_this, "token", _descriptor6, _this);
     _initializerDefineProperty(_this, "defaultLibraryId", _descriptor7, _this);
     _initializerDefineProperty(_this, "defaultPlayer", _descriptor8, _this);
-    _initializerDefineProperty(_this, "message", _descriptor9, _this);
-    _initializerDefineProperty(_this, "handleTokenChange", _descriptor0, _this);
-    _initializerDefineProperty(_this, "handleLibraryChange", _descriptor1, _this);
-    _initializerDefineProperty(_this, "handlePlayerChange", _descriptor10, _this);
-    _initializerDefineProperty(_this, "handleSave", _descriptor11, _this);
-    _initializerDefineProperty(_this, "handleTest", _descriptor12, _this);
-    _initializerDefineProperty(_this, "handleRemoveClick", _descriptor13, _this);
-    _initializerDefineProperty(_this, "handleRemoveCancel", _descriptor14, _this);
-    _initializerDefineProperty(_this, "handleRemoveConfirm", _descriptor15, _this);
+    // Last settings returned by the API (webhook state); the secret input is write-only.
+    _initializerDefineProperty(_this, "settings", _descriptor9, _this);
+    _initializerDefineProperty(_this, "webhookSecret", _descriptor0, _this);
+    _initializerDefineProperty(_this, "message", _descriptor1, _this);
+    _initializerDefineProperty(_this, "handleTokenChange", _descriptor10, _this);
+    _initializerDefineProperty(_this, "handleLibraryChange", _descriptor11, _this);
+    _initializerDefineProperty(_this, "handlePlayerChange", _descriptor12, _this);
+    _initializerDefineProperty(_this, "handleWebhookSecretChange", _descriptor13, _this);
+    _initializerDefineProperty(_this, "handleWebhookChanged", _descriptor14, _this);
+    _initializerDefineProperty(_this, "handleSave", _descriptor15, _this);
+    _initializerDefineProperty(_this, "handleTest", _descriptor16, _this);
+    _initializerDefineProperty(_this, "handleRemoveClick", _descriptor17, _this);
+    _initializerDefineProperty(_this, "handleRemoveCancel", _descriptor18, _this);
+    _initializerDefineProperty(_this, "handleRemoveConfirm", _descriptor19, _this);
     return _this;
   }
   _inherits(Settings, _React$Component);
@@ -88,6 +94,7 @@ var Settings = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functio
     value: function componentDidMount() {
       var _this2 = this;
       (0, _api.getSettings)().then((0, _mobx.action)(function (data) {
+        _this2.settings = data;
         _this2.configured = !!data.configured;
         _this2.defaultLibraryId = data.defaultLibraryId || '';
         _this2.defaultPlayer = data.defaultPlayer || 'hosted';
@@ -160,7 +167,12 @@ var Settings = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functio
         disabled: this.removing
       }, (0, _utils.translate)('scale_videooptimizer.remove_token'))), this.message && /*#__PURE__*/_react["default"].createElement("div", {
         className: 'vo-message vo-message--' + this.message.type
-      }, this.message.text)), this.configured && /*#__PURE__*/_react["default"].createElement(_SubtitleLanguages["default"], null), /*#__PURE__*/_react["default"].createElement(_components.Dialog, {
+      }, this.message.text)), /*#__PURE__*/_react["default"].createElement(_WebhookSettings["default"], {
+        settings: this.settings,
+        secret: this.webhookSecret,
+        onSecretChange: this.handleWebhookSecretChange,
+        onChanged: this.handleWebhookChanged
+      }), this.configured && /*#__PURE__*/_react["default"].createElement(_SubtitleLanguages["default"], null), /*#__PURE__*/_react["default"].createElement(_components.Dialog, {
         cancelText: (0, _utils.translate)('sulu_admin.cancel'),
         confirmLoading: this.removing,
         confirmText: (0, _utils.translate)('scale_videooptimizer.remove_token'),
@@ -227,14 +239,28 @@ var Settings = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functio
   initializer: function initializer() {
     return 'hosted';
   }
-}), _descriptor9 = _applyDecoratedDescriptor(_class2.prototype, "message", [_mobx.observable], {
+}), _descriptor9 = _applyDecoratedDescriptor(_class2.prototype, "settings", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return {};
+  }
+}), _descriptor0 = _applyDecoratedDescriptor(_class2.prototype, "webhookSecret", [_mobx.observable], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    return '';
+  }
+}), _descriptor1 = _applyDecoratedDescriptor(_class2.prototype, "message", [_mobx.observable], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     return null;
   }
-}), _descriptor0 = _applyDecoratedDescriptor(_class2.prototype, "handleTokenChange", [_mobx.action], {
+}), _descriptor10 = _applyDecoratedDescriptor(_class2.prototype, "handleTokenChange", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
@@ -244,7 +270,7 @@ var Settings = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functio
       _this3.token = event.target.value;
     };
   }
-}), _descriptor1 = _applyDecoratedDescriptor(_class2.prototype, "handleLibraryChange", [_mobx.action], {
+}), _descriptor11 = _applyDecoratedDescriptor(_class2.prototype, "handleLibraryChange", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
@@ -254,7 +280,7 @@ var Settings = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functio
       _this4.defaultLibraryId = event.target.value;
     };
   }
-}), _descriptor10 = _applyDecoratedDescriptor(_class2.prototype, "handlePlayerChange", [_mobx.action], {
+}), _descriptor12 = _applyDecoratedDescriptor(_class2.prototype, "handlePlayerChange", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
@@ -264,46 +290,69 @@ var Settings = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functio
       _this5.defaultPlayer = event.target.value;
     };
   }
-}), _descriptor11 = _applyDecoratedDescriptor(_class2.prototype, "handleSave", [_mobx.action], {
+}), _descriptor13 = _applyDecoratedDescriptor(_class2.prototype, "handleWebhookSecretChange", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this6 = this;
+    return function (value) {
+      _this6.webhookSecret = value;
+    };
+  }
+}), _descriptor14 = _applyDecoratedDescriptor(_class2.prototype, "handleWebhookChanged", [_mobx.action], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    var _this7 = this;
+    return function (data) {
+      _this7.settings = data;
+    };
+  }
+}), _descriptor15 = _applyDecoratedDescriptor(_class2.prototype, "handleSave", [_mobx.action], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    var _this8 = this;
     return function () {
-      _this6.saving = true;
-      _this6.message = null;
+      _this8.saving = true;
+      _this8.message = null;
       (0, _api.saveSettings)({
-        token: _this6.token,
-        defaultLibraryId: _this6.defaultLibraryId,
-        defaultPlayer: _this6.defaultPlayer
+        token: _this8.token,
+        defaultLibraryId: _this8.defaultLibraryId,
+        defaultPlayer: _this8.defaultPlayer,
+        webhookSecret: _this8.webhookSecret
       }).then((0, _mobx.action)(function (data) {
-        _this6.configured = !!data.configured;
-        _this6.token = '';
-        _this6.saving = false;
-        _this6.message = {
+        _this8.settings = data;
+        _this8.configured = !!data.configured;
+        _this8.token = '';
+        _this8.webhookSecret = '';
+        _this8.saving = false;
+        _this8.message = {
           type: 'success',
           text: (0, _utils.translate)('scale_videooptimizer.saved')
         };
       }))["catch"]((0, _mobx.action)(function (error) {
-        _this6.saving = false;
-        _this6.message = {
+        _this8.saving = false;
+        _this8.message = {
           type: 'error',
           text: error.message || String(error)
         };
       }));
     };
   }
-}), _descriptor12 = _applyDecoratedDescriptor(_class2.prototype, "handleTest", [_mobx.action], {
+}), _descriptor16 = _applyDecoratedDescriptor(_class2.prototype, "handleTest", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
-    var _this7 = this;
+    var _this9 = this;
     return function () {
-      _this7.message = null;
+      _this9.message = null;
       (0, _api.testConnection)().then((0, _mobx.action)(function (result) {
-        _this7.message = result.ok ? {
+        _this9.message = result.ok ? {
           type: 'success',
           text: (0, _utils.translate)('scale_videooptimizer.test_ok', {
             count: result.libraryCount
@@ -317,47 +366,47 @@ var Settings = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functio
       }));
     };
   }
-}), _descriptor13 = _applyDecoratedDescriptor(_class2.prototype, "handleRemoveClick", [_mobx.action], {
-  configurable: true,
-  enumerable: true,
-  writable: true,
-  initializer: function initializer() {
-    var _this8 = this;
-    return function () {
-      _this8.showRemoveDialog = true;
-    };
-  }
-}), _descriptor14 = _applyDecoratedDescriptor(_class2.prototype, "handleRemoveCancel", [_mobx.action], {
-  configurable: true,
-  enumerable: true,
-  writable: true,
-  initializer: function initializer() {
-    var _this9 = this;
-    return function () {
-      _this9.showRemoveDialog = false;
-    };
-  }
-}), _descriptor15 = _applyDecoratedDescriptor(_class2.prototype, "handleRemoveConfirm", [_mobx.action], {
+}), _descriptor17 = _applyDecoratedDescriptor(_class2.prototype, "handleRemoveClick", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
   initializer: function initializer() {
     var _this0 = this;
     return function () {
-      _this0.removing = true;
-      _this0.message = null;
+      _this0.showRemoveDialog = true;
+    };
+  }
+}), _descriptor18 = _applyDecoratedDescriptor(_class2.prototype, "handleRemoveCancel", [_mobx.action], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    var _this1 = this;
+    return function () {
+      _this1.showRemoveDialog = false;
+    };
+  }
+}), _descriptor19 = _applyDecoratedDescriptor(_class2.prototype, "handleRemoveConfirm", [_mobx.action], {
+  configurable: true,
+  enumerable: true,
+  writable: true,
+  initializer: function initializer() {
+    var _this10 = this;
+    return function () {
+      _this10.removing = true;
+      _this10.message = null;
       (0, _api.clearToken)().then((0, _mobx.action)(function (data) {
-        _this0.configured = !!data.configured;
-        _this0.removing = false;
-        _this0.showRemoveDialog = false;
-        _this0.message = {
+        _this10.configured = !!data.configured;
+        _this10.removing = false;
+        _this10.showRemoveDialog = false;
+        _this10.message = {
           type: 'success',
           text: (0, _utils.translate)('scale_videooptimizer.token_removed')
         };
       }))["catch"]((0, _mobx.action)(function (error) {
-        _this0.removing = false;
-        _this0.showRemoveDialog = false;
-        _this0.message = {
+        _this10.removing = false;
+        _this10.showRemoveDialog = false;
+        _this10.message = {
           type: 'error',
           text: error.message || String(error)
         };

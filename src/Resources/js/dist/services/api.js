@@ -9,6 +9,7 @@ exports.abortError = abortError;
 exports.bumpCacheBust = bumpCacheBust;
 exports.bustCache = bustCache;
 exports.clearToken = clearToken;
+exports.clearWebhookSecret = clearWebhookSecret;
 exports.completePosterUpload = completePosterUpload;
 exports.completeUpload = completeUpload;
 exports.createLibrary = createLibrary;
@@ -89,6 +90,9 @@ function messageForCode(code, serverMessage, upstream) {
   if ('token_forbidden' === code) {
     return upstream && serverMessage ? serverMessage : (0, _utils.translate)('scale_videooptimizer.error_token_forbidden');
   }
+  if ('webhook_table_missing' === code) {
+    return (0, _utils.translate)('scale_videooptimizer.error_webhook_table_missing');
+  }
   if ('subtitle_language_in_use' === code) {
     return (0, _utils.translate)('scale_videooptimizer.error_subtitle_language_in_use');
   }
@@ -150,6 +154,11 @@ function testConnection() {
 }
 function clearToken() {
   return normalize(_services.Requester["delete"](BASE + '/settings/token'));
+}
+
+// Removes the stored webhook signing secret (the receiver then answers 503 again).
+function clearWebhookSecret() {
+  return normalize(_services.Requester["delete"](BASE + '/settings/webhook-secret'));
 }
 function getLibraries() {
   return normalize(_services.Requester.get(BASE + '/libraries')).then(function (response) {

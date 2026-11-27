@@ -5,6 +5,7 @@ import {observable, action} from 'mobx';
 import {Button, Dialog, Loader} from 'sulu-admin-bundle/components';
 import {translate} from 'sulu-admin-bundle/utils';
 import SubtitleLanguages from '../components/SubtitleLanguages';
+import WebhookSettings from '../components/WebhookSettings';
 import {getSettings, saveSettings, testConnection, clearToken} from '../services/api';
 
 @observer
@@ -17,11 +18,15 @@ class Settings extends React.Component<*> {
     @observable token = '';
     @observable defaultLibraryId = '';
     @observable defaultPlayer = 'hosted';
+    // Last settings returned by the API (webhook state); the secret input is write-only.
+    @observable settings = {};
+    @observable webhookSecret = '';
     @observable message = null;
 
     componentDidMount() {
         getSettings()
             .then(action((data) => {
+                this.settings = data;
                 this.configured = !!data.configured;
                 this.defaultLibraryId = data.defaultLibraryId || '';
                 this.defaultPlayer = data.defaultPlayer || 'hosted';
@@ -47,13 +52,23 @@ class Settings extends React.Component<*> {
         this.defaultPlayer = event.target.value;
     };
 
+    @action handleWebhookSecretChange = (value) => {
+        this.webhookSecret = value;
+    };
+
+    @action handleWebhookChanged = (data) => {
+        this.settings = data;
+    };
+
     @action handleSave = () => {
         this.saving = true;
         this.message = null;
-        saveSettings({token: this.token, defaultLibraryId: this.defaultLibraryId, defaultPlayer: this.defaultPlayer})
+        saveSettings({token: this.token, defaultLibraryId: this.defaultLibraryId, defaultPlayer: this.defaultPlayer, webhookSecret: this.webhookSecret})
             .then(action((data) => {
+                this.settings = data;
                 this.configured = !!data.configured;
                 this.token = '';
+                this.webhookSecret = '';
                 this.saving = false;
                 this.message = {type: 'success', text: translate('scale_videooptimizer.saved')};
             }))
@@ -160,6 +175,13 @@ class Settings extends React.Component<*> {
                         <div className={'vo-message vo-message--' + this.message.type}>{this.message.text}</div>
                     )}
                 </div>
+
+                <WebhookSettings
+                    settings={this.settings}
+                    secret={this.webhookSecret}
+                    onSecretChange={this.handleWebhookSecretChange}
+                    onChanged={this.handleWebhookChanged}
+                />
 
                 {this.configured && <SubtitleLanguages />}
 

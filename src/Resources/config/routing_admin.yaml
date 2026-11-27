@@ -21,6 +21,11 @@ scale_videooptimizer_settings_token_delete:
     methods: [DELETE]
     controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SettingsController::deleteToken'
 
+scale_videooptimizer_settings_webhook_secret_delete:
+    path: /videooptimizer/settings/webhook-secret
+    methods: [DELETE]
+    controller: 'Scale\VideoOptimizerBundle\Controller\Admin\SettingsController::deleteWebhookSecret'
+
 scale_videooptimizer_encodings_get:
     path: /videooptimizer/encodings
     methods: [GET]

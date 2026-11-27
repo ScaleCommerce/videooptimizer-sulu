@@ -54,6 +54,25 @@ class InstallCommandTest extends TestCase
         self::assertStringContainsString('already done', $tester->getDisplay(), 'the existing table is skipped');
     }
 
+    public function testImportsTheWebsiteRoutesOfTheWebhookReceiver(): void
+    {
+        $tester = new CommandTester(new InstallCommand($this->entityManager(tableExists: true), $this->projectDir));
+        $tester->execute([]);
+
+        $routes = (string) file_get_contents($this->projectDir . '/config/routes/scale_videooptimizer_website.yaml');
+        self::assertStringContainsString('@ScaleVideoOptimizerBundle/Resources/config/routing_website.yaml', $routes);
+        self::assertStringNotContainsString('prefix', $routes, 'the webhook lives at /_videooptimizer/webhook');
+    }
+
+    public function testKeepsAnExistingWebsiteRouteImport(): void
+    {
+        file_put_contents($this->projectDir . '/config/routes/scale_videooptimizer_website.yaml', "# mine\n");
+
+        (new CommandTester(new InstallCommand($this->entityManager(tableExists: true), $this->projectDir)))->execute([]);
+
+        self::assertSame("# mine\n", file_get_contents($this->projectDir . '/config/routes/scale_videooptimizer_website.yaml'));
+    }
+
     public function testDryRunChangesNothing(): void
     {
         $tester = new CommandTester(new InstallCommand($this->entityManager(tableExists: true), $this->projectDir));
@@ -61,6 +80,7 @@ class InstallCommandTest extends TestCase
         $tester->assertCommandIsSuccessful();
 
         self::assertFileDoesNotExist($this->projectDir . '/config/routes/scale_videooptimizer_admin.yaml');
+        self::assertFileDoesNotExist($this->projectDir . '/config/routes/scale_videooptimizer_website.yaml');
         self::assertStringNotContainsString('videooptimizer-sulu', (string) file_get_contents($this->projectDir . '/assets/admin/app.js'));
     }
 
@@ -84,6 +104,7 @@ class InstallCommandTest extends TestCase
     {
         $schemaManager = $this->prophesize(AbstractSchemaManager::class);
         $schemaManager->tablesExist(['vo_settings'])->willReturn($tableExists);
+        $schemaManager->tablesExist(['vo_webhook'])->willReturn($tableExists);
 
         $connection = $this->prophesize(Connection::class);
         $connection->createSchemaManager()->willReturn($schemaManager->reveal());

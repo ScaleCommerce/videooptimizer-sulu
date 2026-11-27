@@ -7,6 +7,7 @@ namespace Scale\VideoOptimizerBundle\Command;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Scale\VideoOptimizerBundle\Entity\VideoOptimizerSettings;
+use Scale\VideoOptimizerBundle\Entity\VideoOptimizerWebhook;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -28,6 +29,7 @@ class UninstallCommand extends Command
 {
     private const JS_DEPENDENCY = 'videooptimizer-sulu';
     private const TABLE = 'vo_settings';
+    private const WEBHOOK_TABLE = 'vo_webhook';
 
     public function __construct(
         private EntityManagerInterface $entityManager,
@@ -52,7 +54,7 @@ class UninstallCommand extends Command
             $io->note('Dry run — nothing is changed.');
         }
 
-        foreach (['dropTable', 'removeRoutes', 'unwireAdminDependency', 'unwireAdminImport'] as $step) {
+        foreach (['dropTable', 'dropWebhookTable', 'removeRoutes', 'removeWebsiteRoutes', 'unwireAdminDependency', 'unwireAdminImport'] as $step) {
             [$status, $message] = $this->{$step}($io, $dryRun, (bool) $input->getOption('force'));
             if ('done' === $status) {
                 $io->writeln(' <info>✓</info> ' . $message);
@@ -95,6 +97,47 @@ class UninstallCommand extends Command
         (new SchemaTool($this->entityManager))->dropSchema([$metadata]);
 
         return ['done', 'Dropped the settings table (' . self::TABLE . ')'];
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function dropWebhookTable(SymfonyStyle $io, bool $dryRun, bool $force): array
+    {
+        $schemaManager = $this->entityManager->getConnection()->createSchemaManager();
+        if (!$schemaManager->tablesExist([self::WEBHOOK_TABLE])) {
+            return ['skip', 'Webhook table (' . self::WEBHOOK_TABLE . ') already gone'];
+        }
+
+        if ($dryRun) {
+            return ['done', 'Would drop the webhook table (' . self::WEBHOOK_TABLE . ') — holds the encrypted signing secret'];
+        }
+
+        if (!$force && !$io->confirm('Drop the "' . self::WEBHOOK_TABLE . '" table? This deletes the stored webhook signing secret.', false)) {
+            return ['warn', 'Kept the webhook table (' . self::WEBHOOK_TABLE . ') — confirmation declined.'];
+        }
+
+        $metadata = $this->entityManager->getClassMetadata(VideoOptimizerWebhook::class);
+        (new SchemaTool($this->entityManager))->dropSchema([$metadata]);
+
+        return ['done', 'Dropped the webhook table (' . self::WEBHOOK_TABLE . ')'];
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function removeWebsiteRoutes(SymfonyStyle $io, bool $dryRun, bool $force): array
+    {
+        $file = $this->projectDir . '/config/routes/scale_videooptimizer_website.yaml';
+        if (!is_file($file)) {
+            return ['skip', 'Website route import already removed'];
+        }
+
+        if (!$dryRun) {
+            unlink($file);
+        }
+
+        return ['done', 'Removed config/routes/scale_videooptimizer_website.yaml'];
     }
 
     /**

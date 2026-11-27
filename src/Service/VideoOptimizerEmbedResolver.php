@@ -6,6 +6,7 @@ namespace Scale\VideoOptimizerBundle\Service;
 
 use Scale\VideoOptimizerBundle\Api\VideoOptimizerClient;
 use Scale\VideoOptimizerBundle\Api\VideoOptimizerException;
+use Sulu\Bundle\HttpCacheBundle\ReferenceStore\ReferenceStoreInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
@@ -31,6 +32,7 @@ class VideoOptimizerEmbedResolver
         private VideoOptimizerClient $client,
         private CacheInterface $cache,
         private ?EmbedRenderState $renderState = null,
+        private ?ReferenceStoreInterface $referenceStore = null,
     ) {
     }
 
@@ -39,6 +41,10 @@ class VideoOptimizerEmbedResolver
      */
     public function getSources(string $uuid): array
     {
+        // Tags the rendered page with the video (tag = its UUID), so a webhook can invalidate exactly the
+        // cached pages that show it.
+        $this->referenceStore?->add($uuid, 'video_optimizer');
+
         $result = $this->lookup($uuid);
         if ([] === $result['sources']) {
             // The page is rendered without this video: do not let the HTTP cache keep it for long.
