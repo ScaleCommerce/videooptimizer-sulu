@@ -4,6 +4,8 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-27
+
 ### Upgrade
 - Webhooks (optional): re-run `bin/adminconsole scale:videooptimizer:install` (creates the `vo_webhook` table and `config/routes/scale_videooptimizer_website.yaml`) and clear both kernels' caches, or import `@ScaleVideoOptimizerBundle/Resources/config/routing_website.yaml` yourself; nothing changes without it; rebuild the Sulu admin assets (`cd assets/admin && npm run build`) and hard-reload the admin for the new views, and exempt `/_videooptimizer/webhook` from any firewall, basic auth or WAF in front of the website ([#17](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/17))
 - Admin proxy routes answer an upstream 401/403 as HTTP 502 with `code` `token_rejected`/`token_forbidden` (and an unreachable API as 502 `unreachable`) instead of passing 401/403 through: custom admin code that branches on those statuses must use the `code` ([#20](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/20))
