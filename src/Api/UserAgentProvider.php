@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
  * Builds the User-Agent the bundle sends with every VideoOptimizer API request, so the
  * VideoOptimizer app can show which plugin versions an organization runs:
  *
- *     VideoOptimizer-Sulu/1.7.3 (Sulu 3.0.7; PHP 8.3.14; +https://www.example.com)
+ *     VideoOptimizer-Sulu/1.8.0 (Sulu 3.0.7; PHP 8.3.14; +https://www.example.com)
  *
  * The VideoOptimizer app parses this with a regex — keep the format stable. Comment parts are
  * separated by "; ", every value is sanitized, empty parts are omitted.

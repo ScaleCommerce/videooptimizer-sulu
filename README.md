@@ -470,7 +470,7 @@ direct-to-storage part uploads. List endpoints are cursor-paginated and resolved
 array; rate limits (`429`) are retried once, honoring `Retry-After`.
 
 Each API request identifies the bundle with a `User-Agent` header, e.g.
-`VideoOptimizer-Sulu/1.7.3 (Sulu 3.0.7; PHP 8.3.14; +https://www.example.com)`, so VideoOptimizer can see
+`VideoOptimizer-Sulu/1.8.0 (Sulu 3.0.7; PHP 8.3.14; +https://www.example.com)`, so VideoOptimizer can see
 which bundle versions are in use. The site URL comes from `framework.router.default_uri` (`DEFAULT_URI`;
 `localhost` is ignored), else from the current request's host; without either it is left out.
 
