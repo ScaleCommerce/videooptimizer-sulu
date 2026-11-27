@@ -603,3 +603,115 @@ describe('floating mini player', () => {
         expect(frame.classList.contains('vo-frame--pinned')).toBe(true);
     });
 });
+
+describe('play while scrolling (native, autoplay on)', () => {
+    let observers;
+
+    beforeEach(() => {
+        observers = [];
+        window.IntersectionObserver = class {
+            constructor(callback, options) {
+                this.callback = callback;
+                this.options = options;
+                observers.push(this);
+            }
+            observe(target) {
+                this.target = target;
+            }
+            unobserve() {}
+            disconnect() {}
+        };
+        window.matchMedia = () => ({matches: false});
+        HTMLMediaElement.prototype.pause = vi.fn(function () {
+            Object.defineProperty(this, 'paused', {value: true, configurable: true});
+            this.dispatchEvent(new Event('pause'));
+        });
+    });
+
+    afterEach(() => {
+        delete navigator.connection;
+    });
+
+    function setup() {
+        mount('<video class="vo-native" muted data-vo-native-autoload data-hls="https://cdn/x.m3u8"></video>');
+        load();
+        const video = document.querySelector('video');
+        const observer = observers.find((o) => o.target === video);
+        const see = (ratio) => observer.callback([{isIntersecting: ratio > 0, intersectionRatio: ratio, target: video}]);
+        HTMLMediaElement.prototype.play = vi.fn(function () {
+            Object.defineProperty(this, 'paused', {value: false, configurable: true});
+            this.dispatchEvent(new Event('play'));
+            return Promise.resolve();
+        });
+
+        return {video, observer, see};
+    }
+
+    it('starts at half visible and does nothing earlier', () => {
+        const {observer, see, video} = setup();
+
+        expect(observer.options.threshold).toEqual([0, 0.5]);
+        see(0.3);
+        expect(video.hasAttribute('data-vo-wired')).toBe(false);
+        see(0.6);
+        expect(video.hasAttribute('data-vo-wired')).toBe(true);
+    });
+
+    it('pauses when it leaves the viewport and resumes when it is back', () => {
+        HTMLMediaElement.prototype.canPlayType = () => 'maybe';
+        const {see, video} = setup();
+        see(0.8);
+        Object.defineProperty(video, 'paused', {value: false, configurable: true});
+
+        see(0.1);
+        expect(video.pause).toHaveBeenCalledTimes(1);
+
+        HTMLMediaElement.prototype.play.mockClear();
+        see(0.9);
+        expect(HTMLMediaElement.prototype.play).toHaveBeenCalled();
+    });
+
+    it('keeps an explicit pause of the visitor', () => {
+        HTMLMediaElement.prototype.canPlayType = () => 'maybe';
+        const {see, video} = setup();
+        see(0.8);
+        Object.defineProperty(video, 'paused', {value: false, configurable: true});
+
+        video.dispatchEvent(new Event('pause')); // the visitor paused
+        HTMLMediaElement.prototype.play.mockClear();
+        see(0.1);
+        see(0.9);
+
+        expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+        expect(video.hasAttribute('data-vo-user-paused')).toBe(true);
+
+        video.dispatchEvent(new Event('play')); // the visitor pressed play again
+        expect(video.hasAttribute('data-vo-user-paused')).toBe(false);
+    });
+
+    it('does not count its own pause as the visitor pausing', () => {
+        HTMLMediaElement.prototype.canPlayType = () => 'maybe';
+        const {see, video} = setup();
+        see(0.8);
+        Object.defineProperty(video, 'paused', {value: false, configurable: true});
+
+        see(0);
+
+        expect(video.hasAttribute('data-vo-user-paused')).toBe(false);
+    });
+
+    it('does not autoplay for prefers-reduced-motion or Save-Data', () => {
+        window.matchMedia = () => ({matches: true});
+        mount('<video class="vo-native" muted data-vo-native-autoload data-hls="https://cdn/x.m3u8"></video>');
+        load();
+        expect(observers.some((o) => o.target === document.querySelector('video'))).toBe(false);
+
+        window.matchMedia = () => ({matches: false});
+        Object.defineProperty(navigator, 'connection', {value: {saveData: true}, configurable: true});
+        observers.length = 0;
+        mount('<video class="vo-native" muted data-vo-native-autoload data-hls="https://cdn/x.m3u8"></video>');
+        load();
+        expect(observers.some((o) => o.target === document.querySelector('video'))).toBe(false);
+        expect(hlsScript()).toBeNull();
+    });
+});

@@ -306,23 +306,64 @@
         });
     }
 
-    // Direct + non-priority native <video>: deferred (preload="none", no autoplay) and visible
-    // from the start, so — mirroring initAutoload() for the hosted/iframe player — wire its HLS
-    // master and play() it once it scrolls into view. Respects prefers-reduced-motion exactly like
-    // initBackgroundVideos(): when set, the <video> is left unwired, showing only its poster and
-    // native controls, never auto-playing.
+    // Visitors who asked to save data do not get autoplaying video.
+    function saveData() {
+        var connection = navigator.connection;
+        return !!(connection && connection.saveData);
+    }
+
+    // Direct + non-priority native <video> with autoplay on: deferred (preload="none") and visible from the
+    // start. It plays once it is at least half visible and pauses when it leaves the viewport again; the source
+    // is attached on the first play only. A pause by the visitor sticks (data-vo-user-paused) until they press
+    // play again. With prefers-reduced-motion or Save-Data the <video> is left unwired, showing only its poster
+    // and controls.
     function initNativeAutoload(baseUrl) {
         var videos = document.querySelectorAll('.vo-native[data-vo-native-autoload]');
-        if (!videos.length || prefersReducedMotion()) {
+        if (!videos.length || prefersReducedMotion() || saveData()) {
             return;
         }
 
-        whenNearViewport(videos, function (video) {
+        function start(video) {
+            if (video.hasAttribute('data-vo-user-paused')) {
+                return;
+            }
             if (video.hasAttribute('data-vo-wired')) {
-                return; // a chapter button already started it
+                var result = video.play();
+                if (result && result.catch) {
+                    result.catch(function () {});
+                }
+                return;
             }
             video.removeAttribute('data-vo-native-autoload');
             attachHls(video, baseUrl, {play: true});
+        }
+
+        videos.forEach(function (video) {
+            var pausedByScroll = false;
+            video.addEventListener('pause', function () {
+                if (pausedByScroll) {
+                    pausedByScroll = false;
+                } else if (!video.ended) {
+                    video.setAttribute('data-vo-user-paused', '');
+                }
+            });
+            video.addEventListener('play', function () {
+                video.removeAttribute('data-vo-user-paused');
+            });
+
+            if (!('IntersectionObserver' in window)) {
+                start(video);
+                return;
+            }
+            new IntersectionObserver(function (entries) {
+                var entry = entries[entries.length - 1];
+                if (entry.intersectionRatio >= 0.5) {
+                    start(video);
+                } else if (!video.paused && video.hasAttribute('data-vo-wired')) {
+                    pausedByScroll = true;
+                    video.pause();
+                }
+            }, {threshold: [0, 0.5]}).observe(video);
         });
     }
 
