@@ -3,4 +3,4 @@
     source of the JS asset path — the AssetInjectionListener renders this in before </body>, and
     assets.html.twig includes it for the manual/opt-out path.
 #}
-<script src="{{ asset('bundles/scalevideooptimizer/js/vo-blocks.js') }}" defer></script>
+<script src="{{ asset('bundles/scalevideooptimizer/js/vo-blocks.js') }}?v={{ video_optimizer_asset_version() }}" defer></script>

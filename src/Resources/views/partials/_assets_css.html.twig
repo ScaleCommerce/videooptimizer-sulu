@@ -3,4 +3,4 @@
     asset path — the AssetInjectionListener renders this into <head>, and assets.html.twig includes
     it for the manual/opt-out path.
 #}
-<link rel="stylesheet" href="{{ asset('bundles/scalevideooptimizer/css/vo-blocks.css') }}">
+<link rel="stylesheet" href="{{ asset('bundles/scalevideooptimizer/css/vo-blocks.css') }}?v={{ video_optimizer_asset_version() }}">

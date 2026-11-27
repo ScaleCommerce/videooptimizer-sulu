@@ -150,20 +150,34 @@
     100% { box-shadow: 0 0 0 0 rgba(29, 78, 216, 0); }
 }
 
-/* Lightbox */
-.vo-lightbox {
+/* Lightbox: a native modal <dialog> (showModal) filling the viewport; the padding is the clickable backdrop. */
+dialog.vo-lightbox {
     position: fixed;
     inset: 0;
     z-index: 1000;
-    display: none;
-    place-items: center;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    border: 0;
     padding: 5vw;
+    place-items: center;
     background: rgba(2, 6, 23, 0.82);
     backdrop-filter: blur(6px);
+    color: inherit;
 }
 
-.vo-lightbox[data-open="true"] {
+dialog.vo-lightbox:not([open]) {
+    display: none;
+}
+
+dialog.vo-lightbox[open] {
     display: grid;
+}
+
+dialog.vo-lightbox::backdrop {
+    background: transparent;
 }
 
 .vo-lightbox__inner {
@@ -268,6 +282,37 @@
     height: 100%;
     object-fit: cover;
     z-index: -2;
+}
+
+/* Pause/play button for the looping background video (WCAG 2.2.2), added by vo-blocks.js. */
+.vo-bg-toggle {
+    position: absolute;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 2;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(2, 6, 23, 0.65);
+    color: #fff;
+    cursor: pointer;
+}
+
+.vo-bg-toggle::before {
+    content: "\23F8\FE0E";
+    font-size: 1rem;
+    line-height: 2.5rem;
+}
+
+.vo-bg-toggle[data-state="paused"]::before {
+    content: "\25B6\FE0E";
+}
+
+.vo-bg-toggle:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 2px;
 }
 
 .vo-bg-hero__overlay {

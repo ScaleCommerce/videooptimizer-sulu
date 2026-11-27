@@ -577,6 +577,18 @@ class VideoOptimizerBlockRenderTest extends TestCase
         self::assertStringNotContainsString('crossorigin', $html);
     }
 
+    public function testAssetVersionIsAStableHashAndUsedByTheAssetPartials(): void
+    {
+        $extension = new VideoOptimizerExtension('https://videooptimizer.eu', $this->resolver()->reveal(), $this->settingsManager()->reveal());
+
+        self::assertMatchesRegularExpression('/^[0-9a-f]{10}$/', $extension->assetVersion());
+        self::assertSame($extension->assetVersion(), $extension->assetVersion());
+        foreach (['css', 'js'] as $type) {
+            $partial = (string) file_get_contents(\dirname(__DIR__, 2) . '/src/Resources/views/partials/_assets_' . $type . '.html.twig');
+            self::assertStringContainsString('?v={{ video_optimizer_asset_version() }}', $partial);
+        }
+    }
+
     public function testRenderNativeIsDeferredByDefault(): void
     {
         $resolver = $this->resolver();

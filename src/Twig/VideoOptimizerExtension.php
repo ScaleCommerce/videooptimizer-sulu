@@ -43,6 +43,7 @@ class VideoOptimizerExtension extends AbstractExtension
             new TwigFunction('video_optimizer_player', [$this, 'player']),
             new TwigFunction('video_optimizer_srcset', [$this, 'srcset']),
             new TwigFunction('video_optimizer_poster', [$this, 'poster']),
+            new TwigFunction('video_optimizer_asset_version', [$this, 'assetVersion']),
             new TwigFunction('video_optimizer_native', [$this, 'renderNative'], ['is_safe' => ['html']]),
             // No 'is_safe': this returns data, not markup. See sources() for why a consumer
             // that renders its own markup must wire the frontend assets itself.
@@ -460,6 +461,26 @@ class VideoOptimizerExtension extends AbstractExtension
             // @phpstan-ignore nullCoalesce.offset (entries cached or mocked without tracks)
             'tracks' => $resolved['tracks'] ?? [],
         ];
+    }
+
+    /**
+     * Cache-busting token for the bundle's frontend CSS/JS (a hash of both files), so a browser never pairs
+     * the old script with the new stylesheet after an update.
+     */
+    public function assetVersion(): string
+    {
+        /** @var string|null $version */
+        static $version = null;
+        if (null === $version) {
+            $dir = \dirname(__DIR__) . '/Resources/public/';
+            $hash = '';
+            foreach (['css/vo-blocks.css', 'js/vo-blocks.js'] as $file) {
+                $hash .= (string) @md5_file($dir . $file);
+            }
+            $version = substr(md5($hash), 0, 10);
+        }
+
+        return $version;
     }
 
     /**

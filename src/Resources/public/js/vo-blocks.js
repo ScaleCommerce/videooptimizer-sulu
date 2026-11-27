@@ -55,12 +55,17 @@
         var src = video.getAttribute('data-hls');
         var hls = null;
         var fellBack = false;
+        video.setAttribute('data-vo-wired', '');
 
         function play() {
-            if (wantPlay) {
+            // A pause pressed before the source was ready (data-vo-user-paused) must stay a pause.
+            if (wantPlay && !video.hasAttribute('data-vo-user-paused')) {
                 var result = video.play();
                 if (result && result.catch) {
-                    result.catch(function () {}); // autoplay-policy rejections are expected/harmless
+                    result.catch(function () {
+                        // Autoplay-policy rejections are expected; tell the playback toggle it is paused.
+                        video.dispatchEvent(new Event('vo-play-blocked'));
+                    });
                 }
             }
         }
@@ -117,14 +122,21 @@
     }
 
     function initBackgroundVideos(baseUrl) {
-        if (prefersReducedMotion()) {
-            // Leave the <video> unwired so the browser shows its poster and never plays.
-            return;
-        }
+        var reducedMotion = prefersReducedMotion();
         // `[data-vo-hls]` is the opt-in for custom markup (see video_optimizer_sources()). It is
         // deliberately not widened to every `video[data-hls]`: initNativePlayers() excludes facade
         // and lazy videos, and a blanket selector would wire those too.
         document.querySelectorAll('.vo-bg-hero__video[data-hls], video[data-vo-hls][data-hls]').forEach(function (video) {
+            // The button only makes sense where the video is shown (not display:none).
+            whenRendered(video, function () {
+                addPlaybackToggle(video, baseUrl, reducedMotion);
+            });
+            if (reducedMotion) {
+                // Leave the <video> unwired so the browser shows its poster and never plays, until
+                // the visitor presses the play button.
+                video.autoplay = false;
+                return;
+            }
             // Order: reduced motion (above) → deferral → rendered check. The rendered check must
             // run after the wait, since visibility may have changed by then.
             if (video.hasAttribute('data-vo-hls-eager')) {
@@ -134,6 +146,94 @@
             afterPageLoad(function () {
                 wireWhenRendered(video, baseUrl);
             });
+        });
+    }
+
+    var LABELS = {
+        en: {pause: 'Pause background video', play: 'Play background video', close: 'Close', dialog: 'Video player'},
+        de: {pause: 'Hintergrundvideo anhalten', play: 'Hintergrundvideo abspielen', close: 'Schließen', dialog: 'Videoplayer'}
+    };
+
+    // Label in the page language (html lang, default en); `el` may override with data-vo-label-<key>.
+    function label(key, el) {
+        var custom = el && el.getAttribute('data-vo-label-' + key);
+        if (custom) {
+            return custom;
+        }
+        var lang = String(document.documentElement.lang || 'en').slice(0, 2).toLowerCase();
+
+        return (LABELS[lang] || LABELS.en)[key];
+    }
+
+    // Calls fn once the video is rendered (right away, or when it first becomes visible). Without
+    // ResizeObserver a hidden video gets no callback.
+    function whenRendered(video, fn) {
+        if (isRendered(video)) {
+            fn();
+            return;
+        }
+        if (typeof ResizeObserver !== 'function') {
+            return;
+        }
+        var observer = new ResizeObserver(function () {
+            if (isRendered(video)) {
+                observer.disconnect();
+                fn();
+            }
+        });
+        observer.observe(video);
+    }
+
+    // WCAG 2.2.2: moving content that plays for more than five seconds needs a way to pause it.
+    // Adds a pause/play button to looping background videos (the hero, or custom markup that opts in
+    // with data-vo-toggle). The state follows the video's own play/pause events, so a blocked autoplay
+    // or reduced motion shows "play". Labels: page language, or data-vo-label-pause / -play.
+    function addPlaybackToggle(video, baseUrl, startPaused) {
+        if (!video.classList.contains('vo-bg-hero__video') && !video.hasAttribute('data-vo-toggle')) {
+            return;
+        }
+        var parent = video.parentElement;
+        if (!parent || parent.querySelector('.vo-bg-toggle')) {
+            return;
+        }
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'vo-bg-toggle';
+        parent.appendChild(button);
+
+        function sync(paused) {
+            button.setAttribute('aria-label', label(paused ? 'play' : 'pause', video));
+            button.setAttribute('data-state', paused ? 'paused' : 'playing');
+        }
+
+        // Until the source is attached the video is still paused although it is about to play.
+        sync(!!startPaused);
+        ['play', 'playing'].forEach(function (name) {
+            video.addEventListener(name, function () { sync(false); });
+        });
+        ['pause', 'ended', 'vo-play-blocked'].forEach(function (name) {
+            video.addEventListener(name, function () { sync(true); });
+        });
+
+        button.addEventListener('click', function () {
+            if (button.getAttribute('data-state') === 'playing') {
+                video.autoplay = false; // a source attached later must not start it again
+                video.setAttribute('data-vo-user-paused', '');
+                video.pause();
+                sync(true);
+                return;
+            }
+            video.removeAttribute('data-vo-user-paused');
+            video.autoplay = true;
+            sync(false);
+            if (video.hasAttribute('data-vo-wired')) {
+                var result = video.play();
+                if (result && result.catch) {
+                    result.catch(function () { sync(true); });
+                }
+            } else {
+                attachHls(video, baseUrl, {play: true});
+            }
         });
     }
 
@@ -249,15 +349,17 @@
     }
 
     function buildLightbox() {
-        var box = document.createElement('div');
+        // A native modal <dialog>: showModal() makes the rest of the page inert, keeps the focus
+        // inside and closes on Escape, also while the player has the focus.
+        var box = document.createElement('dialog');
         box.className = 'vo-lightbox';
-        box.setAttribute('role', 'dialog');
-        box.setAttribute('aria-modal', 'true');
+        box.setAttribute('aria-label', label('dialog'));
         box.innerHTML =
             '<div class="vo-lightbox__inner">' +
-            '<button class="vo-lightbox__close" aria-label="Close">&times;</button>' +
+            '<button type="button" class="vo-lightbox__close">&times;</button>' +
             '<div class="vo-lightbox__slot"></div>' +
             '</div>';
+        box.querySelector('.vo-lightbox__close').setAttribute('aria-label', label('close'));
         document.body.appendChild(box);
         return box;
     }
@@ -271,6 +373,21 @@
         var slot = box.querySelector('.vo-lightbox__slot');
         var lastFocus = null;
         var nativeHolder = null; // holder the moved <video> must return to on close
+        var inerted = []; // fallback only: siblings made inert without showModal()
+
+        function setPageInert(on) {
+            if (on) {
+                Array.prototype.forEach.call(document.body.children, function (el) {
+                    if (el !== box && !el.hasAttribute('inert')) {
+                        el.setAttribute('inert', '');
+                        inerted.push(el);
+                    }
+                });
+                return;
+            }
+            inerted.forEach(function (el) { el.removeAttribute('inert'); });
+            inerted = [];
+        }
 
         function open(trigger) {
             lastFocus = document.activeElement;
@@ -291,12 +408,18 @@
                 slot.replaceChildren(embedIframe(trigger.getAttribute('data-vo-lightbox')));
             }
 
-            box.setAttribute('data-open', 'true');
+            if ('function' === typeof box.showModal) {
+                box.showModal();
+            } else {
+                box.setAttribute('open', '');
+                setPageInert(true);
+            }
             box.querySelector('.vo-lightbox__close').focus();
         }
 
-        function close() {
-            box.removeAttribute('data-open');
+        // Runs on every way of closing (button, backdrop, Escape): restores the page state once.
+        function finish() {
+            setPageInert(false);
             if (nativeHolder) {
                 var video = slot.querySelector('video');
                 if (video) {
@@ -309,7 +432,17 @@
             slot.replaceChildren(); // stops iframe playback
             if (lastFocus) {
                 lastFocus.focus();
+                lastFocus = null;
             }
+        }
+
+        function close() {
+            if ('function' === typeof box.close) {
+                box.close(); // fires `close`, which runs finish()
+                return;
+            }
+            box.removeAttribute('open');
+            finish();
         }
 
         triggers.forEach(function (trigger) {
@@ -318,21 +451,23 @@
             });
         });
 
+        box.addEventListener('close', finish);
+
         box.addEventListener('click', function (event) {
             if (event.target === box || event.target.classList.contains('vo-lightbox__close')) {
                 close();
             }
         });
 
+        // Without showModal() the browser gives neither Escape handling nor a focus trap.
         document.addEventListener('keydown', function (event) {
-            if ('true' !== box.getAttribute('data-open')) {
+            if ('function' === typeof box.showModal || !box.hasAttribute('open')) {
                 return;
             }
             if ('Escape' === event.key) {
                 close();
                 return;
             }
-            // Focus trap: keep Tab within the dialog while it is open.
             if ('Tab' === event.key) {
                 var focusable = box.querySelectorAll('button, iframe, video[controls], a[href], [tabindex]:not([tabindex="-1"])');
                 if (!focusable.length) {
@@ -340,7 +475,10 @@
                 }
                 var first = focusable[0];
                 var last = focusable[focusable.length - 1];
-                if (event.shiftKey && document.activeElement === first) {
+                if (!box.contains(document.activeElement)) {
+                    event.preventDefault();
+                    first.focus();
+                } else if (event.shiftKey && document.activeElement === first) {
                     event.preventDefault();
                     last.focus();
                 } else if (!event.shiftKey && document.activeElement === last) {

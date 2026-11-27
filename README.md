@@ -377,6 +377,10 @@ function passes data through; it does not adapt it to any particular consumer's 
 > additionally preloads the poster with `fetchpriority="high"`; **"Load video immediately"** only
 > removes the deferral.
 
+### Accessibility
+
+Looping background videos get a pause/play button (WCAG 2.2.2) and stay paused for visitors with `prefers-reduced-motion` until they press play. Labels follow `<html lang>` (en, de) or `data-vo-label-pause` / `data-vo-label-play` on the `<video>`; custom markup opts in with `data-vo-toggle`. The lightbox is a native modal `<dialog>`: the page behind it is inert, focus stays inside and Escape closes it.
+
 ### Player theme and subtitles in the native player
 
 The native `<video>` player applies the organization's player theme from `GET /embed/{uuid}` and the video's subtitle tracks. A block's own player option (controls, autoplay, loop, muted) wins over the theme.

@@ -157,4 +157,212 @@ describe('vo-blocks.js', () => {
         });
     });
 
+    describe('background video pause/play button', () => {
+        const hero = '<section class="vo-bg-hero"><video class="vo-bg-hero__video" muted autoplay loop data-hls="https://cdn/x.m3u8"></video></section>';
+
+        it('adds a labelled pause button that pauses and resumes the video', () => {
+            mount(hero);
+            load();
+
+            const button = document.querySelector('.vo-bg-toggle');
+            const video = document.querySelector('video');
+            expect(button.getAttribute('aria-label')).toBe('Pause background video');
+
+            video.pause = vi.fn();
+            video.setAttribute('data-vo-wired', '');
+            button.click();
+            expect(video.pause).toHaveBeenCalled();
+            expect(button.getAttribute('aria-label')).toBe('Play background video');
+            expect(button.hasAttribute('aria-pressed')).toBe(false);
+
+            HTMLMediaElement.prototype.play.mockClear();
+            button.click();
+            expect(video.play).toHaveBeenCalled();
+            expect(button.getAttribute('aria-label')).toBe('Pause background video');
+        });
+
+        it('follows the video events: blocked autoplay and an outside pause show play', () => {
+            mount(hero);
+            load();
+            const button = document.querySelector('.vo-bg-toggle');
+            const video = document.querySelector('video');
+
+            video.dispatchEvent(new Event('vo-play-blocked'));
+            expect(button.getAttribute('data-state')).toBe('paused');
+            video.dispatchEvent(new Event('playing'));
+            expect(button.getAttribute('data-state')).toBe('playing');
+            video.dispatchEvent(new Event('pause'));
+            expect(button.getAttribute('aria-label')).toBe('Play background video');
+        });
+
+        it('keeps a pause pressed before the stream was ready', async () => {
+            mount(hero);
+            load();
+            const video = document.querySelector('video');
+            document.querySelector('.vo-bg-toggle').click(); // pause while hls.js is not even loaded
+            expect(video.hasAttribute('data-vo-user-paused')).toBe(true);
+
+            let manifestParsed;
+            window.Hls = function () { return {on: (event, cb) => { if (event === 'parsed') { manifestParsed = cb; } }, loadSource() {}, attachMedia() {}}; };
+            window.Hls.isSupported = () => true;
+            window.Hls.Events = {ERROR: 'error', MANIFEST_PARSED: 'parsed'};
+            hlsScript().onload();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            manifestParsed();
+
+            expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+        });
+
+        it('adds no button to a hidden video until it is shown', () => {
+            const callbacks = [];
+            window.ResizeObserver = class {
+                constructor(cb) { callbacks.push(cb); }
+                observe() {}
+                disconnect() {}
+            };
+            mount('<section class="vo-bg-hero"><video class="vo-bg-hero__video" data-hidden data-hls="https://cdn/x.m3u8"></video></section>');
+            load();
+            expect(document.querySelector('.vo-bg-toggle')).toBeNull();
+
+            document.querySelector('video').removeAttribute('data-hidden');
+            callbacks.forEach((cb) => cb());
+            expect(document.querySelector('.vo-bg-toggle')).not.toBeNull();
+        });
+
+        it('takes the label from the page language or the data attributes', () => {
+            document.documentElement.lang = 'de';
+            mount(hero);
+            load();
+            expect(document.querySelector('.vo-bg-toggle').getAttribute('aria-label')).toBe('Hintergrundvideo anhalten');
+
+            document.documentElement.lang = 'en';
+            mount('<section><video class="vo-bg-hero__video" data-vo-label-pause="Stop" data-hls="https://cdn/x.m3u8"></video></section>');
+            load();
+            expect(document.querySelector('.vo-bg-toggle').getAttribute('aria-label')).toBe('Stop');
+        });
+
+        it('starts paused and unwired for prefers-reduced-motion, and plays on request', () => {
+            window.matchMedia = () => ({matches: true});
+            mount(hero);
+            load();
+
+            const button = document.querySelector('.vo-bg-toggle');
+            expect(button.getAttribute('aria-label')).toBe('Play background video');
+            expect(document.querySelector('video').autoplay).toBe(false);
+            expect(hlsScript()).toBeNull();
+
+            button.click();
+            expect(hlsScript()).not.toBeNull();
+        });
+
+        it('leaves custom markup without the opt-in alone', () => {
+            mount('<div><video data-vo-hls data-hls="https://cdn/x.m3u8"></video></div>');
+            load();
+            expect(document.querySelector('.vo-bg-toggle')).toBeNull();
+
+            mount('<div><video data-vo-hls data-vo-toggle data-hls="https://cdn/x.m3u8"></video></div>');
+            load();
+            expect(document.querySelector('.vo-bg-toggle')).not.toBeNull();
+        });
+    });
+
+    describe('lightbox', () => {
+        beforeEach(() => {
+            window.HTMLDialogElement.prototype.showModal = vi.fn(function () {
+                this.setAttribute('open', '');
+            });
+            window.HTMLDialogElement.prototype.close = vi.fn(function () {
+                this.removeAttribute('open');
+                this.dispatchEvent(new Event('close'));
+            });
+        });
+
+        const markup = '<div class="vo-frame"><button type="button" data-vo-lightbox="https://player.videooptimizer.eu/embed/abc">play</button></div>';
+
+        it('opens the player in a native modal dialog and closes it again', () => {
+            mount(markup);
+            load();
+            const trigger = document.querySelector('[data-vo-lightbox]');
+            trigger.focus();
+
+            trigger.click();
+
+            const dialog = document.querySelector('dialog.vo-lightbox');
+            expect(dialog).not.toBeNull();
+            expect(dialog.showModal).toHaveBeenCalled();
+            expect(dialog.open).toBe(true);
+            expect(dialog.querySelector('iframe').getAttribute('src')).toBe('https://player.videooptimizer.eu/embed/abc');
+
+            dialog.querySelector('.vo-lightbox__close').click();
+            expect(dialog.open).toBe(false);
+            expect(dialog.querySelector('iframe')).toBeNull();
+            expect(document.activeElement).toBe(trigger);
+        });
+
+        it('cleans up when the browser closes the dialog itself (Escape) and closes on a backdrop click', () => {
+            mount(markup);
+            load();
+            document.querySelector('[data-vo-lightbox]').click();
+            const dialog = document.querySelector('dialog.vo-lightbox');
+
+            dialog.removeAttribute('open');
+            dialog.dispatchEvent(new Event('close'));
+            expect(dialog.querySelector('iframe')).toBeNull();
+
+            document.querySelector('[data-vo-lightbox]').click();
+            dialog.click();
+            expect(dialog.open).toBe(false);
+        });
+
+        it('makes the rest of the page inert without showModal()', () => {
+            delete window.HTMLDialogElement.prototype.showModal;
+            delete window.HTMLDialogElement.prototype.close;
+            mount(markup);
+            load();
+            const dialog = document.querySelector('dialog.vo-lightbox');
+            const root = document.querySelector('.vo-blocks');
+
+            document.querySelector('[data-vo-lightbox]').click();
+            expect(dialog.hasAttribute('open')).toBe(true);
+            expect(root.hasAttribute('inert')).toBe(true);
+            expect(dialog.hasAttribute('inert')).toBe(false);
+
+            document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}));
+            expect(dialog.hasAttribute('open')).toBe(false);
+            expect(root.hasAttribute('inert')).toBe(false);
+        });
+
+        it('labels the dialog and the close button in the page language', () => {
+            document.documentElement.lang = 'de';
+            mount(markup);
+            load();
+            document.documentElement.lang = 'en';
+
+            const dialog = document.querySelector('dialog.vo-lightbox');
+            expect(dialog.getAttribute('aria-label')).toBe('Videoplayer');
+            expect(dialog.querySelector('.vo-lightbox__close').getAttribute('aria-label')).toBe('Schließen');
+        });
+
+        it('traps Tab inside the dialog without showModal()', () => {
+            delete window.HTMLDialogElement.prototype.showModal;
+            delete window.HTMLDialogElement.prototype.close;
+            mount(markup);
+            load();
+            document.querySelector('[data-vo-lightbox]').click();
+            const dialog = document.querySelector('dialog.vo-lightbox');
+            const close = dialog.querySelector('.vo-lightbox__close');
+            const iframe = dialog.querySelector('iframe');
+            iframe.focus();
+
+            const tab = new KeyboardEvent('keydown', {key: 'Tab', cancelable: true});
+            document.dispatchEvent(tab);
+            expect(tab.defaultPrevented).toBe(true);
+            expect(document.activeElement).toBe(close);
+
+            const back = new KeyboardEvent('keydown', {key: 'Tab', shiftKey: true, cancelable: true});
+            document.dispatchEvent(back);
+            expect(back.defaultPrevented).toBe(true);
+            expect(document.activeElement).toBe(iframe);
+        });
+    });
 });
