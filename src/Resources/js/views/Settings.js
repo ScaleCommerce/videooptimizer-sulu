@@ -4,6 +4,7 @@ import {observer} from 'mobx-react';
 import {observable, action} from 'mobx';
 import {Button, Dialog, Loader} from 'sulu-admin-bundle/components';
 import {translate} from 'sulu-admin-bundle/utils';
+import SubtitleLanguages from '../components/SubtitleLanguages';
 import {getSettings, saveSettings, testConnection, clearToken} from '../services/api';
 
 @observer
@@ -159,6 +160,8 @@ class Settings extends React.Component<*> {
                         <div className={'vo-message vo-message--' + this.message.type}>{this.message.text}</div>
                     )}
                 </div>
+
+                {this.configured && <SubtitleLanguages />}
 
                 <Dialog
                     cancelText={translate('sulu_admin.cancel')}

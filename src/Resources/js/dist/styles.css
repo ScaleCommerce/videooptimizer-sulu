@@ -426,3 +426,37 @@
     max-width: 320px;
     height: 8px;
 }
+
+.vo-input--auto {
+    width: auto;
+    min-width: 160px;
+}
+
+.vo-subtitles {
+    list-style: none;
+    margin: 0 0 12px;
+    padding: 0;
+}
+
+.vo-subtitles__item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.vo-subtitles__name {
+    font-weight: 600;
+}
+
+.vo-subtitles__meta {
+    flex: 1 1 auto;
+    color: #666;
+    font-size: 13px;
+}
+
+.vo-subtitles__link {
+    font-size: 13px;
+}

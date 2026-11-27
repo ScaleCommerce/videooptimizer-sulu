@@ -56,6 +56,7 @@ var _mobx = require("mobx");
 var _components = require("sulu-admin-bundle/components");
 var _utils = require("sulu-admin-bundle/utils");
 var _stores = require("sulu-admin-bundle/stores");
+var _VideoSubtitles = _interopRequireDefault(require("./VideoSubtitles"));
 var _SingleMediaSelectionOverlay = _interopRequireDefault(require("sulu-media-bundle/containers/SingleMediaSelectionOverlay"));
 var _api = require("../services/api");
 var _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9, _descriptor0, _descriptor1, _descriptor10, _descriptor11, _descriptor12, _descriptor13, _descriptor14, _descriptor15, _descriptor16, _descriptor17, _descriptor18, _descriptor19, _descriptor20, _descriptor21, _descriptor22, _descriptor23;
@@ -324,6 +325,8 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
         types: ['image'],
         onClose: this.closeMediaOverlay,
         onConfirm: this.handleMediaSelect
+      }), /*#__PURE__*/_react["default"].createElement(_VideoSubtitles["default"], {
+        uuid: this.video.uuid
       }), /*#__PURE__*/_react["default"].createElement("label", {
         className: "vo-label"
       }, (0, _utils.translate)('sulu_admin.title')), /*#__PURE__*/_react["default"].createElement("input", {

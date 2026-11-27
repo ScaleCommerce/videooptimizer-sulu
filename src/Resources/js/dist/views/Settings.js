@@ -36,6 +36,7 @@ var _mobxReact = require("mobx-react");
 var _mobx = require("mobx");
 var _components = require("sulu-admin-bundle/components");
 var _utils = require("sulu-admin-bundle/utils");
+var _SubtitleLanguages = _interopRequireDefault(require("../components/SubtitleLanguages"));
 var _api = require("../services/api");
 var _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9, _descriptor0, _descriptor1, _descriptor10, _descriptor11, _descriptor12, _descriptor13, _descriptor14, _descriptor15;
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
@@ -159,7 +160,7 @@ var Settings = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functio
         disabled: this.removing
       }, (0, _utils.translate)('scale_videooptimizer.remove_token'))), this.message && /*#__PURE__*/_react["default"].createElement("div", {
         className: 'vo-message vo-message--' + this.message.type
-      }, this.message.text)), /*#__PURE__*/_react["default"].createElement(_components.Dialog, {
+      }, this.message.text)), this.configured && /*#__PURE__*/_react["default"].createElement(_SubtitleLanguages["default"], null), /*#__PURE__*/_react["default"].createElement(_components.Dialog, {
         cancelText: (0, _utils.translate)('sulu_admin.cancel'),
         confirmLoading: this.removing,
         confirmText: (0, _utils.translate)('scale_videooptimizer.remove_token'),

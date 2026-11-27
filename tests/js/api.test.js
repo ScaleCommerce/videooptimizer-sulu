@@ -6,7 +6,15 @@ import {
     bumpCacheBust,
     errorText,
     failureMessage,
+    createSubtitleLanguage,
+    deleteSubtitle,
+    deleteSubtitleLanguage,
+    fileToBase64,
     getAllVideos,
+    getSubtitleLanguages,
+    getSubtitles,
+    subtitleDownloadUrl,
+    uploadSubtitle,
     isAbortError,
     pollVideo,
     posterContentType,
@@ -134,6 +142,64 @@ describe('posters', () => {
         expect(bustCache('https://cdn/x.jpg')).toMatch(/^https:\/\/cdn\/x\.jpg\?_=\d+$/);
         expect(bustCache('https://cdn/x.jpg?w=1')).toMatch(/\?w=1&_=\d+$/);
         expect(bustCache(null)).toBeNull();
+    });
+});
+
+describe('subtitles', () => {
+    it('lists the subtitles of a video and the organization languages', async () => {
+        Requester.get
+            .mockResolvedValueOnce({_embedded: {subtitles: [{language: 'de'}]}})
+            .mockResolvedValueOnce({_embedded: {languages: [{code: 'de', label: 'Deutsch'}]}});
+
+        expect(await getSubtitles('u')).toEqual([{language: 'de'}]);
+        expect(await getSubtitleLanguages()).toEqual([{code: 'de', label: 'Deutsch'}]);
+        expect(Requester.get).toHaveBeenNthCalledWith(1, '/admin/api/videooptimizer/videos/u/subtitles');
+        expect(Requester.get).toHaveBeenNthCalledWith(2, '/admin/api/videooptimizer/subtitle-languages');
+    });
+
+    it('encodes a file as base64 without the data: prefix', async () => {
+        expect(await fileToBase64(new Blob(['WEBVTT']))).toBe(btoa('WEBVTT'));
+    });
+
+    it('uploads the file as JSON for the proxy', async () => {
+        Requester.post.mockResolvedValue({subtitle: {language: 'de'}, skipped_cues: 0});
+        const file = new File(['1\n00:00:01,000 --> 00:00:02,000\nHi\n'], 'a.srt');
+
+        await uploadSubtitle('u', {file, language: 'de', kind: 'captions', isDefault: true});
+
+        const [url, body] = Requester.post.mock.calls[0];
+        expect(url).toBe('/admin/api/videooptimizer/videos/u/subtitles');
+        expect(body).toMatchObject({language: 'de', kind: 'captions', isDefault: true, filename: 'a.srt'});
+        expect(atob(body.contentBase64)).toContain('Hi');
+    });
+
+    it('refuses a file above 2 MB without sending it', async () => {
+        const file = new File([new Uint8Array(2 * 1024 * 1024 + 1)], 'big.srt');
+
+        const error = await uploadSubtitle('u', {file, language: 'de'}).catch((e) => e);
+
+        expect(error.message).toBe('scale_videooptimizer.subtitle_too_large');
+        expect(Requester.post).not.toHaveBeenCalled();
+    });
+
+    it('deletes subtitles and languages by encoded code and builds the download link', async () => {
+        Requester.delete.mockResolvedValue(null);
+        Requester.post.mockResolvedValue({code: 'de-x-simple'});
+
+        await deleteSubtitle('u', 'de-CH');
+        await deleteSubtitleLanguage('de-x-simple');
+        await createSubtitleLanguage('de-x-simple', '');
+
+        expect(Requester.delete).toHaveBeenNthCalledWith(1, '/admin/api/videooptimizer/videos/u/subtitles/de-CH');
+        expect(Requester.delete).toHaveBeenNthCalledWith(2, '/admin/api/videooptimizer/subtitle-languages/de-x-simple');
+        expect(Requester.post).toHaveBeenCalledWith('/admin/api/videooptimizer/subtitle-languages', {code: 'de-x-simple', label: undefined});
+        expect(subtitleDownloadUrl('u', 'de')).toBe('/admin/api/videooptimizer/videos/u/subtitles/de');
+    });
+
+    it('explains a language that is still in use', async () => {
+        Requester.delete.mockRejectedValue(rejection(409, {message: 'in use', code: 'subtitle_language_in_use'}));
+
+        expect((await deleteSubtitleLanguage('de').catch((e) => e)).message).toBe('scale_videooptimizer.error_subtitle_language_in_use');
     });
 });
 

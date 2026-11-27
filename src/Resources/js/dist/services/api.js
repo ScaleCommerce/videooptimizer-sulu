@@ -4,6 +4,7 @@ require("core-js/modules/es.object.define-property.js");
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.SUBTITLE_MAX_BYTES = void 0;
 exports.abortError = abortError;
 exports.bumpCacheBust = bumpCacheBust;
 exports.bustCache = bustCache;
@@ -11,15 +12,21 @@ exports.clearToken = clearToken;
 exports.completePosterUpload = completePosterUpload;
 exports.completeUpload = completeUpload;
 exports.createLibrary = createLibrary;
+exports.createSubtitleLanguage = createSubtitleLanguage;
 exports.deleteLibrary = deleteLibrary;
 exports.deletePoster = deletePoster;
+exports.deleteSubtitle = deleteSubtitle;
+exports.deleteSubtitleLanguage = deleteSubtitleLanguage;
 exports.deleteVideo = deleteVideo;
 exports.errorText = errorText;
 exports.failureMessage = failureMessage;
+exports.fileToBase64 = fileToBase64;
 exports.getAllVideos = getAllVideos;
 exports.getEncodings = getEncodings;
 exports.getLibraries = getLibraries;
 exports.getSettings = getSettings;
+exports.getSubtitleLanguages = getSubtitleLanguages;
+exports.getSubtitles = getSubtitles;
 exports.getThumbnails = getThumbnails;
 exports.getVideo = getVideo;
 exports.getVideoPage = getVideoPage;
@@ -34,11 +41,13 @@ exports.reprocessLibrary = reprocessLibrary;
 exports.saveSettings = saveSettings;
 exports.selectPoster = selectPoster;
 exports.selectThumbnail = selectThumbnail;
+exports.subtitleDownloadUrl = subtitleDownloadUrl;
 exports.testConnection = testConnection;
 exports.updateLibrary = updateLibrary;
 exports.updateVideo = updateVideo;
 exports.uploadParts = uploadParts;
 exports.uploadPoster = uploadPoster;
+exports.uploadSubtitle = uploadSubtitle;
 require("core-js/modules/es.array.index-of.js");
 require("core-js/modules/es.array.join.js");
 require("core-js/modules/es.array.reduce.js");
@@ -77,6 +86,9 @@ function messageForCode(code, serverMessage, upstream) {
   }
   if ('token_forbidden' === code) {
     return upstream && serverMessage ? serverMessage : (0, _utils.translate)('scale_videooptimizer.error_token_forbidden');
+  }
+  if ('subtitle_language_in_use' === code) {
+    return (0, _utils.translate)('scale_videooptimizer.error_subtitle_language_in_use');
   }
   if ('unreachable' === code) {
     return (0, _utils.translate)('scale_videooptimizer.error_unreachable');
@@ -205,6 +217,73 @@ function getVideoPage() {
       hasMore: !!response.has_more && !!response.next_cursor
     };
   });
+}
+
+// ---- Subtitles -------------------------------------------------------------------------------------
+
+// The API refuses subtitle files above 2 MB.
+var SUBTITLE_MAX_BYTES = exports.SUBTITLE_MAX_BYTES = 2 * 1024 * 1024;
+function getSubtitles(uuid) {
+  return normalize(_services.Requester.get(BASE + '/videos/' + encodeURIComponent(uuid) + '/subtitles')).then(function (response) {
+    return response._embedded && response._embedded.subtitles || [];
+  });
+}
+
+// Reads a File/Blob as base64 (no data: prefix) — the proxy takes JSON, not multipart.
+function fileToBase64(file) {
+  return new Promise(function (resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      var result = String(reader.result || '');
+      resolve(result.slice(result.indexOf(',') + 1));
+    };
+    reader.onerror = function () {
+      return reject(reader.error || new Error('Could not read the file.'));
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Uploads an .srt/.vtt file for one of the organization's subtitle languages; replaces an existing one.
+function uploadSubtitle(uuid, _ref2) {
+  var file = _ref2.file,
+    language = _ref2.language,
+    kind = _ref2.kind,
+    isDefault = _ref2.isDefault;
+  if (file.size > SUBTITLE_MAX_BYTES) {
+    return Promise.reject(toError((0, _utils.translate)('scale_videooptimizer.subtitle_too_large'), 413, 'subtitle_too_large'));
+  }
+  return fileToBase64(file).then(function (contentBase64) {
+    return normalize(_services.Requester.post(BASE + '/videos/' + encodeURIComponent(uuid) + '/subtitles', {
+      language: language,
+      kind: kind,
+      isDefault: !!isDefault,
+      filename: file.name,
+      contentBase64: contentBase64
+    }));
+  });
+}
+function deleteSubtitle(uuid, language) {
+  return normalize(_services.Requester["delete"](BASE + '/videos/' + encodeURIComponent(uuid) + '/subtitles/' + encodeURIComponent(language)));
+}
+
+// Same-origin download link of the stored WebVTT file (the admin session authorizes it).
+function subtitleDownloadUrl(uuid, language) {
+  return BASE + '/videos/' + encodeURIComponent(uuid) + '/subtitles/' + encodeURIComponent(language);
+}
+function getSubtitleLanguages() {
+  return normalize(_services.Requester.get(BASE + '/subtitle-languages')).then(function (response) {
+    return response._embedded && response._embedded.languages || [];
+  });
+}
+function createSubtitleLanguage(code, label) {
+  return normalize(_services.Requester.post(BASE + '/subtitle-languages', {
+    code: code,
+    label: label || undefined
+  }));
+}
+function deleteSubtitleLanguage(code) {
+  return normalize(_services.Requester["delete"](BASE + '/subtitle-languages/' + encodeURIComponent(code)));
 }
 function getVideo(uuid) {
   return normalize(_services.Requester.get(BASE + '/videos/' + encodeURIComponent(uuid)));

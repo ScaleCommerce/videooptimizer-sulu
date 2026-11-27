@@ -26,6 +26,9 @@ function messageForCode(code, serverMessage, upstream) {
     if ('token_forbidden' === code) {
         return upstream && serverMessage ? serverMessage : translate('scale_videooptimizer.error_token_forbidden');
     }
+    if ('subtitle_language_in_use' === code) {
+        return translate('scale_videooptimizer.error_subtitle_language_in_use');
+    }
     if ('unreachable' === code) {
         return translate('scale_videooptimizer.error_unreachable');
     }
@@ -159,6 +162,63 @@ export function getVideoPage({libraryId, tags, cursor, limit}: Object = {}) {
         nextCursor: response.next_cursor || null,
         hasMore: !!response.has_more && !!response.next_cursor,
     }));
+}
+
+// ---- Subtitles -------------------------------------------------------------------------------------
+
+// The API refuses subtitle files above 2 MB.
+export const SUBTITLE_MAX_BYTES = 2 * 1024 * 1024;
+
+export function getSubtitles(uuid: string) {
+    return normalize(Requester.get(BASE + '/videos/' + encodeURIComponent(uuid) + '/subtitles'))
+        .then((response) => (response._embedded && response._embedded.subtitles) || []);
+}
+
+// Reads a File/Blob as base64 (no data: prefix) — the proxy takes JSON, not multipart.
+export function fileToBase64(file: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = String(reader.result || '');
+            resolve(result.slice(result.indexOf(',') + 1));
+        };
+        reader.onerror = () => reject(reader.error || new Error('Could not read the file.'));
+        reader.readAsDataURL(file);
+    });
+}
+
+// Uploads an .srt/.vtt file for one of the organization's subtitle languages; replaces an existing one.
+export function uploadSubtitle(uuid: string, {file, language, kind, isDefault}: Object) {
+    if (file.size > SUBTITLE_MAX_BYTES) {
+        return Promise.reject(toError(translate('scale_videooptimizer.subtitle_too_large'), 413, 'subtitle_too_large'));
+    }
+
+    return fileToBase64(file).then((contentBase64) => normalize(Requester.post(
+        BASE + '/videos/' + encodeURIComponent(uuid) + '/subtitles',
+        {language, kind, isDefault: !!isDefault, filename: file.name, contentBase64}
+    )));
+}
+
+export function deleteSubtitle(uuid: string, language: string) {
+    return normalize(Requester.delete(BASE + '/videos/' + encodeURIComponent(uuid) + '/subtitles/' + encodeURIComponent(language)));
+}
+
+// Same-origin download link of the stored WebVTT file (the admin session authorizes it).
+export function subtitleDownloadUrl(uuid: string, language: string): string {
+    return BASE + '/videos/' + encodeURIComponent(uuid) + '/subtitles/' + encodeURIComponent(language);
+}
+
+export function getSubtitleLanguages() {
+    return normalize(Requester.get(BASE + '/subtitle-languages'))
+        .then((response) => (response._embedded && response._embedded.languages) || []);
+}
+
+export function createSubtitleLanguage(code: string, label: ?string) {
+    return normalize(Requester.post(BASE + '/subtitle-languages', {code, label: label || undefined}));
+}
+
+export function deleteSubtitleLanguage(code: string) {
+    return normalize(Requester.delete(BASE + '/subtitle-languages/' + encodeURIComponent(code)));
 }
 
 export function getVideo(uuid: string) {

@@ -13,6 +13,8 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 - API transport errors and timeouts become a neutral 502 message (the upstream URL is only logged); embed lookups while rendering no longer wait for `Retry-After` ([#20](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/20))
 
 ### Added
+- Video detail: list, upload (.srt/.vtt, kind, default track), download and delete subtitles per video; Settings: manage the organization's subtitle languages, deleting a language that is still in use is explained ([#14](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/14))
+- Admin proxy routes `videos/{uuid}/subtitles[/{language}]` and `subtitle-languages[/{code}]` (the route import already covers them) ([#14](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/14))
 - Admin uploads show the progress, retry a failing part up to three times with backoff and can be cancelled with a button ([#18](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/18))
 - Admin video lists (Videos view and selection overlay) load 60 videos per page with "Load more"; edits, deletions and uploads keep the loaded pages ([#19](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/19))
 - `VideoOptimizerClient::listVideosPage()` and `GET /videooptimizer/videos?limit=&cursor=&tags=` return one page plus `next_cursor`/`has_more`; without `limit`/`cursor` the route still returns every video ([#19](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/19))

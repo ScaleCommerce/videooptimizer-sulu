@@ -5,6 +5,7 @@ import {observable, action} from 'mobx';
 import {Button, Dialog} from 'sulu-admin-bundle/components';
 import {translate} from 'sulu-admin-bundle/utils';
 import {userStore} from 'sulu-admin-bundle/stores';
+import VideoSubtitles from './VideoSubtitles';
 import SingleMediaSelectionOverlay from 'sulu-media-bundle/containers/SingleMediaSelectionOverlay';
 import {
     updateVideo, deleteVideo, getThumbnails, selectThumbnail,
@@ -373,6 +374,8 @@ class VideoDetail extends React.Component<*> {
                     onClose={this.closeMediaOverlay}
                     onConfirm={this.handleMediaSelect}
                 />
+
+                <VideoSubtitles uuid={this.video.uuid} />
 
                 <label className="vo-label">{translate('sulu_admin.title')}</label>
                 <input type="text" className="vo-input" value={this.title} onChange={this.handleTitleChange} />
