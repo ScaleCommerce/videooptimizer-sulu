@@ -10,7 +10,7 @@ use Symfony\Component\Config\Definition\ConfigurationInterface;
 class Configuration implements ConfigurationInterface
 {
     public const DEFAULT_API_BASE_URL = 'https://api.videooptimizer.eu/api/v1';
-    public const DEFAULT_EMBED_BASE_URL = 'https://videooptimizer.eu';
+    public const DEFAULT_EMBED_BASE_URL = 'https://player.videooptimizer.eu';
 
     public function getConfigTreeBuilder(): TreeBuilder
     {

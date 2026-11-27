@@ -238,7 +238,7 @@ at a staging API) under the `scale_video_optimizer` key:
 # config/packages/scale_video_optimizer.yaml
 scale_video_optimizer:
     api_base_url: 'https://api.videooptimizer.eu/api/v1'
-    embed_base_url: 'https://videooptimizer.eu'
+    embed_base_url: 'https://player.videooptimizer.eu'
     auto_inject_assets: true   # default; set false to load the frontend CSS/JS manually (see below)
 ```
 
@@ -289,7 +289,7 @@ Render the CDN player in Twig:
 ```
 
 The stored value is `{ uuid, libraryId, title, posterUrl }`; the embed points at
-`https://videooptimizer.eu/embed/<uuid>`.
+`https://player.videooptimizer.eu/embed/<uuid>`.
 
 ### Rendering your own markup: `video_optimizer_sources()`
 

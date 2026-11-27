@@ -259,7 +259,7 @@ class VideoDetail extends React.Component<*> {
             <div className="vo-detail__player" style={{aspectRatio: ratio[0] + ' / ' + ratio[1], maxWidth: maxWidth + 'px'}}>
                 {this.playing ? (
                     <iframe
-                        src={(this.video.embed_url || ('https://videooptimizer.eu/embed/' + this.video.uuid)) + '?autoplay=1'}
+                        src={(this.video.embed_url || ('https://player.videooptimizer.eu/embed/' + this.video.uuid)) + '?autoplay=1'}
                         title={this.video.title || 'Video'}
                         allow="autoplay; fullscreen; picture-in-picture"
                         allowFullScreen
