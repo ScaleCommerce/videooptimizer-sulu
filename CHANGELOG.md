@@ -4,6 +4,12 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Upgrade
+- `api_base_url` and `embed_base_url` must be public https URLs (no credentials, query, localhost or private IPs): otherwise videos are not shown and the admin reports a configuration error ([#12](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/12))
+
+### Fixed
+- API client no longer follows redirects, validates the base URL and refuses private network targets ([#12](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/12))
+
 ## [1.8.1] - 2026-11-27
 
 ### Upgrade

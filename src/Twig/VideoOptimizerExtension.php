@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Scale\VideoOptimizerBundle\Twig;
 
+use Psr\Log\LoggerInterface;
+use Scale\VideoOptimizerBundle\Api\BaseUrlGuard;
 use Scale\VideoOptimizerBundle\EventListener\AssetInjectionListener;
 use Scale\VideoOptimizerBundle\Service\SettingsManager;
 use Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver;
@@ -25,6 +27,7 @@ class VideoOptimizerExtension extends AbstractExtension
         private string $embedBaseUrl,
         private VideoOptimizerEmbedResolver $embedResolver,
         private SettingsManager $settingsManager,
+        private ?LoggerInterface $logger = null,
     ) {
     }
 
@@ -185,6 +188,15 @@ class VideoOptimizerExtension extends AbstractExtension
     {
         $uuid = self::uuidOf($video);
         if (null === $uuid) {
+            return null;
+        }
+
+        try {
+            BaseUrlGuard::assertHttps($this->embedBaseUrl, 'embed base URL');
+        } catch (\InvalidArgumentException $e) {
+            // Render without the video instead of pointing visitors (or an iframe) at an unsafe host.
+            $this->logger?->warning($e->getMessage(), ['url' => $this->embedBaseUrl]);
+
             return null;
         }
 

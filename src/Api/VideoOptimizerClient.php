@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Scale\VideoOptimizerBundle\Api;
 
 use Scale\VideoOptimizerBundle\Service\SettingsManager;
+use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
@@ -25,6 +26,7 @@ class VideoOptimizerClient
         private SettingsManager $settingsManager,
         private string $baseUrl,
         private ?UserAgentProvider $userAgentProvider = null,
+        private ?LoggerInterface $logger = null,
     ) {
     }
 
@@ -316,6 +318,17 @@ class VideoOptimizerClient
             ],
             (array) ($options['headers'] ?? []),
         );
+
+        try {
+            BaseUrlGuard::assertHttps($this->baseUrl, 'API base URL');
+        } catch (\InvalidArgumentException $e) {
+            $this->logger?->warning($e->getMessage(), ['url' => $this->baseUrl]);
+
+            throw new VideoOptimizerException($e->getMessage(), 0, $e);
+        }
+
+        // The token must never follow a redirect to another host.
+        $options['max_redirects'] = 0;
 
         $url = rtrim($this->baseUrl, '/') . $path;
 
