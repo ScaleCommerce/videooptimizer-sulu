@@ -38,6 +38,7 @@ require("core-js/modules/es.array.iterator.js");
 require("core-js/modules/es.array.map.js");
 require("core-js/modules/es.array.sort.js");
 require("core-js/modules/es.function.name.js");
+require("core-js/modules/es.object.get-own-property-descriptor.js");
 require("core-js/modules/es.object.to-string.js");
 require("core-js/modules/es.promise.js");
 require("core-js/modules/es.regexp.exec.js");
@@ -104,6 +105,8 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
     _initializerDefineProperty(_this, "search", _descriptor11, _this);
     _initializerDefineProperty(_this, "readyOnly", _descriptor12, _this);
     _initializerDefineProperty(_this, "managing", _descriptor13, _this);
+    // Aborts a running browser upload (closing the overlay or unmounting must not create a video).
+    _this.uploadController = null;
     _initializerDefineProperty(_this, "setLoading", _descriptor14, _this);
     _initializerDefineProperty(_this, "selectLibrary", _descriptor15, _this);
     _initializerDefineProperty(_this, "showAll", _descriptor16, _this);
@@ -143,8 +146,26 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
       this.load();
     }
   }, {
+    key: "componentWillUnmount",
+    value: function componentWillUnmount() {
+      this.abortUpload();
+    }
+  }, {
+    key: "abortUpload",
+    value: function abortUpload() {
+      if (this.uploadController) {
+        this.uploadController.abort();
+        this.uploadController = null;
+        this.uploading = false;
+        this.uploadStatus = null;
+      }
+    }
+  }, {
     key: "componentDidUpdate",
     value: function componentDidUpdate(prevProps) {
+      if (!this.props.open && prevProps.open) {
+        this.abortUpload();
+      }
       if (this.props.open && !prevProps.open) {
         this.closeManage();
         this.load();
@@ -490,7 +511,7 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
   initializer: function initializer() {
     return null;
   }
-}), _descriptor14 = _applyDecoratedDescriptor(_class2.prototype, "setLoading", [_mobx.action], {
+}), _applyDecoratedDescriptor(_class2.prototype, "abortUpload", [_mobx.action], Object.getOwnPropertyDescriptor(_class2.prototype, "abortUpload"), _class2.prototype), _descriptor14 = _applyDecoratedDescriptor(_class2.prototype, "setLoading", [_mobx.action], {
   configurable: true,
   enumerable: true,
   writable: true,
@@ -609,6 +630,9 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
   initializer: function initializer() {
     var _this15 = this;
     return function (file) {
+      _this15.abortUpload();
+      var controller = new AbortController();
+      _this15.uploadController = controller;
       _this15.uploading = true;
       _this15.error = null;
       _this15.uploadStatus = (0, _utils.translate)('scale_videooptimizer.uploading');
@@ -618,7 +642,10 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
         contentType: file.type || 'application/octet-stream',
         fileSize: file.size
       }).then(function (upload) {
-        return (0, _api.uploadParts)(file, upload.parts || [], upload.partSize).then(function (parts) {
+        return (0, _api.uploadParts)(file, upload.parts || [], upload.partSize, controller.signal).then(function (parts) {
+          if (controller.signal.aborted) {
+            throw (0, _api.abortError)();
+          }
           return (0, _api.completeUpload)({
             libraryId: _this15.activeLibraryId,
             uuid: upload.uuid,
@@ -634,6 +661,12 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
             return v.status === 'ready' || v.status === 'failed';
           });
         }).then((0, _mobx.action)(function (video) {
+          if (controller.signal.aborted) {
+            return;
+          }
+          if (_this15.uploadController === controller) {
+            _this15.uploadController = null;
+          }
           _this15.uploading = false;
           _this15.uploadStatus = null;
           if (video.status === 'failed') {
@@ -643,8 +676,14 @@ var VideoSelectionOverlay = (0, _mobxReact.observer)(_class = (_class2 = /*#__PU
           _this15.chooseVideo(video);
         }));
       })["catch"]((0, _mobx.action)(function (e) {
+        if (_this15.uploadController === controller) {
+          _this15.uploadController = null;
+        }
         _this15.uploading = false;
         _this15.uploadStatus = null;
+        if ((0, _api.isAbortError)(e)) {
+          return;
+        }
         _this15.error = (0, _api.errorText)(e);
       }));
     };

@@ -11,6 +11,8 @@ import {
     getAllVideos,
     initiateUpload,
     uploadParts,
+    isAbortError,
+    abortError,
     completeUpload,
     ingestVideoUrl,
     failureMessage,
@@ -40,6 +42,16 @@ class Videos extends React.Component<*> {
 
     // Hidden file input driven by the toolbar "upload" button (Sulu media pattern).
     fileInputRef = React.createRef();
+
+    // Aborts a running browser upload when the view is left (it must not create a video afterwards).
+    uploadController = null;
+
+    componentWillUnmount() {
+        if (this.uploadController) {
+            this.uploadController.abort();
+            this.uploadController = null;
+        }
+    }
 
     componentDidMount() {
         Promise.all([getLibraries(), getAllVideos()])
@@ -111,6 +123,8 @@ class Videos extends React.Component<*> {
     // poll until processing finishes. Mirrors the field-overlay upload flow.
     @action startUpload = (file: File) => {
         const libraryId = this.activeLibraryId;
+        const controller = new AbortController();
+        this.uploadController = controller;
         this.uploading = true;
         this.error = null;
         this.uploadStatus = translate('scale_videooptimizer.uploading');
@@ -121,18 +135,28 @@ class Videos extends React.Component<*> {
             contentType: file.type || 'application/octet-stream',
             fileSize: file.size,
         })
-            .then((upload) => uploadParts(file, upload.parts || [], upload.partSize)
-                .then((parts) => completeUpload({
-                    libraryId,
-                    uuid: upload.uuid,
-                    key: upload.key,
-                    uploadId: upload.uploadId,
-                    title: file.name,
-                    parts,
-                }))
+            .then((upload) => uploadParts(file, upload.parts || [], upload.partSize, controller.signal)
+                .then((parts) => {
+                    if (controller.signal.aborted) {
+                        throw abortError();
+                    }
+
+                    return completeUpload({
+                        libraryId,
+                        uuid: upload.uuid,
+                        key: upload.key,
+                        uploadId: upload.uploadId,
+                        title: file.name,
+                        parts,
+                    });
+                })
                 .then(action(() => { this.uploadStatus = translate('scale_videooptimizer.processing'); }))
                 .then(() => pollVideo(upload.uuid, (v) => v.status === 'ready' || v.status === 'failed'))
                 .then(action((video) => {
+                    if (controller.signal.aborted) {
+                        return;
+                    }
+                    this.uploadController = null;
                     this.uploading = false;
                     this.uploadStatus = null;
                     if (video.status === 'failed') {
@@ -143,6 +167,12 @@ class Videos extends React.Component<*> {
                     this.open(video);
                 })))
             .catch(action((e) => {
+                if (this.uploadController === controller) {
+                    this.uploadController = null;
+                }
+                if (isAbortError(e)) {
+                    return;
+                }
                 this.uploading = false;
                 this.uploadStatus = null;
                 this.error = errorText(e);

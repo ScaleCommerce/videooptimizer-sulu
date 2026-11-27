@@ -4,6 +4,7 @@ require("core-js/modules/es.object.define-property.js");
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.abortError = abortError;
 exports.bumpCacheBust = bumpCacheBust;
 exports.bustCache = bustCache;
 exports.clearToken = clearToken;
@@ -24,7 +25,9 @@ exports.getVideo = getVideo;
 exports.ingestVideoUrl = ingestVideoUrl;
 exports.initiatePosterUpload = initiatePosterUpload;
 exports.initiateUpload = initiateUpload;
+exports.isAbortError = isAbortError;
 exports.pollVideo = pollVideo;
+exports.posterContentType = posterContentType;
 exports.posterFor = posterFor;
 exports.reprocessLibrary = reprocessLibrary;
 exports.saveSettings = saveSettings;
@@ -39,8 +42,11 @@ require("core-js/modules/es.array.index-of.js");
 require("core-js/modules/es.array.reduce.js");
 require("core-js/modules/es.array.slice.js");
 require("core-js/modules/es.date.now.js");
+require("core-js/modules/es.function.name.js");
 require("core-js/modules/es.object.to-string.js");
 require("core-js/modules/es.promise.js");
+require("core-js/modules/es.regexp.exec.js");
+require("core-js/modules/es.string.split.js");
 require("core-js/modules/es.string.trim.js");
 require("core-js/modules/esnext.iterator.constructor.js");
 require("core-js/modules/esnext.iterator.reduce.js");
@@ -162,15 +168,34 @@ function initiateUpload(payload) {
 function completeUpload(payload) {
   return normalize(_services.Requester.post(BASE + '/videos/upload/complete', payload));
 }
+function abortError() {
+  var error = new Error('Upload aborted');
+  error.name = 'AbortError';
+  return error;
+}
+function isAbortError(error) {
+  return !!error && error.name === 'AbortError';
+}
 
 // PUTs each file part to its presigned URL and collects the ETags the complete step needs.
 // Cross-origin, so no credentials; the bucket must expose ETag via CORS.
-function uploadParts(file, parts, partSize) {
+// An optional AbortSignal stops the chain (in-flight PUT and remaining parts) with an AbortError.
+function uploadParts(file, parts, partSize, signal) {
+  if (signal && signal.aborted) {
+    return Promise.reject(abortError());
+  }
   return parts.reduce(function (chain, part) {
     return chain.then(function (etags) {
+      if (signal && signal.aborted) {
+        throw abortError();
+      }
       var start = (part.partNumber - 1) * partSize;
       var blob = file.slice(start, start + partSize);
-      return fetch(part.url, {
+      return fetch(part.url, signal ? {
+        method: 'PUT',
+        body: blob,
+        signal: signal
+      } : {
         method: 'PUT',
         body: blob
       }).then(function (response) {
@@ -216,6 +241,28 @@ function initiatePosterUpload(uuid, payload) {
 }
 
 // Single presigned PUT straight to storage (poster is not multipart).
+var POSTER_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+var POSTER_EXTENSIONS = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp'
+};
+
+// Content type the poster API accepts for an image fetched from the Sulu media library: the blob's own type,
+// else the media's mimeType, else the file extension (CDNs/proxies may answer application/octet-stream).
+function posterContentType(blobType, media) {
+  var candidates = [blobType, media && media.mimeType];
+  for (var i = 0; i < candidates.length; i++) {
+    var type = typeof candidates[i] === 'string' ? candidates[i].split(';')[0].trim().toLowerCase() : '';
+    if (POSTER_TYPES.indexOf(type) !== -1) {
+      return type;
+    }
+  }
+  var name = String(media && (media.url || media.name || media.title) || '').split(/[?#]/)[0];
+  var match = /\.([a-z0-9]+)$/i.exec(name);
+  return match && POSTER_EXTENSIONS[match[1].toLowerCase()] || null;
+}
 function uploadPoster(uploadUrl, file) {
   return fetch(uploadUrl, {
     method: 'PUT',

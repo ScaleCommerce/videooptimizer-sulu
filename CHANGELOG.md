@@ -8,6 +8,8 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 - `api_base_url` and `embed_base_url` must be public https URLs (no credentials, query, localhost or private IPs): otherwise videos are not shown and the admin reports a configuration error ([#12](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/12))
 
 ### Fixed
+- Admin: closing the video selection overlay or leaving the Videos view aborts a running browser upload and never completes it ([#10](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/10))
+- Admin: poster from the Sulu media library falls back to the media's `mimeType` or file extension when the response has a generic Content-Type ([#13](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/13))
 - API client no longer follows redirects, validates the base URL and refuses private network targets ([#12](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/12))
 
 ## [1.8.1] - 2026-11-27

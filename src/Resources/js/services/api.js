@@ -131,15 +131,34 @@ export function completeUpload(payload: Object) {
     return normalize(Requester.post(BASE + '/videos/upload/complete', payload));
 }
 
+export function abortError() {
+    const error = new Error('Upload aborted');
+    error.name = 'AbortError';
+
+    return error;
+}
+
+export function isAbortError(error: ?Object): boolean {
+    return !!error && error.name === 'AbortError';
+}
+
 // PUTs each file part to its presigned URL and collects the ETags the complete step needs.
 // Cross-origin, so no credentials; the bucket must expose ETag via CORS.
-export function uploadParts(file: File, parts: Array<Object>, partSize: number) {
+// An optional AbortSignal stops the chain (in-flight PUT and remaining parts) with an AbortError.
+export function uploadParts(file: File, parts: Array<Object>, partSize: number, signal: ?AbortSignal) {
+    if (signal && signal.aborted) {
+        return Promise.reject(abortError());
+    }
+
     return parts.reduce(
         (chain, part) => chain.then((etags) => {
+            if (signal && signal.aborted) {
+                throw abortError();
+            }
             const start = (part.partNumber - 1) * partSize;
             const blob = file.slice(start, start + partSize);
 
-            return fetch(part.url, {method: 'PUT', body: blob}).then((response) => {
+            return fetch(part.url, signal ? {method: 'PUT', body: blob, signal} : {method: 'PUT', body: blob}).then((response) => {
                 if (!response.ok) {
                     throw new Error('Part upload failed (' + response.status + ')');
                 }
@@ -183,6 +202,26 @@ export function initiatePosterUpload(uuid: string, payload: Object) {
 }
 
 // Single presigned PUT straight to storage (poster is not multipart).
+const POSTER_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const POSTER_EXTENSIONS = {jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp'};
+
+// Content type the poster API accepts for an image fetched from the Sulu media library: the blob's own type,
+// else the media's mimeType, else the file extension (CDNs/proxies may answer application/octet-stream).
+export function posterContentType(blobType: ?string, media: ?Object): ?string {
+    const candidates = [blobType, media && media.mimeType];
+    for (let i = 0; i < candidates.length; i++) {
+        const type = typeof candidates[i] === 'string' ? candidates[i].split(';')[0].trim().toLowerCase() : '';
+        if (POSTER_TYPES.indexOf(type) !== -1) {
+            return type;
+        }
+    }
+
+    const name = String((media && (media.url || media.name || media.title)) || '').split(/[?#]/)[0];
+    const match = /\.([a-z0-9]+)$/i.exec(name);
+
+    return (match && POSTER_EXTENSIONS[match[1].toLowerCase()]) || null;
+}
+
 export function uploadPoster(uploadUrl: string, file: File) {
     return fetch(uploadUrl, {method: 'PUT', body: file, headers: {'Content-Type': file.type}}).then((response) => {
         if (!response.ok) {
