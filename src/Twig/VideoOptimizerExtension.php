@@ -264,12 +264,7 @@ class VideoOptimizerExtension extends AbstractExtension
         $sources = $this->embedResolver->getSources($uuid);
         $poster = self::posterFor($video, $sources['poster'] ?? null);
         $hlsUrl = $sources['hlsUrl'] ?? null;
-        $mp4Url = null;
-        foreach ($sources['sources'] as $source) {
-            if (null === $mp4Url && str_starts_with(strtolower($source['type']), 'video/mp4')) {
-                $mp4Url = $source['src'];
-            }
-        }
+        $mp4Url = self::fallbackMp4($sources['sources']);
         $posterAttr = null !== $poster ? htmlspecialchars($poster, \ENT_QUOTES) : null;
 
         $preload = $priority && null !== $posterAttr
@@ -412,6 +407,34 @@ class VideoOptimizerExtension extends AbstractExtension
             'duration' => $resolved['duration'] ?? null,
             'theme' => $resolved['theme'] ?? null,
         ];
+    }
+
+    /**
+     * MP4 for the script's HLS fallback: the 720p rendition, else the largest up to 1080p, else the first.
+     *
+     * @param array<int, array{src:string,type:string,label:string}> $sources
+     */
+    private static function fallbackMp4(array $sources): ?string
+    {
+        $first = null;
+        $best = null;
+        $bestHeight = 0;
+        foreach ($sources as $source) {
+            if (!str_starts_with(strtolower($source['type']), 'video/mp4')) {
+                continue;
+            }
+            $first ??= $source['src'];
+            $height = 1 === preg_match('/(\d{3,4})\s*p/i', $source['label'] . ' ' . $source['src'], $m) ? (int) $m[1] : 0;
+            if (720 === $height) {
+                return $source['src'];
+            }
+            if ($height <= 1080 && $height > $bestHeight) {
+                $best = $source['src'];
+                $bestHeight = $height;
+            }
+        }
+
+        return $best ?? $first;
     }
 
     /**

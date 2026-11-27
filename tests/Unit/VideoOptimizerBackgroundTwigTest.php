@@ -51,6 +51,23 @@ class VideoOptimizerBackgroundTwigTest extends TestCase
         self::assertStringContainsString('data-mp4="https://cdn.example.net/v.mp4"', $ext->renderBackground(['uuid' => 'abc']));
     }
 
+    public function testMp4FallbackPrefers720pThenLargestUpTo1080p(): void
+    {
+        $mk = static fn (array $labels): array => array_map(static fn (string $l): array => ['src' => 'https://cdn.example.net/' . $l . '.mp4', 'type' => 'video/mp4', 'label' => $l], $labels);
+        $cases = [
+            [['360p', '720p', '1080p'], '720p'],
+            [['360p', '1080p', '2160p'], '1080p'],
+            [['2160p'], '2160p'],
+        ];
+        foreach ($cases as [$labels, $expected]) {
+            $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
+            $resolver->getSources('abc')->willReturn(['poster' => null, 'hlsUrl' => 'https://cdn.example.net/m.m3u8', 'sources' => $mk($labels)]);
+            $ext = new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $this->settingsManager()->reveal());
+
+            self::assertStringContainsString('data-mp4="https://cdn.example.net/' . $expected . '.mp4"', $ext->renderBackground(['uuid' => 'abc']));
+        }
+    }
+
     /**
      * A background video is decoration: it carries no information a screen reader could use, and
      * it has no accessible name to give one. Without `aria-hidden` it still lands in the
