@@ -357,6 +357,11 @@ class VideoOptimizerClient
         }
         /** @var array<string, mixed> $decoded */
 
+        if ($status >= 300 && $status < 400) {
+            // Redirects are not followed (the token must stay on the configured host).
+            throw new VideoOptimizerException('VideoOptimizer returned an unexpected redirect (HTTP ' . $status . '); check the configured API base URL.', $status);
+        }
+
         if ($status >= 400) {
             $message = 'VideoOptimizer request failed.';
             foreach (['message', 'statusMessage'] as $key) {

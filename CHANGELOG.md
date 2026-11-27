@@ -5,14 +5,15 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 ## [Unreleased]
 
 ### Upgrade
-- `api_base_url` and `embed_base_url` must be public https URLs (no credentials, query, localhost or private IPs): otherwise videos are not shown and the admin reports a configuration error ([#12](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/12))
+- `api_base_url` and `embed_base_url` must be public https URLs (no credentials, query, localhost or private IPs), checked at runtime: otherwise videos are not shown and the admin reports a configuration error ([#12](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/12))
+- Pages whose video has no playable sources, or whose embed lookup failed, are cached for at most 60 s ([#9](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/9))
 
 ### Fixed
 - Pages rendered while a video embed is degraded (API failure, no sources yet) are cached for at most 60 s (`s-maxage`, `max-age`, `X-Reverse-Proxy-TTL`) instead of the template's cache lifetime ([#9](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/9))
 - Native and background players fall back to MP4 on fatal HLS errors or missing HLS support and start playback only after the source is attached ([#11](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/11))
-- Admin: closing the video selection overlay or leaving the Videos view aborts a running browser upload and never completes it ([#10](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/10))
+- Admin: closing the video selection overlay or leaving the Videos view aborts a running part upload; no video is created unless the upload already completed ([#10](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/10))
 - Admin: poster from the Sulu media library falls back to the media's `mimeType` or file extension when the response has a generic Content-Type ([#13](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/13))
-- API client no longer follows redirects, validates the base URL and refuses private network targets ([#12](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/12))
+- API client validates the base URL, does not follow redirects and reports an unexpected redirect as an error ([#12](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/12))
 
 ## [1.8.1] - 2026-11-27
 

@@ -32,13 +32,8 @@
             <argument key="$requestStack" type="service" id="request_stack" on-invalid="null"/>
         </service>
 
-        <!-- Token-bearing requests must not reach internal addresses, even via DNS or a redirect. -->
-        <service id="scale_video_optimizer.http_client" class="Symfony\Component\HttpClient\NoPrivateNetworkHttpClient">
-            <argument type="service" id="http_client"/>
-        </service>
-
         <service id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient">
-            <argument type="service" id="scale_video_optimizer.http_client"/>
+            <argument type="service" id="http_client"/>
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\SettingsManager"/>
             <argument>%scale_video_optimizer.api_base_url%</argument>
             <argument type="service" id="Scale\VideoOptimizerBundle\Api\UserAgentProvider"/>

@@ -39,6 +39,7 @@ class BaseUrlGuardTest extends TestCase
         yield 'decimal ip' => ['https://2130706433/'];
         yield 'hex ip' => ['https://0x7f000001/'];
         yield 'short ip' => ['https://127.1/'];
+        yield 'mixed hex ip' => ['https://0x7f.0.0.1/'];
     }
 
     #[DataProvider('rejected')]
@@ -53,6 +54,7 @@ class BaseUrlGuardTest extends TestCase
         BaseUrlGuard::assertHttps('HTTPS://api.videooptimizer.eu/api/v1');
         BaseUrlGuard::assertHttps('https://player.videooptimizer.eu');
         BaseUrlGuard::assertHttps('https://8.8.8.8/x');
+        BaseUrlGuard::assertHttps('https://0xabc.example.com/x');
         $this->addToAssertionCount(1);
     }
 
@@ -122,5 +124,16 @@ class BaseUrlGuardTest extends TestCase
         (new VideoOptimizerClient($http, $settings, 'https://api.videooptimizer.eu/api/v1'))->getVideo('abc');
 
         self::assertSame(0, $options['max_redirects'] ?? null);
+    }
+
+    public function testRedirectResponsesAreAnError(): void
+    {
+        $http = new MockHttpClient(static fn (): MockResponse => new MockResponse('', ['http_code' => 302, 'response_headers' => ['Location: https://evil.example/']]));
+        $settings = $this->createStub(SettingsManager::class);
+        $settings->method('getApiToken')->willReturn('vp_token');
+
+        $this->expectException(VideoOptimizerException::class);
+        $this->expectExceptionMessage('unexpected redirect');
+        (new VideoOptimizerClient($http, $settings, 'https://api.videooptimizer.eu/api/v1'))->getVideo('abc');
     }
 }

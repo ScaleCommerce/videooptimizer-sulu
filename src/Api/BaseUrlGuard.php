@@ -55,7 +55,8 @@ final class BaseUrlGuard
         }
 
         // Numeric or hex host forms that resolvers still treat as IPv4 ("2130706433", "127.1", "0x7f000001").
-        if (1 === preg_match('/^[0-9.]+$/', $host) || 1 === preg_match('/(^|\.)0x[0-9a-f]*($|\.)/', $host)) {
+        // Only hosts made entirely of such labels: names like "0xabc.example.com" are ordinary hosts.
+        if (1 === preg_match('/^(0x[0-9a-f]*|[0-9]+)(\.(0x[0-9a-f]*|[0-9]+))*$/', $host)) {
             throw new \InvalidArgumentException($message);
         }
     }
