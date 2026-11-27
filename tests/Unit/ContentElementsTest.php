@@ -287,6 +287,63 @@ B"]]);
         self::assertStringContainsString('vo-frame', $html);
     }
 
+    public function testFormatOptionsMapToRatioTallnessAndFocus(): void
+    {
+        $extension = $this->extension();
+
+        self::assertSame(['key' => 'original', 'ratio' => null, 'tall' => false, 'focus' => null], $extension->format([]));
+        self::assertSame(['key' => 'original', 'ratio' => null, 'tall' => false, 'focus' => null], $extension->format(['format' => 'bogus']));
+        self::assertSame(['key' => '9_16', 'ratio' => '9 / 16', 'tall' => true, 'focus' => null], $extension->format(['format' => '9_16']));
+        self::assertSame(['key' => '4_5', 'ratio' => '4 / 5', 'tall' => true, 'focus' => '20% 80%'], $extension->format(['format' => '4_5', 'focusX' => '20', 'focusY' => 80]));
+        self::assertFalse($extension->format(['format' => '21_9'])['tall']);
+        self::assertSame('0% 100%', $extension->format(['focusX' => -30, 'focusY' => 250])['focus'], 'Out-of-range values are clamped.');
+        self::assertNull($extension->format(['focusX' => 'abc', 'focusY' => null])['focus'], 'Garbage counts as the centre.');
+    }
+
+    public function testPlayerOptionsAskTheEmbedToCoverOnlyForAFixedFormat(): void
+    {
+        $extension = $this->extension();
+
+        self::assertArrayNotHasKey('fit', $extension->playerOptions(['format' => 'original']));
+        self::assertSame('cover', $extension->playerOptions(['format' => '1_1'])['fit']);
+    }
+
+    public function testSingleVideoWithAFormatSizesTheSurfaceAndCoversTheHostedEmbed(): void
+    {
+        $html = $this->render('vo_single_video.html.twig', ['block' => [
+            'video' => ['uuid' => self::UUID], 'presentation' => 'direct', 'priority' => true, 'format' => '9_16', 'focusX' => 30, 'focusY' => 10,
+        ]]);
+
+        self::assertStringContainsString('class="vo-frame vo-frame--format vo-frame--tall"', $html);
+        self::assertStringContainsString('style="aspect-ratio: 9 / 16; --vo-focus: 30% 10%"', $html);
+        self::assertStringContainsString('src="https://videooptimizer.eu/embed/' . self::UUID . '?autoplay=1&amp;fit=cover"', $html);
+    }
+
+    public function testFacadeCoversButTheLightboxShowsTheWholeVideo(): void
+    {
+        $facade = $this->render('vo_single_video.html.twig', ['block' => ['video' => ['uuid' => self::UUID], 'presentation' => 'facade', 'format' => '1_1']]);
+        $lightbox = $this->render('vo_single_video.html.twig', ['block' => ['video' => ['uuid' => self::UUID], 'presentation' => 'lightbox', 'format' => '1_1']]);
+
+        self::assertStringContainsString('data-vo-embed="https://videooptimizer.eu/embed/' . self::UUID . '?autoplay=1&amp;fit=cover"', $facade);
+        self::assertStringContainsString('style="aspect-ratio: 1 / 1"', $lightbox);
+        self::assertStringContainsString('data-vo-lightbox="https://videooptimizer.eu/embed/' . self::UUID . '?autoplay=1"', $lightbox);
+    }
+
+    public function testDirectHostedAutoloadKeepsCover(): void
+    {
+        $html = $this->render('vo_media_split.html.twig', ['block' => ['video' => ['uuid' => self::UUID], 'presentation' => 'direct', 'format' => '21_9']]);
+
+        self::assertStringContainsString('data-vo-autoload="https://videooptimizer.eu/embed/' . self::UUID . '?autoplay=1&amp;fit=cover"', $html);
+        self::assertStringNotContainsString('vo-frame--tall', $html);
+    }
+
+    public function testOriginalFormatKeepsTheVideoRatioAndOrientationClass(): void
+    {
+        $html = $this->render('vo_single_video.html.twig', ['block' => ['video' => ['uuid' => self::UUID], 'presentation' => 'facade', 'format' => 'original']]);
+
+        self::assertStringContainsString('class="vo-frame vo-frame--landscape" style="aspect-ratio: 1920 / 1080"', $html);
+    }
+
     /**
      * @param array<string, mixed>                $context
      * @param array<string, string>               $titles  title per uuid; uuids without one count as unknown videos

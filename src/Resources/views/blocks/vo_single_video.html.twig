@@ -7,6 +7,7 @@
                 presentation: block.presentation|default('facade'),
                 player: video_optimizer_player(block),
                 playerOpts: video_optimizer_player_options(block),
+                format: video_optimizer_format(block),
                 label: block.headline|default(''),
                 sizes: '(min-width: 1000px) 960px, 100vw',
                 priority: block.priority|default(false)

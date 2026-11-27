@@ -9,6 +9,7 @@
     - playerOpts:   result of video_optimizer_player_options(block)
     - label:        aria-label / embed title (e.g. the block headline)
     - sizes:        responsive <img sizes> value for the poster
+    - format:       result of video_optimizer_format(block): fixed aspect ratio + focal point (optional)
     - priority:     true for the above-the-fold/LCP block — loads eagerly (fetchpriority high) and,
                     in 'direct' mode, embeds the player immediately instead of on scroll.
 
@@ -28,6 +29,18 @@
 #}
 {% set dim = video_optimizer_dimensions(video) %}
 {% set url = video_optimizer_embed_url(video, playerOpts) %}
+{# The lightbox is a 16:9 box that shows the whole video: no cover cropping there. #}
+{% set lightboxUrl = video_optimizer_embed_url(video, playerOpts|merge({fit: ''})) %}
+{% set fmt = format|default(null) %}
+{% set frameStyle = [] %}
+{% if fmt and fmt.ratio %}
+    {% set frameStyle = frameStyle|merge(['aspect-ratio: ' ~ fmt.ratio]) %}
+{% elseif dim.width and dim.height %}
+    {% set frameStyle = frameStyle|merge(['aspect-ratio: ' ~ dim.width ~ ' / ' ~ dim.height]) %}
+{% endif %}
+{% if fmt and fmt.focus %}
+    {% set frameStyle = frameStyle|merge(['--vo-focus: ' ~ fmt.focus]) %}
+{% endif %}
 {% set srcset = video_optimizer_srcset(video) %}
 {% set isPriority = priority|default(false) %}
 {% set player = player|default('hosted') %}
@@ -35,7 +48,7 @@
 {% set posterImg %}{% if posterUrl %}<img class="vo-poster__img" src="{{ posterUrl }}"{% if srcset %} srcset="{{ srcset }}" sizes="{{ sizes|default('100vw') }}"{% endif %}{% if dim.width and dim.height %} width="{{ dim.width }}" height="{{ dim.height }}"{% endif %} alt="" loading="{{ isPriority ? 'eager' : 'lazy' }}"{% if isPriority %} fetchpriority="high"{% endif %}>{% endif %}{% endset %}
 {# Sentinel picked up by AssetInjectionListener to auto-load the bundle's frontend CSS/JS (removed after injection). #}
 <!--vo-assets-->
-<div class="vo-frame{% if dim.orientation %} vo-frame--{{ dim.orientation }}{% endif %}"{% if dim.width and dim.height %} style="aspect-ratio: {{ dim.width }} / {{ dim.height }}"{% endif %}{% if presentation == 'direct' and not isPriority and player == 'hosted' %} data-vo-autoload="{{ url }}"{% endif %} data-vo-player="{{ player }}">
+<div class="vo-frame{% if fmt and fmt.ratio %} vo-frame--format{% if fmt.tall %} vo-frame--tall{% endif %}{% elseif dim.orientation %} vo-frame--{{ dim.orientation }}{% endif %}"{% if frameStyle %} style="{{ frameStyle|join('; ') }}"{% endif %}{% if presentation == 'direct' and not isPriority and player == 'hosted' %} data-vo-autoload="{{ url }}"{% endif %} data-vo-player="{{ player }}">
     {% if presentation == 'direct' %}
         {% if player == 'native' %}
             {{ video_optimizer_native(video, playerOpts, isPriority, not isPriority) }}
@@ -47,7 +60,7 @@
         {% endif %}
     {% else %}
         <button type="button" class="vo-facade" data-vo-player="{{ player }}"
-                {% if presentation == 'lightbox' %}data-vo-lightbox="{{ url }}"{% else %}data-vo-embed="{{ url }}"{% endif %}
+                {% if presentation == 'lightbox' %}data-vo-lightbox="{{ lightboxUrl }}"{% else %}data-vo-embed="{{ url }}"{% endif %}
                 aria-label="{{ label|default('Play video') }}">
             {{ posterImg }}
             <span class="vo-poster__play" aria-hidden="true">▶</span>

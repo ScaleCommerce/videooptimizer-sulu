@@ -86,6 +86,44 @@
                 </param>
             </params>
         </property>
+        <property name="format" type="single_select">
+            <meta><title lang="en">Format</title><title lang="de">Format</title><info_text lang="en">Crops the video to this ratio (it fills the area). The hosted player crops centered; the focal point applies to the native player and the poster only.</info_text><info_text lang="de">Beschneidet das Video auf dieses Verhältnis (es füllt die Fläche). Der gehostete Player beschneidet zentriert; der Fokuspunkt gilt nur für den nativen Player und das Poster.</info_text></meta>
+            <params>
+                <param name="default_value" value="original"/>
+                <param name="values" type="collection">
+                    <param name="original"><meta><title lang="en">Original (video ratio)</title><title lang="de">Original (Video-Seitenverhältnis)</title></meta></param>
+                    <param name="16_9"><meta><title lang="en">16:9</title><title lang="de">16:9</title></meta></param>
+                    <param name="9_16"><meta><title lang="en">9:16 (portrait)</title><title lang="de">9:16 (Hochformat)</title></meta></param>
+                    <param name="1_1"><meta><title lang="en">1:1 (square)</title><title lang="de">1:1 (quadratisch)</title></meta></param>
+                    <param name="4_5"><meta><title lang="en">4:5</title><title lang="de">4:5</title></meta></param>
+                    <param name="21_9"><meta><title lang="en">21:9 (banner)</title><title lang="de">21:9 (Banner)</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="focusX" type="number">
+            <meta>
+                <title lang="en">Focal point X (%)</title>
+                <title lang="de">Fokuspunkt X (%)</title>
+                <info_text lang="en">0 = left, 100 = right (default 50). Not supported by the hosted player.</info_text>
+                <info_text lang="de">0 = links, 100 = rechts (Standard 50). Vom gehosteten Player nicht unterstützt.</info_text>
+            </meta>
+            <params>
+                <param name="min" value="0"/>
+                <param name="max" value="100"/>
+            </params>
+        </property>
+        <property name="focusY" type="number">
+            <meta>
+                <title lang="en">Focal point Y (%)</title>
+                <title lang="de">Fokuspunkt Y (%)</title>
+                <info_text lang="en">0 = top, 100 = bottom (default 50). Not supported by the hosted player.</info_text>
+                <info_text lang="de">0 = oben, 100 = unten (Standard 50). Vom gehosteten Player nicht unterstützt.</info_text>
+            </meta>
+            <params>
+                <param name="min" value="0"/>
+                <param name="max" value="100"/>
+            </params>
+        </property>
         <property name="priority" type="checkbox">
             <meta>
                 <title lang="en">Prioritize loading (above the fold)</title>

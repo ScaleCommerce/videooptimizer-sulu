@@ -106,6 +106,17 @@
     margin-inline: auto;
 }
 
+/* "Format" option: the surface has a fixed ratio and the video / poster fill it; tall ones get a maximum width. */
+.vo-frame--tall {
+    max-width: min(100%, 420px);
+    margin-inline: auto;
+}
+
+.vo-native,
+.vo-poster__img {
+    object-position: var(--vo-focus, 50% 50%);
+}
+
 /* Facade poster button that fills the frame until clicked (then replaced by the iframe). */
 .vo-facade {
     position: absolute;
@@ -187,6 +198,12 @@ dialog.vo-lightbox::backdrop {
     border-radius: var(--vo-radius);
     overflow: hidden;
     background: #000;
+}
+
+/* The lightbox shows the whole video, whatever format the page surface crops it to. */
+.vo-lightbox__inner .vo-native {
+    object-fit: contain;
+    object-position: center;
 }
 
 .vo-lightbox__inner iframe {
