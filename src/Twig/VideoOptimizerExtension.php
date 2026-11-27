@@ -272,12 +272,19 @@ class VideoOptimizerExtension extends AbstractExtension
     }
 
     /**
-     * Link from a list card to the detail page: `<page>?vo_video=<uuid>`. Only site-relative paths and
-     * http(s) URLs count; anything else (javascript:, data:, protocol-relative) yields null.
+     * Link from a list card to the detail page: `<page>?vo_video=<uuid>`. The page is the resolved value of the
+     * block's page selection (a map with a `url`, or the page object) or a plain URL stored by an earlier version.
+     * Only site-relative paths and http(s) URLs count; anything else (javascript:, data:, protocol-relative, an
+     * unresolved page uuid) yields null.
      */
-    public function detailUrl(?string $page, ?string $uuid): ?string
+    public function detailUrl(mixed $page, ?string $uuid): ?string
     {
-        $page = trim((string) $page);
+        if (\is_object($page) && !$page instanceof \ArrayAccess) {
+            $page = method_exists($page, 'getUrl') ? $page->getUrl() : ($page->url ?? null);
+        } elseif (\is_array($page) || $page instanceof \ArrayAccess) {
+            $page = $page['url'] ?? null;
+        }
+        $page = trim(\is_string($page) ? $page : '');
         $uuid = VideoListProvider::uuid($uuid);
         if (null === $uuid || '' === $page || 1 === preg_match('/[\x00-\x20\\\\]/', $page)) {
             return null;

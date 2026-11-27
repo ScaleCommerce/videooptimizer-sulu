@@ -18,8 +18,8 @@
             <meta>
                 <title lang="en">Library ID</title>
                 <title lang="de">Bibliotheks-ID</title>
-                <info_text lang="en">UUID of the VideoOptimizer library to list (empty: all libraries). Only finished videos are shown.</info_text>
-                <info_text lang="de">UUID der VideoOptimizer-Bibliothek (leer: alle Bibliotheken). Es werden nur fertige Videos angezeigt.</info_text>
+                <info_text lang="en">UUID of the VideoOptimizer library (see Libraries in the VideoOptimizer admin); empty: all libraries; an invalid value shows no videos. Only finished videos are shown.</info_text>
+                <info_text lang="de">UUID der VideoOptimizer-Bibliothek (siehe Bibliotheken im VideoOptimizer-Admin); leer: alle Bibliotheken; ein ungültiger Wert zeigt keine Videos. Es werden nur fertige Videos angezeigt.</info_text>
             </meta>
         </property>
         <property name="tags" type="text_line">
@@ -42,12 +42,12 @@
                 <param name="max" value="24"/>
             </params>
         </property>
-        <property name="detailPage" type="text_line">
+        <property name="detailPage" type="single_page_selection">
             <meta>
-                <title lang="en">Detail page URL</title>
-                <title lang="de">URL der Detailseite</title>
-                <info_text lang="en">Page that contains a "Video detail" block, e.g. /video. Cards link to it with ?vo_video=UUID. Empty: cards open the video in a lightbox.</info_text>
-                <info_text lang="de">Seite mit einem „Video-Detail“-Block, z. B. /video. Die Karten verlinken mit ?vo_video=UUID dorthin. Leer: Karten öffnen das Video in einer Lightbox.</info_text>
+                <title lang="en">Detail page</title>
+                <title lang="de">Detailseite</title>
+                <info_text lang="en">Page that contains a "Video detail" block. Cards link to it with ?vo_video=UUID. Empty: cards open the video in a lightbox.</info_text>
+                <info_text lang="de">Seite mit einem „Video-Detail“-Block. Die Karten verlinken mit ?vo_video=UUID dorthin. Leer: Karten öffnen das Video in einer Lightbox.</info_text>
             </meta>
         </property>
         <property name="player" type="single_select">

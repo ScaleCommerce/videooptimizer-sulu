@@ -151,16 +151,21 @@ class ContentElementsTest extends TestCase
     /**
      */
     #[DataProvider('detailUrls')]
-    public function testDetailUrlOnlyAcceptsRelativePathsAndHttpUrls(?string $page, ?string $expected): void
+    public function testDetailUrlOnlyAcceptsRelativePathsAndHttpUrls(mixed $page, ?string $expected): void
     {
         self::assertSame($expected, $this->extension()->detailUrl($page, self::UUID));
     }
 
     /**
-     * @return iterable<string, array{?string, ?string}>
+     * @return iterable<string, array{mixed, ?string}>
      */
     public static function detailUrls(): iterable
     {
+        yield 'resolved page' => [['id' => self::OTHER, 'title' => 'Video', 'url' => '/de/video'], '/de/video?vo_video=' . self::UUID];
+        yield 'resolved page object' => [new \ArrayObject(['url' => '/video']), '/video?vo_video=' . self::UUID];
+        yield 'page object' => [(object) ['url' => '/video'], '/video?vo_video=' . self::UUID];
+        yield 'resolved page without url' => [['id' => self::OTHER], null];
+        yield 'unresolved page uuid' => [self::OTHER, null];
         yield 'path' => ['/video', '/video?vo_video=' . self::UUID];
         yield 'path with query' => ['/video?a=1', '/video?a=1&vo_video=' . self::UUID];
         yield 'replaces an earlier uuid' => ['/video?vo_video=old', '/video?vo_video=' . self::UUID];
@@ -202,6 +207,19 @@ class ContentElementsTest extends TestCase
         self::assertStringContainsString('library_id=' . self::OTHER, $queries[0]);
         self::assertStringNotContainsString('cursor', $queries[0]);
         self::assertSame($page['items'], $again['items']);
+    }
+
+    public function testListProviderShowsNothingForAnInvalidLibraryInsteadOfEveryLibrary(): void
+    {
+        $calls = 0;
+        $provider = new VideoListProvider($this->client(function () use (&$calls): MockResponse {
+            ++$calls;
+
+            return new MockResponse('{}');
+        }), new ArrayAdapter());
+
+        self::assertSame(['items' => [], 'next' => null, 'error' => false], $provider->page('typo', null, null));
+        self::assertSame(0, $calls);
     }
 
     public function testListProviderReportsAFailureWithoutCachingIt(): void

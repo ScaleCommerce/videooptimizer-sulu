@@ -416,13 +416,17 @@ nothing to copy-paste.
 
 ### Video list and video detail
 
-`vo_video_list` shows the finished videos of one library (**Library ID**, empty = all libraries; optional **Tags**, comma-separated) as cards with poster, title and duration, 12 per page (3 to 24). **More videos** and **First page** links page through the API cursor with `?vo_cursor=`. **Detail page URL** (e.g. `/video`) is the page that holds a `vo_video_detail` block: cards link to `<page>?vo_video=<uuid>`; without it a card opens the video in the lightbox. Each page is cached for two minutes. A page with several list blocks shares one `vo_cursor`.
+`vo_video_list` shows the finished videos of one library (**Library ID**, empty = all libraries; optional **Tags**, comma-separated) as cards with poster, title and duration, 12 per page (3 to 24). **More videos** and **First page** links page through the API cursor with `?vo_cursor=`. **Detail page** (Sulu's page selection) is the page that holds a `vo_video_detail` block: cards link to `<page>?vo_video=<uuid>` (a plain URL stored by an earlier draft still works); without it a card opens the video in the lightbox. The library is entered as a UUID (shown in the Libraries view of the VideoOptimizer admin): there is no library picker, an invalid value shows no videos instead of every library. Each page is cached for two minutes. A page with several list blocks shares one `vo_cursor`.
 
 `vo_video_detail` shows the video from `?vo_video=<uuid>` (title, player, JSON-LD) or its **Default video** when the URL names none. An invalid or unknown uuid shows a neutral "not found" text (the page itself still answers 200; the block cannot change the status code or the page title, set those in your own template if you need them).
 
 ### Chapters and scenes
 
 `vo_video_chapters` shows the player directly with 3 to 10 scene previews below it (default 5, spread evenly over the video; scroll horizontally on small screens). The previews are the video's auto-generated thumbnails (`GET /videos/{uuid}/thumbnails/{0..9}`, public); a scene starts at `floor(duration / 11 * (index + 1))` seconds, so the row is left out while the duration is unknown. **Scene titles** (one per line) replace "Scene n". A click seeks the native player (the source is attached on the first click, nothing loads before) or restarts the hosted embed with `t=<seconds>&autoplay=1`, and marks the scene with `aria-current`. Autoplay defaults to off for new blocks.
+
+### Play while scrolling
+
+A native player with autoplay on (direct presentation) starts muted once it is at least half visible and pauses when it leaves the viewport. A pause by the visitor sticks until they press play again; with `prefers-reduced-motion` or Save-Data it does not autoplay at all (poster and controls only). The hosted embed cannot be paused from outside and keeps playing.
 
 ### Format and focal point
 

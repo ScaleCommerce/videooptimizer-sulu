@@ -7,7 +7,11 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 ### Upgrade
 - Republish the bundle assets (`assets:install`) for the new `vo-blocks.js`/`vo-blocks.css`; add `<type ref="vo_single_video"/>`, `vo_video_chapters`, `vo_video_list` and `vo_video_detail` to your own page templates to offer the new blocks (the showcase template has them); rebuild the Sulu admin assets and hard-reload the admin for the encoding quality note ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25), [#31](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/31))
 - Embed cache key is `vo_embed_v4_<uuid>` (it carries the title now): cached embeds are looked up again once after the update ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))
+- Native autoplay-on-scroll now pauses off screen and ignores Save-Data (see Changed); the video list block stores its detail page as a page selection (a plain URL saved by an earlier draft still works) ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))
 - The lightbox shows a native player letterboxed (`object-fit: contain`) instead of cropped; custom CSS for `.vo-lightbox .vo-native` is unaffected ([#27](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/27))
+
+### Changed
+- Native players with autoplay on pause when they leave the viewport (half visible starts them), a visitor's pause sticks, and Save-Data visitors get no autoplay; before they kept playing once started ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))
 
 ### Added
 - Blocks `vo_single_video`, `vo_video_list` (library, tags, cursor paging, link to a detail page or lightbox) and `vo_video_detail` (`?vo_video=<uuid>` with default video, neutral not-found); `VideoListProvider` (2 min cache) and Twig functions `video_optimizer_videos|uuid|title|detail_url|duration|t` ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))

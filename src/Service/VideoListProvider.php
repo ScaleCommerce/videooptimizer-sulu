@@ -31,6 +31,10 @@ class VideoListProvider
      */
     public function page(?string $libraryId, ?string $tags, ?string $cursor, int $limit = self::DEFAULT_PAGE_SIZE): array
     {
+        if (null !== $libraryId && '' !== trim($libraryId) && null === self::uuid($libraryId)) {
+            // A mistyped library must not fall back to listing every library of the organization.
+            return ['items' => [], 'next' => null, 'error' => false];
+        }
         $libraryId = self::uuid($libraryId);
         $cursor = null !== $cursor && 1 === preg_match('/^[A-Za-z0-9_\-=.+\/]{1,512}$/D', $cursor) ? $cursor : null;
         $tags = null !== $tags && '' !== trim($tags) ? mb_substr(trim($tags), 0, 200) : null;
