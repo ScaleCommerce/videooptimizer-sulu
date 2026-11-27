@@ -215,13 +215,17 @@ class Libraries extends React.Component<*> {
         this.error = null;
 
         if (this.activeId === CREATE_ID) {
-            const payload = {name, encoding_quality: this.formQuality};
+            const payload = {name};
             const description = this.formDescription.trim();
             const codec = this.ladderValue('codecs', this.selectedCodecs);
             const resolutions = this.ladderValue('resolutions', this.selectedResolutions);
             // Omit empty optionals on create so we don't overwrite server defaults.
             if (description) {
                 payload.description = description;
+            }
+            // New libraries start with the API default (performance); only send a deliberate choice.
+            if (this.formQuality !== 'performance') {
+                payload.encoding_quality = this.formQuality;
             }
             if (codec) {
                 payload.codec = codec;
@@ -246,10 +250,13 @@ class Libraries extends React.Component<*> {
         if (this.mediaManaged) {
             payload.codec = this.ladderValue('codecs', this.selectedCodecs);
             payload.resolutions = this.ladderValue('resolutions', this.selectedResolutions);
-            payload.encoding_quality = this.formQuality;
         }
         const id = this.activeId;
         const qualityChanged = this.mediaManaged && this.qualityChanged();
+        // Only send the quality when the user changed it, never the displayed fallback value.
+        if (qualityChanged) {
+            payload.encoding_quality = this.formQuality;
+        }
         updateLibrary(id, payload)
             .then(action(() => {
                 this.saving = false;

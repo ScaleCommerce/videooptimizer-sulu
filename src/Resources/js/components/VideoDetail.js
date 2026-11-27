@@ -12,6 +12,9 @@ import {
     pollVideo, posterFor, bustCache, bumpCacheBust,
 } from '../services/api';
 
+// Poster processing takes seconds; stop polling after ~3 minutes.
+const POSTER_POLL_ATTEMPTS = 60;
+
 // Formats a duration in seconds as m:ss (e.g. 83 -> "1:23").
 function formatDuration(seconds) {
     const total = Math.max(0, Math.round(seconds));
@@ -104,7 +107,7 @@ class VideoDetail extends React.Component<*> {
         this.busy = 'thumb';
         this.error = null;
         selectThumbnail(this.video.uuid, index)
-            .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) === 'thumbnail'))
+            .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) === 'thumbnail', {maxAttempts: POSTER_POLL_ATTEMPTS}))
             .then(action((video) => {
                 if (this._unmounted) { return; }
                 this.busy = null;
@@ -123,7 +126,7 @@ class VideoDetail extends React.Component<*> {
         this.busy = 'thumb';
         this.error = null;
         selectPoster(this.video.uuid, {source: 'custom'})
-            .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) === 'custom'))
+            .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) === 'custom', {maxAttempts: POSTER_POLL_ATTEMPTS}))
             .then(action((video) => {
                 if (this._unmounted) { return; }
                 this.busy = null;
@@ -184,16 +187,24 @@ class VideoDetail extends React.Component<*> {
                 this.status = translate('scale_videooptimizer.processing');
             }))
             .then(() => pollVideo(this.video.uuid, (v) => {
-                const poster = v.poster || {};
+                const status = v.poster && v.poster.custom_status;
 
-                return poster.custom_status === 'failed' || (poster.custom_status === 'ready' && poster.source === 'custom');
-            }))
-            .then(action((video) => {
-                // A processed custom poster becomes the active one on its own (no poster/select needed).
+                return status === 'ready' || status === 'failed';
+            }, {maxAttempts: POSTER_POLL_ATTEMPTS}))
+            .then((video) => {
                 if (video.poster && video.poster.custom_status === 'failed') {
                     throw new Error(translate('scale_videooptimizer.poster_failed'));
                 }
+                // A processed custom poster normally becomes the active one on its own. Only if it did
+                // not, activate it once explicitly.
+                if ((video.poster && video.poster.source) === 'custom') {
+                    return video;
+                }
 
+                return selectPoster(this.video.uuid, {source: 'custom'})
+                    .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) === 'custom', {maxAttempts: POSTER_POLL_ATTEMPTS}));
+            })
+            .then(action((video) => {
                 if (this._unmounted) { return; }
                 this.busy = null;
                 this.status = null;
@@ -211,7 +222,7 @@ class VideoDetail extends React.Component<*> {
         this.busy = 'poster';
         this.error = null;
         deletePoster(this.video.uuid)
-            .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) !== 'custom'))
+            .then(() => pollVideo(this.video.uuid, (v) => (v.poster && v.poster.source) !== 'custom', {maxAttempts: POSTER_POLL_ATTEMPTS}))
             .then(action((video) => {
                 if (this._unmounted) { return; }
                 this.busy = null;

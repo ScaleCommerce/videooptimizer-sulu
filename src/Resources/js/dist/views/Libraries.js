@@ -711,8 +711,7 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
       _this11.error = null;
       if (_this11.activeId === CREATE_ID) {
         var _payload = {
-          name: name,
-          encoding_quality: _this11.formQuality
+          name: name
         };
         var description = _this11.formDescription.trim();
         var codec = _this11.ladderValue('codecs', _this11.selectedCodecs);
@@ -720,6 +719,10 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
         // Omit empty optionals on create so we don't overwrite server defaults.
         if (description) {
           _payload.description = description;
+        }
+        // New libraries start with the API default (performance); only send a deliberate choice.
+        if (_this11.formQuality !== 'performance') {
+          _payload.encoding_quality = _this11.formQuality;
         }
         if (codec) {
           _payload.codec = codec;
@@ -746,10 +749,13 @@ var Libraries = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functi
       if (_this11.mediaManaged) {
         payload.codec = _this11.ladderValue('codecs', _this11.selectedCodecs);
         payload.resolutions = _this11.ladderValue('resolutions', _this11.selectedResolutions);
-        payload.encoding_quality = _this11.formQuality;
       }
       var id = _this11.activeId;
       var qualityChanged = _this11.mediaManaged && _this11.qualityChanged();
+      // Only send the quality when the user changed it, never the displayed fallback value.
+      if (qualityChanged) {
+        payload.encoding_quality = _this11.formQuality;
+      }
       (0, _api.updateLibrary)(id, payload).then((0, _mobx.action)(function () {
         _this11.saving = false;
         if (qualityChanged) {

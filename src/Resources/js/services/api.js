@@ -206,15 +206,21 @@ export function deletePoster(uuid: string) {
 // Polls getVideo until predicate(video) is true (or it fails). Returns the final video.
 export function pollVideo(uuid: string, predicate: (video: Object) => boolean, options: Object = {}) {
     const interval = options.interval || 3000;
+    // Gives up instead of polling forever (default 30 min at the default interval).
+    const maxAttempts = options.maxAttempts || 600;
+    let attempts = 0;
 
     return new Promise((resolve, reject) => {
         const tick = () => {
+            attempts += 1;
             getVideo(uuid).then((video) => {
                 if (options.onTick) {
                     options.onTick(video);
                 }
                 if (predicate(video)) {
                     resolve(video);
+                } else if (attempts >= maxAttempts) {
+                    reject(new Error(translate('scale_videooptimizer.poll_timeout')));
                 } else {
                     setTimeout(tick, interval);
                 }

@@ -245,14 +245,20 @@ function deletePoster(uuid) {
 function pollVideo(uuid, predicate) {
   var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
   var interval = options.interval || 3000;
+  // Gives up instead of polling forever (default 30 min at the default interval).
+  var maxAttempts = options.maxAttempts || 600;
+  var attempts = 0;
   return new Promise(function (resolve, reject) {
     var _tick = function tick() {
+      attempts += 1;
       getVideo(uuid).then(function (video) {
         if (options.onTick) {
           options.onTick(video);
         }
         if (predicate(video)) {
           resolve(video);
+        } else if (attempts >= maxAttempts) {
+          reject(new Error((0, _utils.translate)('scale_videooptimizer.poll_timeout')));
         } else {
           setTimeout(_tick, interval);
         }
