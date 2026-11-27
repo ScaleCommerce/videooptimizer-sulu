@@ -528,6 +528,35 @@ class VideoOptimizerBlockRenderTest extends TestCase
         self::assertStringContainsString('data-vo-hls-eager', $html);
     }
 
+    public function testPosterImgUsesTheLivePosterOverTheStoredOne(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getDimensions('abc')->willReturn(['width' => 1920, 'height' => 1080, 'orientation' => 'landscape']);
+        $resolver->getPosterSrcset('abc')->willReturn(null);
+        $resolver->getSources('abc')->willReturn($this->sources(['poster' => 'https://cdn.example.net/live-poster.jpg']));
+
+        $html = $this->render($resolver, 'vo_media_split.html.twig', [
+            'block' => ['video' => ['uuid' => 'abc', 'posterUrl' => 'https://cdn.example.net/stored-poster.jpg', 'title' => 'Clip'], 'side' => 'left'],
+        ]);
+
+        self::assertStringContainsString('<img class="vo-poster__img" src="https://cdn.example.net/live-poster.jpg"', $html);
+        self::assertStringNotContainsString('stored-poster.jpg', $html);
+    }
+
+    public function testPosterImgFallsBackToTheStoredPosterWhenTheLiveLookupHasNone(): void
+    {
+        $resolver = $this->resolver();
+        $resolver->getDimensions('abc')->willReturn(['width' => 1920, 'height' => 1080, 'orientation' => 'landscape']);
+        $resolver->getPosterSrcset('abc')->willReturn(null);
+        $resolver->getSources('abc')->willReturn($this->sources(['poster' => null]));
+
+        $html = $this->render($resolver, 'vo_media_split.html.twig', [
+            'block' => ['video' => ['uuid' => 'abc', 'posterUrl' => 'https://cdn.example.net/stored-poster.jpg', 'title' => 'Clip'], 'side' => 'left'],
+        ]);
+
+        self::assertStringContainsString('<img class="vo-poster__img" src="https://cdn.example.net/stored-poster.jpg"', $html);
+    }
+
     /**
      * @param array<string, mixed> $context
      */
@@ -562,9 +591,9 @@ class VideoOptimizerBlockRenderTest extends TestCase
     /**
      * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string}
      */
-    private function sources(): array
+    private function sources(array $overrides = []): array
     {
-        return ['poster' => 'https://cdn.example.net/poster.jpg', 'hlsUrl' => null, 'width' => 1920, 'height' => 1080, 'duration' => 12, 'srcset' => null];
+        return $overrides + ['poster' => 'https://cdn.example.net/poster.jpg', 'hlsUrl' => null, 'width' => 1920, 'height' => 1080, 'duration' => 12, 'srcset' => null];
     }
 
     /**
