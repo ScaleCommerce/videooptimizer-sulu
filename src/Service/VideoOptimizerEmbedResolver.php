@@ -37,7 +37,7 @@ class VideoOptimizerEmbedResolver
     }
 
     /**
-     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, sources: array<int, array{src:string,type:string,label:string}>}
+     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
      */
     public function getSources(string $uuid): array
     {
@@ -55,7 +55,7 @@ class VideoOptimizerEmbedResolver
     }
 
     /**
-     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, sources: array<int, array{src:string,type:string,label:string}>}
+     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
      */
     private function lookup(string $uuid): array
     {
@@ -136,16 +136,16 @@ class VideoOptimizerEmbedResolver
 
     private static function cacheKey(string $uuid): string
     {
-        // v2: entries cached before 1.8.1 (24 h lifetime) must not survive the upgrade.
-        return 'vo_embed_v2_' . $uuid;
+        // v3: entries cached before 2.1.0 carry no subtitle tracks; v2 predates 1.8.1 (24 h lifetime).
+        return 'vo_embed_v3_' . $uuid;
     }
 
     /**
-     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, sources: array<int, array{src:string,type:string,label:string}>}
+     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
      */
     private static function unavailable(): array
     {
-        return ['poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'srcset' => null, 'theme' => null, 'sources' => []];
+        return ['poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'srcset' => null, 'theme' => null, 'tracks' => [], 'sources' => []];
     }
 
     /**
@@ -177,7 +177,7 @@ class VideoOptimizerEmbedResolver
     /**
      * @param array<string, mixed> $data
      *
-     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, sources: array<int, array{src:string,type:string,label:string}>}
+     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
      */
     public static function extractSources(array $data): array
     {
@@ -216,15 +216,50 @@ class VideoOptimizerEmbedResolver
             'duration' => $duration,
             'srcset' => self::parsePosterSrcset($data['posterSrcset'] ?? null),
             'theme' => $theme,
+            'tracks' => self::extractTracks($data['tracks'] ?? null),
             'sources' => $sources,
         ];
+    }
+
+    /**
+     * Keeps the usable subtitle tracks of an embed response: an https WebVTT `src` and a language code.
+     *
+     * @return array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>
+     */
+    public static function extractTracks(mixed $tracks): array
+    {
+        if (!\is_array($tracks)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($tracks as $track) {
+            if (!\is_array($track)) {
+                continue;
+            }
+            $src = $track['src'] ?? null;
+            $lang = $track['srclang'] ?? null;
+            if (!\is_string($src) || 1 !== preg_match('#^https://#i', $src) || !\is_string($lang) || 1 !== preg_match('/^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$/D', $lang)) {
+                continue;
+            }
+            $label = \is_string($track['label'] ?? null) && '' !== $track['label'] ? $track['label'] : $lang;
+            $result[] = [
+                'src' => $src,
+                'srclang' => $lang,
+                'label' => $label,
+                'kind' => 'captions' === ($track['kind'] ?? null) ? 'captions' : 'subtitles',
+                'default' => true === ($track['default'] ?? false),
+            ];
+        }
+
+        return $result;
     }
 
     /**
      * Returns the essentials a client-side player needs to boot: poster, playable sources, theme
      * overrides and native dimensions. Thin projection over the cached getSources() lookup.
      *
-     * @return array{poster: ?string, sources: array<int, array{src:string,type:string,label:string}>, theme: ?array<int|string, mixed>, width: ?int, height: ?int}
+     * @return array{poster: ?string, sources: array<int, array{src:string,type:string,label:string}>, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, width: ?int, height: ?int}
      */
     public function getPlayable(string $uuid): array
     {
@@ -234,6 +269,7 @@ class VideoOptimizerEmbedResolver
             'poster' => $sources['poster'],
             'sources' => $sources['sources'],
             'theme' => $sources['theme'],
+            'tracks' => $sources['tracks'],
             'width' => $sources['width'],
             'height' => $sources['height'],
         ];

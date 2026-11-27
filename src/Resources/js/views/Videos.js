@@ -22,6 +22,7 @@ import {
     posterFor,
     bustCache,
 } from '../services/api';
+import {can} from '../services/permissions';
 import VideoDetail from '../components/VideoDetail';
 import VideoPager from '../services/VideoPager';
 import UploadProgress from '../components/UploadProgress';
@@ -398,7 +399,7 @@ class Videos extends React.Component<*> {
 
                         <UploadProgress status={this.uploadStatus} percent={this.uploadPercent} onCancel={this.uploadCancellable ? this.cancelUpload : null} />
 
-                        {activeLibrary && this.renderIngestForm()}
+                        {activeLibrary && can('videos', 'add') && this.renderIngestForm()}
 
                         <TagFilter tags={this.tags} value={this.activeTag} onChange={this.selectTag} />
 
@@ -416,7 +417,7 @@ class Videos extends React.Component<*> {
 // library (an upload needs a target) and not while viewing a single video's detail.
 export default withToolbar(Videos, function() {
     return {
-        items: [
+        items: can('videos', 'add') ? [
             {
                 type: 'button',
                 label: translate('scale_videooptimizer.upload_file'),
@@ -425,6 +426,6 @@ export default withToolbar(Videos, function() {
                 disabled: !this.activeLibraryId || !!this.selected,
                 onClick: this.triggerFileDialog,
             },
-        ],
+        ] : [],
     };
 });

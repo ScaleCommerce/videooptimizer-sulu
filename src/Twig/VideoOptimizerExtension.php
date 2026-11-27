@@ -43,6 +43,7 @@ class VideoOptimizerExtension extends AbstractExtension
             new TwigFunction('video_optimizer_player', [$this, 'player']),
             new TwigFunction('video_optimizer_srcset', [$this, 'srcset']),
             new TwigFunction('video_optimizer_poster', [$this, 'poster']),
+            new TwigFunction('video_optimizer_asset_version', [$this, 'assetVersion']),
             new TwigFunction('video_optimizer_native', [$this, 'renderNative'], ['is_safe' => ['html']]),
             // No 'is_safe': this returns data, not markup. See sources() for why a consumer
             // that renders its own markup must wire the frontend assets itself.
@@ -285,7 +286,7 @@ class VideoOptimizerExtension extends AbstractExtension
 
     /**
      * Renders a native HTML5 <video> built from the embed sources (HLS master via hls.js wired by
-     * vo-blocks.js; MP4/WebM as native fallback). Theme accent is passed as a CSS var.
+     * vo-blocks.js; MP4/WebM as native fallback). The organization's player theme (controls, autoplay, muted start, loop, preload, accent colour as `--vo-accent`) is applied; block options win.
      *
      * When $eager is false the <video> is rendered DEFERRED: preload="none" and no autoplay/muted,
      * so it fetches nothing until something actually plays it — a facade/lightbox reveal-on-click
@@ -317,23 +318,52 @@ class VideoOptimizerExtension extends AbstractExtension
             }
         }
 
-        $attrs = 'class="vo-native" playsinline controls preload="' . ($eager ? 'auto' : 'none') . '"';
-        $autoplayEager = $eager && isset($options['autoplay']) && '1' === (string) $options['autoplay'];
-        if ($autoplayEager) {
+        $theme = \is_array($playable['theme'] ?? null) ? $playable['theme'] : [];
+
+        // The block's explicit option wins, then the organization's player theme, then the default.
+        // Theme keys without a native counterpart (control bar colour, play button, menus for speed,
+        // quality, volume, time, fullscreen, PiP) are ignored: the browser draws those controls.
+        $wantsAutoplay = self::flag($options['autoplay'] ?? null, $theme['autoplay'] ?? null, false);
+        $autoplay = $eager && $wantsAutoplay;
+        $autoplays = $autoplay || ($autoload && $wantsAutoplay); // plays by itself, now or on scroll
+        // A hidden control bar (theme controls/interactive false) only fits a video that plays by itself;
+        // otherwise visitors could not start, pause or unmute it. An explicit block option still wins.
+        $interactive = !$autoplays || false !== ($theme['interactive'] ?? null);
+        $themeControls = $autoplays ? $theme['controls'] ?? null : null;
+        $controls = self::flag($options['controls'] ?? null, $themeControls, true) && $interactive;
+        $loop = self::flag($options['loop'] ?? null, $theme['loopButton'] ?? null, false);
+        $muted = $autoplay || self::flag($options['muted'] ?? null, $theme['mutedStart'] ?? null, false);
+        // Never load video data before playback: deferred players stay at `none`; only an eager (priority)
+        // player that autoplays may use the theme value, and one that does not autoplay stops at `metadata`.
+        $themePreload = $theme['preload'] ?? null;
+        if (!$eager) {
+            $preload = 'none';
+        } elseif ($autoplay) {
+            $preload = \in_array($themePreload, ['auto', 'metadata', 'none'], true) ? $themePreload : 'auto';
+        } else {
+            $preload = 'none' === $themePreload ? 'none' : 'metadata';
+        }
+
+        $attrs = 'class="vo-native' . ($interactive ? '' : ' vo-native--static') . '" playsinline' . ($controls ? ' controls' : '') . ' preload="' . $preload . '"';
+        if ($autoplay) {
             $attrs .= ' autoplay muted';
-        } elseif (isset($options['muted']) && '1' === (string) $options['muted']) {
-            // Not autoplaying (yet), but the editor explicitly muted the block: a JS-triggered
-            // play() later (reveal-on-click, scroll-into-view autoload) needs the attribute
-            // already present, since browsers only allow unmuted autoplay after a user gesture.
+        } elseif ($muted) {
+            // Not autoplaying (yet), but muted by the block or the theme: a JS-triggered play()
+            // later (reveal-on-click, scroll-into-view autoload) needs the attribute already
+            // present, since browsers only allow unmuted autoplay after a user gesture.
             $attrs .= ' muted';
         }
-        if (isset($options['loop']) && '1' === (string) $options['loop']) {
+        if ($loop) {
             $attrs .= ' loop';
         }
-        if ($autoload) {
+        if ($autoload && $wantsAutoplay) {
             // Marks a deferred, already-visible <video> (direct + non-priority) so vo-blocks.js can
             // find it and play() it once it scrolls into view.
             $attrs .= ' data-vo-native-autoload';
+        } elseif (($eager && !$autoplay) || $autoload) {
+            // Visible but not autoplaying: vo-blocks.js attaches the source on the first play, so
+            // nothing but the poster is fetched before the visitor starts it.
+            $attrs .= ' data-vo-native-onplay';
         }
         if (null !== $poster) {
             $attrs .= ' poster="' . htmlspecialchars($poster, \ENT_QUOTES) . '"';
@@ -347,10 +377,32 @@ class VideoOptimizerExtension extends AbstractExtension
             $sourceTags .= \sprintf('<source src="%s" type="%s">', htmlspecialchars($source['src'], \ENT_QUOTES), htmlspecialchars($source['type'], \ENT_QUOTES));
         }
 
-        $accent = $playable['theme']['accentColor'] ?? null;
-        $style = \is_string($accent) && '' !== $accent ? ' style="--vo-player-accent:' . htmlspecialchars($accent, \ENT_QUOTES) . '"' : '';
+        $accent = $theme['accentColor'] ?? null;
+        $style = '';
+        if (\is_string($accent) && 1 === preg_match('/^[#a-zA-Z0-9(),.%\s\/-]{1,64}$/', $accent)) {
+            // --vo-player-accent is kept for theme overrides written against 2.0.
+            $accentAttr = htmlspecialchars($accent, \ENT_QUOTES);
+            $style = ' style="--vo-accent:' . $accentAttr . ';--vo-player-accent:' . $accentAttr . '"';
+        }
 
-        return AssetInjectionListener::SENTINEL . \sprintf('<video %s%s>%s</video>', $attrs, $style, $sourceTags);
+        $trackTags = '';
+        // @phpstan-ignore nullCoalesce.offset (entries cached or mocked without tracks)
+        foreach ($playable['tracks'] ?? [] as $track) {
+            $trackTags .= \sprintf(
+                '<track kind="%s" srclang="%s" label="%s" src="%s"%s>',
+                htmlspecialchars($track['kind'], \ENT_QUOTES),
+                htmlspecialchars($track['srclang'], \ENT_QUOTES),
+                htmlspecialchars($track['label'], \ENT_QUOTES),
+                htmlspecialchars($track['src'], \ENT_QUOTES),
+                $track['default'] ? ' default' : '',
+            );
+        }
+        if ('' !== $trackTags) {
+            // The WebVTT files are fetched cross-origin from the CDN, which allows any origin.
+            $attrs .= ' crossorigin="anonymous"';
+        }
+
+        return AssetInjectionListener::SENTINEL . \sprintf('<video %s%s>%s%s</video>', $attrs, $style, $sourceTags, $trackTags);
     }
 
     /**
@@ -383,7 +435,7 @@ class VideoOptimizerExtension extends AbstractExtension
      *
      * @param array<string, mixed>|null $video the stored video property (needs `uuid`)
      *
-     * @return array{poster: ?string, srcset: ?string, hlsUrl: ?string, sources: array<int, array{src: string, type: string, label: string}>, width: ?int, height: ?int, duration: ?int, theme: ?array<int|string, mixed>}|null
+     * @return array{poster: ?string, srcset: ?string, hlsUrl: ?string, sources: array<int, array{src: string, type: string, label: string}>, width: ?int, height: ?int, duration: ?int, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>}|null
      *                                  null when no video is selected — same null behaviour as the
      *                                  rendering functions, which return an empty string there
      */
@@ -406,7 +458,46 @@ class VideoOptimizerExtension extends AbstractExtension
             'height' => $resolved['height'] ?? null,
             'duration' => $resolved['duration'] ?? null,
             'theme' => $resolved['theme'] ?? null,
+            // @phpstan-ignore nullCoalesce.offset (entries cached or mocked without tracks)
+            'tracks' => $resolved['tracks'] ?? [],
         ];
+    }
+
+    /**
+     * Cache-busting token for the bundle's frontend CSS/JS (a hash of both files), so a browser never pairs
+     * the old script with the new stylesheet after an update.
+     */
+    public function assetVersion(): string
+    {
+        /** @var string|null $version */
+        static $version = null;
+        if (null === $version) {
+            $dir = \dirname(__DIR__) . '/Resources/public/';
+            $hash = '';
+            foreach (['css/vo-blocks.css', 'js/vo-blocks.js'] as $file) {
+                $hash .= (string) @md5_file($dir . $file);
+            }
+            $version = substr(md5($hash), 0, 10);
+        }
+
+        return $version;
+    }
+
+    /**
+     * Resolves an on/off player setting: the block option ('1'/'0') first, then the theme value
+     * (bool), then the default. A bool option counts like '1'/'0'. Anything else, such as the 'inherit' sentinel, defers to the next.
+     */
+    private static function flag(mixed $option, mixed $theme, bool $default): bool
+    {
+        if (\is_bool($option)) {
+            return $option;
+        }
+        $option = \is_scalar($option) ? (string) $option : '';
+        if ('1' === $option || '0' === $option) {
+            return '1' === $option;
+        }
+
+        return \is_bool($theme) ? $theme : $default;
     }
 
     /**

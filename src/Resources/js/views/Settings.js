@@ -4,6 +4,7 @@ import {observer} from 'mobx-react';
 import {observable, action} from 'mobx';
 import {Button, Dialog, Loader} from 'sulu-admin-bundle/components';
 import {translate} from 'sulu-admin-bundle/utils';
+import {can} from '../services/permissions';
 import SubtitleLanguages from '../components/SubtitleLanguages';
 import WebhookSettings from '../components/WebhookSettings';
 import {getSettings, saveSettings, testConnection, clearToken} from '../services/api';
@@ -117,6 +118,8 @@ class Settings extends React.Component<*> {
             return <div className="vo-page"><Loader /></div>;
         }
 
+        const canEdit = can('settings', 'edit');
+
         return (
             <div className="vo-page">
                 <div className="vo-card">
@@ -129,6 +132,7 @@ class Settings extends React.Component<*> {
                             : translate('scale_videooptimizer.token_missing')}
                     </div>
 
+                    <fieldset className="vo-fieldset" disabled={!canEdit}>
                     <label className="vo-label">{translate('scale_videooptimizer.api_token')}</label>
                     <input
                         type="password"
@@ -156,8 +160,9 @@ class Settings extends React.Component<*> {
                         <option value="hosted">{translate('scale_videooptimizer.player_hosted')}</option>
                         <option value="native">{translate('scale_videooptimizer.player_native')}</option>
                     </select>
+                    </fieldset>
 
-                    <div className="vo-actions">
+                    {canEdit && <div className="vo-actions">
                         <Button skin="primary" onClick={this.handleSave} loading={this.saving}>
                             {translate('scale_videooptimizer.save')}
                         </Button>
@@ -169,7 +174,7 @@ class Settings extends React.Component<*> {
                                 {translate('scale_videooptimizer.remove_token')}
                             </Button>
                         )}
-                    </div>
+                    </div>}
 
                     {this.message && (
                         <div className={'vo-message vo-message--' + this.message.type}>{this.message.text}</div>

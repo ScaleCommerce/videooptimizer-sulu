@@ -2,7 +2,23 @@
 
 All notable changes to this package. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [2.1.0] - 2026-11-28
+
+### Upgrade
+- Admin permissions: re-run `bin/adminconsole scale:videooptimizer:install` after the update. It grants the new contexts (videos, libraries, settings) with all permissions to every Sulu admin role, once: it is skipped as soon as any role holds one of the contexts, so roles created later stay without access until you grant it. Existing users keep working; then restrict roles under Settings > User roles > VideoOptimizer. Without the re-run, users lose access to the VideoOptimizer views and admin routes until a role is granted the contexts; rebuild the Sulu admin assets and clear both kernels' caches ([#29](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/29))
+- Republish the bundle assets (`assets:install`) so the new `vo-blocks.js`/`vo-blocks.css` are served; the lightbox element is now `<dialog class="vo-lightbox">` and opens via the `open` attribute instead of `data-open="true"`: custom CSS or JS targeting `.vo-lightbox[data-open]` must change; the hero gets a `.vo-bg-toggle` button, style or hide it in your theme if needed ([#24](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/24))
+- The native player now follows the player theme of the API: `controls: false`/`interactive: false` hide the controls of a video that autoplays (never of one the visitor has to start), `autoplay`/`mutedStart`/`loopButton` apply where the block leaves the option on "inherit" (which counts as autoplay on for blocks, as before), a block's `controls` option now also applies to it, and a player with autoplay off no longer starts on scroll: it fetches nothing but the poster until the visitor presses play; the inline style carries `--vo-accent` next to `--vo-player-accent`. Theme overrides of `renderNative()` markup are unaffected ([#22](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/22))
+
+### Added
+- Sulu security contexts `sulu.videooptimizer.videos|libraries` (view, add, edit, delete) and `sulu.videooptimizer.settings` (view, edit); all admin proxy routes check them (`_vo_permission` route default, 403 `forbidden` otherwise), navigation and views follow the view permission and the admin UI hides actions the role does not allow ([#29](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/29))
+- Looping background videos get a pause/play button (labels follow `html lang`, or `data-vo-label-pause`/`data-vo-label-play`; custom markup opts in with `data-vo-toggle`); with `prefers-reduced-motion` they start paused until the visitor presses play ([#24](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/24))
+- Native player renders the subtitle tracks of the embed as `<track>` (kind, srclang, label, default) and sets `crossorigin="anonymous"` on the `<video>` when there are tracks; `video_optimizer_sources()` and `getPlayable()` return `tracks` ([#23](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/23))
+
+### Changed
+- Frontend asset URLs carry `?v=<hash of the files>` so a browser never mixes old JS with new CSS after an update ([#24](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/24))
+- Lightbox is a native modal `<dialog>` (`showModal()`): the page is inert while it is open, focus stays inside, Escape closes it; browsers without `showModal()` get an `inert` fallback with Escape and a Tab focus trap; the dialog and close button are labelled in the page language (en, de) ([#24](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/24))
+- Embed cache key is `vo_embed_v3_<uuid>`: cached embeds are looked up again once after the update ([#23](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/23))
+- Native player applies the theme keys `controls`, `interactive`, `autoplay`, `mutedStart`, `loopButton`, `preload` and `accentColor` (`--vo-accent`); other keys are ignored and listed in the README ([#22](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/22))
 
 ## [2.0.0] - 2026-11-27
 

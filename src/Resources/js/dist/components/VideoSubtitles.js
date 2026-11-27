@@ -162,7 +162,7 @@ var VideoSubtitles = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/f
           className: "vo-subtitles__link",
           href: (0, _api.subtitleDownloadUrl)(_this3.props.uuid, subtitle.language),
           download: true
-        }, (0, _utils.translate)('scale_videooptimizer.subtitle_download')), /*#__PURE__*/_react["default"].createElement(_components.Button, {
+        }, (0, _utils.translate)('scale_videooptimizer.subtitle_download')), !_this3.props.readOnly && /*#__PURE__*/_react["default"].createElement(_components.Button, {
           skin: "link",
           disabled: _this3.busy,
           onClick: function onClick() {
@@ -174,6 +174,9 @@ var VideoSubtitles = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/f
   }, {
     key: "renderForm",
     value: function renderForm() {
+      if (this.props.readOnly) {
+        return null;
+      }
       if (this.languages.length === 0) {
         return /*#__PURE__*/_react["default"].createElement("div", {
           className: "vo-hint"

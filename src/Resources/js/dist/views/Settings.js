@@ -36,6 +36,7 @@ var _mobxReact = require("mobx-react");
 var _mobx = require("mobx");
 var _components = require("sulu-admin-bundle/components");
 var _utils = require("sulu-admin-bundle/utils");
+var _permissions = require("../services/permissions");
 var _SubtitleLanguages = _interopRequireDefault(require("../components/SubtitleLanguages"));
 var _WebhookSettings = _interopRequireDefault(require("../components/WebhookSettings"));
 var _api = require("../services/api");
@@ -117,6 +118,7 @@ var Settings = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functio
           className: "vo-page"
         }, /*#__PURE__*/_react["default"].createElement(_components.Loader, null));
       }
+      var canEdit = (0, _permissions.can)('settings', 'edit');
       return /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-page"
       }, /*#__PURE__*/_react["default"].createElement("div", {
@@ -125,7 +127,10 @@ var Settings = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functio
         className: "vo-intro"
       }, (0, _utils.translate)('scale_videooptimizer.settings_intro')), /*#__PURE__*/_react["default"].createElement("div", {
         className: 'vo-status ' + (this.configured ? 'vo-status--ok' : 'vo-status--warn')
-      }, this.configured ? (0, _utils.translate)('scale_videooptimizer.token_configured') : (0, _utils.translate)('scale_videooptimizer.token_missing')), /*#__PURE__*/_react["default"].createElement("label", {
+      }, this.configured ? (0, _utils.translate)('scale_videooptimizer.token_configured') : (0, _utils.translate)('scale_videooptimizer.token_missing')), /*#__PURE__*/_react["default"].createElement("fieldset", {
+        className: "vo-fieldset",
+        disabled: !canEdit
+      }, /*#__PURE__*/_react["default"].createElement("label", {
         className: "vo-label"
       }, (0, _utils.translate)('scale_videooptimizer.api_token')), /*#__PURE__*/_react["default"].createElement("input", {
         type: "password",
@@ -151,7 +156,7 @@ var Settings = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/functio
         value: "hosted"
       }, (0, _utils.translate)('scale_videooptimizer.player_hosted')), /*#__PURE__*/_react["default"].createElement("option", {
         value: "native"
-      }, (0, _utils.translate)('scale_videooptimizer.player_native'))), /*#__PURE__*/_react["default"].createElement("div", {
+      }, (0, _utils.translate)('scale_videooptimizer.player_native')))), canEdit && /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-actions"
       }, /*#__PURE__*/_react["default"].createElement(_components.Button, {
         skin: "primary",

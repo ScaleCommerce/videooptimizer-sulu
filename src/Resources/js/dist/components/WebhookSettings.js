@@ -37,6 +37,7 @@ var _mobxReact = require("mobx-react");
 var _mobx = require("mobx");
 var _components = require("sulu-admin-bundle/components");
 var _utils = require("sulu-admin-bundle/utils");
+var _permissions = require("../services/permissions");
 var _api = require("../services/api");
 var _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8;
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
@@ -100,6 +101,7 @@ var WebhookSettings = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/
         settings = _this$props.settings,
         secret = _this$props.secret,
         onSecretChange = _this$props.onSecretChange;
+      var canEdit = (0, _permissions.can)('settings', 'edit');
       return /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-card"
       }, /*#__PURE__*/_react["default"].createElement("h2", null, (0, _utils.translate)('scale_videooptimizer.webhook')), /*#__PURE__*/_react["default"].createElement("p", {
@@ -141,8 +143,9 @@ var WebhookSettings = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/
         onChange: function onChange(event) {
           return onSecretChange(event.target.value);
         },
+        disabled: !canEdit,
         autoComplete: "off"
-      }), settings.webhookConfigured && /*#__PURE__*/_react["default"].createElement(_react["default"].Fragment, null, this.renderLastDelivery(), /*#__PURE__*/_react["default"].createElement("div", {
+      }), settings.webhookConfigured && /*#__PURE__*/_react["default"].createElement(_react["default"].Fragment, null, this.renderLastDelivery(), canEdit && /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-actions"
       }, /*#__PURE__*/_react["default"].createElement(_components.Button, {
         skin: "link",

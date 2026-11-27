@@ -12,6 +12,7 @@ import {
     initiatePosterUpload, uploadPoster, completePosterUpload, selectPoster, deletePoster,
     pollVideo, posterContentType, posterFor, bustCache, bumpCacheBust, getTags,
 } from '../services/api';
+import {can} from '../services/permissions';
 import {parseTags, validateTags, metadataRows, validateMetadata, metadataPatch, sameTags, MAX_METADATA} from '../services/videoMeta';
 
 // Poster processing takes seconds; stop polling after ~3 minutes.
@@ -364,6 +365,8 @@ class VideoDetail extends React.Component<*> {
         const customUrl = this.video.poster && this.video.poster.custom_url;
         const hasCustomPoster = customStatus === 'ready' && !!customUrl;
         const OPTION_KEYS = ['responsive', 'autoplay', 'preload', 'loop', 'muted'];
+        const canEdit = can('videos', 'edit');
+        const canDelete = can('videos', 'delete');
 
         return (
             <div className="vo-detail">
@@ -376,7 +379,7 @@ class VideoDetail extends React.Component<*> {
                         <button
                             type="button"
                             className={'vo-thumb vo-thumb--custom' + (source === 'custom' ? ' vo-thumb--active' : '')}
-                            disabled={this.busy === 'thumb'}
+                            disabled={this.busy === 'thumb' || !canEdit}
                             title={translate('scale_videooptimizer.poster_source_custom')}
                             onClick={this.pickCustomPoster}
                         >
@@ -385,15 +388,15 @@ class VideoDetail extends React.Component<*> {
                         </button>
                     )}
                     {this.thumbnails.map((t) => (
-                        <button key={t.index} type="button" className="vo-thumb" disabled={this.busy === 'thumb'}
+                        <button key={t.index} type="button" className="vo-thumb" disabled={this.busy === 'thumb' || !canEdit}
                             onClick={() => this.pickThumbnail(t.index)}>
                             <img src={bustCache(t.url)} alt={'#' + t.index} />
                         </button>
                     ))}
                 </div>
 
-                <label className="vo-label">{translate('scale_videooptimizer.custom_poster')}</label>
-                <div className="vo-actions" style={{marginTop: 0, alignItems: 'center'}}>
+                {canEdit && <label className="vo-label">{translate('scale_videooptimizer.custom_poster')}</label>}
+                {canEdit && <div className="vo-actions" style={{marginTop: 0, alignItems: 'center'}}>
                     <input type="file" accept="image/jpeg,image/png,image/webp" disabled={this.busy === 'poster'} onChange={this.handlePosterFile} />
                     <Button skin="secondary" onClick={this.openMediaOverlay} disabled={this.busy === 'poster'}>
                         {translate('scale_videooptimizer.choose_from_media')}
@@ -401,7 +404,7 @@ class VideoDetail extends React.Component<*> {
                     {hasCustomPoster && (
                         <Button skin="link" onClick={this.removeCustomPoster}>{translate('scale_videooptimizer.remove_custom_poster')}</Button>
                     )}
-                </div>
+                </div>}
                 {this.status && <div className="vo-upload-status">{this.status}</div>}
 
                 <SingleMediaSelectionOverlay
@@ -412,7 +415,9 @@ class VideoDetail extends React.Component<*> {
                     onConfirm={this.handleMediaSelect}
                 />
 
-                <VideoSubtitles uuid={this.video.uuid} />
+                <VideoSubtitles uuid={this.video.uuid} readOnly={!canEdit} />
+
+                <fieldset className="vo-fieldset" disabled={!canEdit}>
 
                 <label className="vo-label">{translate('sulu_admin.title')}</label>
                 <input type="text" className="vo-input" value={this.title} onChange={this.handleTitleChange} />
@@ -468,10 +473,12 @@ class VideoDetail extends React.Component<*> {
                     ))}
                 </div>
 
+                </fieldset>
+
                 <div className="vo-actions">
-                    <Button skin="primary" onClick={this.save} loading={this.busy === 'save'}>{translate('sulu_admin.save')}</Button>
+                    {canEdit && <Button skin="primary" onClick={this.save} loading={this.busy === 'save'}>{translate('sulu_admin.save')}</Button>}
                     {this.props.onUse && <Button skin="primary" onClick={() => this.props.onUse(this.video)}>{translate('scale_videooptimizer.use_video')}</Button>}
-                    <Button skin="link" onClick={this.askDelete}>{translate('scale_videooptimizer.delete')}</Button>
+                    {canDelete && <Button skin="link" onClick={this.askDelete}>{translate('scale_videooptimizer.delete')}</Button>}
                 </div>
 
                 {this.error && <div className="vo-message vo-message--error">{this.error}</div>}

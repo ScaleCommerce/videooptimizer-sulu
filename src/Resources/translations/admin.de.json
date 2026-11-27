@@ -110,6 +110,7 @@
     "scale_videooptimizer.poll_timeout": "Zeitüberschreitung beim Warten auf VideoOptimizer. Liste neu laden und Status prüfen.",
     "scale_videooptimizer.error_token_rejected": "VideoOptimizer hat den API-Token abgelehnt. Prüfen Sie den Token unter VideoOptimizer > Einstellungen.",
     "scale_videooptimizer.error_token_forbidden": "Der API-Token darf diese Aktion nicht ausführen. Prüfen Sie die Token-Berechtigungen in VideoOptimizer.",
+    "scale_videooptimizer.error_forbidden": "Ihre Sulu-Rolle erlaubt diese VideoOptimizer-Aktion nicht. Bitten Sie einen Administrator, die Berechtigung unter Einstellungen > Benutzerrollen zu erteilen.",
     "scale_videooptimizer.error_unreachable": "VideoOptimizer ist nicht erreichbar oder antwortet nicht rechtzeitig. Bitte versuchen Sie es gleich noch einmal.",
     "scale_videooptimizer.load_more": "Mehr laden",
     "scale_videooptimizer.cancel_upload": "Upload abbrechen",

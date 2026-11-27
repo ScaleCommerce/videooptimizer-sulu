@@ -41,6 +41,7 @@ var _mobxReact = require("mobx-react");
 var _mobx = require("mobx");
 var _components = require("sulu-admin-bundle/components");
 var _utils = require("sulu-admin-bundle/utils");
+var _permissions = require("../services/permissions");
 var _api = require("../services/api");
 var _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9, _descriptor0, _descriptor1, _descriptor10, _descriptor11;
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
@@ -116,6 +117,7 @@ var SubtitleLanguages = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__
     key: "render",
     value: function render() {
       var _this3 = this;
+      var canEdit = (0, _permissions.can)('settings', 'edit');
       return /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-card"
       }, /*#__PURE__*/_react["default"].createElement("h2", null, (0, _utils.translate)('scale_videooptimizer.subtitle_languages')), /*#__PURE__*/_react["default"].createElement("p", {
@@ -134,14 +136,14 @@ var SubtitleLanguages = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__
           className: "vo-subtitles__meta"
         }, (0, _utils.translate)('scale_videooptimizer.videos_count', {
           count: language.video_count || 0
-        })), /*#__PURE__*/_react["default"].createElement(_components.Button, {
+        })), canEdit && /*#__PURE__*/_react["default"].createElement(_components.Button, {
           skin: "link",
           disabled: _this3.busy,
           onClick: function onClick() {
             return _this3.askDelete(language);
           }
         }, (0, _utils.translate)('scale_videooptimizer.delete')));
-      })), /*#__PURE__*/_react["default"].createElement("div", {
+      })), canEdit && /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-actions",
         style: {
           alignItems: 'center',
@@ -166,7 +168,7 @@ var SubtitleLanguages = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__
         onClick: this.add,
         loading: this.busy,
         disabled: !this.code.trim()
-      }, (0, _utils.translate)('scale_videooptimizer.subtitle_language_add'))), /*#__PURE__*/_react["default"].createElement("div", {
+      }, (0, _utils.translate)('scale_videooptimizer.subtitle_language_add'))), canEdit && /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-hint",
         style: {
           padding: '4px 0 0'

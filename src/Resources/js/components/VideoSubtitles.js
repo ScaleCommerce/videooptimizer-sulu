@@ -124,9 +124,11 @@ class VideoSubtitles extends React.Component<*> {
                         <a className="vo-subtitles__link" href={subtitleDownloadUrl(this.props.uuid, subtitle.language)} download>
                             {translate('scale_videooptimizer.subtitle_download')}
                         </a>
-                        <Button skin="link" disabled={this.busy} onClick={() => this.remove(subtitle.language)}>
-                            {translate('scale_videooptimizer.delete')}
-                        </Button>
+                        {!this.props.readOnly && (
+                            <Button skin="link" disabled={this.busy} onClick={() => this.remove(subtitle.language)}>
+                                {translate('scale_videooptimizer.delete')}
+                            </Button>
+                        )}
                     </li>
                 ))}
             </ul>
@@ -134,6 +136,9 @@ class VideoSubtitles extends React.Component<*> {
     }
 
     renderForm() {
+        if (this.props.readOnly) {
+            return null;
+        }
         if (this.languages.length === 0) {
             return <div className="vo-hint">{translate('scale_videooptimizer.subtitle_languages_missing')}</div>;
         }

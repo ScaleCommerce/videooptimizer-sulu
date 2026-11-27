@@ -47,6 +47,7 @@ var _FolderList = _interopRequireDefault(require("sulu-admin-bundle/components/F
 var _containers = require("sulu-admin-bundle/containers");
 var _utils = require("sulu-admin-bundle/utils");
 var _api = require("../services/api");
+var _permissions = require("../services/permissions");
 var _VideoDetail = _interopRequireDefault(require("../components/VideoDetail"));
 var _VideoPager = _interopRequireDefault(require("../services/VideoPager"));
 var _UploadProgress = _interopRequireDefault(require("../components/UploadProgress"));
@@ -317,7 +318,7 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
         status: this.uploadStatus,
         percent: this.uploadPercent,
         onCancel: this.uploadCancellable ? this.cancelUpload : null
-      }), activeLibrary && this.renderIngestForm(), /*#__PURE__*/_react["default"].createElement(_TagFilter["default"], {
+      }), activeLibrary && (0, _permissions.can)('videos', 'add') && this.renderIngestForm(), /*#__PURE__*/_react["default"].createElement(_TagFilter["default"], {
         tags: this.tags,
         value: this.activeTag,
         onChange: this.selectTag
@@ -713,13 +714,13 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
 // library (an upload needs a target) and not while viewing a single video's detail.
 var _default = exports["default"] = (0, _containers.withToolbar)(Videos, function () {
   return {
-    items: [{
+    items: (0, _permissions.can)('videos', 'add') ? [{
       type: 'button',
       label: (0, _utils.translate)('scale_videooptimizer.upload_file'),
       icon: 'su-upload',
       loading: this.uploading,
       disabled: !this.activeLibraryId || !!this.selected,
       onClick: this.triggerFileDialog
-    }]
+    }] : []
   };
 });

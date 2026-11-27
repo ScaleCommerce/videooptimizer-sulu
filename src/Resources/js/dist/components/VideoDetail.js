@@ -60,6 +60,7 @@ var _stores = require("sulu-admin-bundle/stores");
 var _VideoSubtitles = _interopRequireDefault(require("./VideoSubtitles"));
 var _SingleMediaSelectionOverlay = _interopRequireDefault(require("sulu-media-bundle/containers/SingleMediaSelectionOverlay"));
 var _api = require("../services/api");
+var _permissions = require("../services/permissions");
 var _videoMeta = require("../services/videoMeta");
 var _class, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, _descriptor5, _descriptor6, _descriptor7, _descriptor8, _descriptor9, _descriptor0, _descriptor1, _descriptor10, _descriptor11, _descriptor12, _descriptor13, _descriptor14, _descriptor15, _descriptor16, _descriptor17, _descriptor18, _descriptor19, _descriptor20, _descriptor21, _descriptor22, _descriptor23, _descriptor24, _descriptor25, _descriptor26, _descriptor27, _descriptor28, _descriptor29, _descriptor30;
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
@@ -283,6 +284,8 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
       var customUrl = this.video.poster && this.video.poster.custom_url;
       var hasCustomPoster = customStatus === 'ready' && !!customUrl;
       var OPTION_KEYS = ['responsive', 'autoplay', 'preload', 'loop', 'muted'];
+      var canEdit = (0, _permissions.can)('videos', 'edit');
+      var canDelete = (0, _permissions.can)('videos', 'delete');
       return /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-detail"
       }, this.renderPlayer(), this.renderMeta(), /*#__PURE__*/_react["default"].createElement("label", {
@@ -292,7 +295,7 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
       }, hasCustomPoster && /*#__PURE__*/_react["default"].createElement("button", {
         type: "button",
         className: 'vo-thumb vo-thumb--custom' + (source === 'custom' ? ' vo-thumb--active' : ''),
-        disabled: this.busy === 'thumb',
+        disabled: this.busy === 'thumb' || !canEdit,
         title: (0, _utils.translate)('scale_videooptimizer.poster_source_custom'),
         onClick: this.pickCustomPoster
       }, /*#__PURE__*/_react["default"].createElement("img", {
@@ -305,7 +308,7 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
           key: t.index,
           type: "button",
           className: "vo-thumb",
-          disabled: _this4.busy === 'thumb',
+          disabled: _this4.busy === 'thumb' || !canEdit,
           onClick: function onClick() {
             return _this4.pickThumbnail(t.index);
           }
@@ -313,9 +316,9 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
           src: (0, _api.bustCache)(t.url),
           alt: '#' + t.index
         }));
-      })), /*#__PURE__*/_react["default"].createElement("label", {
+      })), canEdit && /*#__PURE__*/_react["default"].createElement("label", {
         className: "vo-label"
-      }, (0, _utils.translate)('scale_videooptimizer.custom_poster')), /*#__PURE__*/_react["default"].createElement("div", {
+      }, (0, _utils.translate)('scale_videooptimizer.custom_poster')), canEdit && /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-actions",
         style: {
           marginTop: 0,
@@ -342,8 +345,12 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
         onClose: this.closeMediaOverlay,
         onConfirm: this.handleMediaSelect
       }), /*#__PURE__*/_react["default"].createElement(_VideoSubtitles["default"], {
-        uuid: this.video.uuid
-      }), /*#__PURE__*/_react["default"].createElement("label", {
+        uuid: this.video.uuid,
+        readOnly: !canEdit
+      }), /*#__PURE__*/_react["default"].createElement("fieldset", {
+        className: "vo-fieldset",
+        disabled: !canEdit
+      }, /*#__PURE__*/_react["default"].createElement("label", {
         className: "vo-label"
       }, (0, _utils.translate)('sulu_admin.title')), /*#__PURE__*/_react["default"].createElement("input", {
         type: "text",
@@ -425,9 +432,9 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
             return _this4.toggleOption(key);
           }
         }), (0, _utils.translate)('scale_videooptimizer.option_' + key));
-      })), /*#__PURE__*/_react["default"].createElement("div", {
+      }))), /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-actions"
-      }, /*#__PURE__*/_react["default"].createElement(_components.Button, {
+      }, canEdit && /*#__PURE__*/_react["default"].createElement(_components.Button, {
         skin: "primary",
         onClick: this.save,
         loading: this.busy === 'save'
@@ -436,7 +443,7 @@ var VideoDetail = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/func
         onClick: function onClick() {
           return _this4.props.onUse(_this4.video);
         }
-      }, (0, _utils.translate)('scale_videooptimizer.use_video')), /*#__PURE__*/_react["default"].createElement(_components.Button, {
+      }, (0, _utils.translate)('scale_videooptimizer.use_video')), canDelete && /*#__PURE__*/_react["default"].createElement(_components.Button, {
         skin: "link",
         onClick: this.askDelete
       }, (0, _utils.translate)('scale_videooptimizer.delete'))), this.error && /*#__PURE__*/_react["default"].createElement("div", {

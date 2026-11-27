@@ -342,6 +342,7 @@ Returns `null` when no video is selected, otherwise:
 | `sources` | `list` | each `{ src, type, label }` — HLS plus the MP4 renditions |
 | `width` / `height` / `duration` | `int\|null` | native dimensions, seconds |
 | `theme` | `array\|null` | the library's player theme overrides |
+| `tracks` | `array` | subtitle tracks `{src, srclang, label, kind, default}` (WebVTT on the CDN); render them as `<track>` and add `crossorigin="anonymous"` to your `<video>` |
 
 The entries keep the resolver's own key names — the vocabulary of an HTML `<source>` element. The
 function passes data through; it does not adapt it to any particular consumer's field names.
@@ -375,6 +376,26 @@ function passes data through; it does not adapt it to any particular consumer's 
 > `vo_background_hero` block, **"Prioritize loading"** (for an above-the-fold hero) implies this and
 > additionally preloads the poster with `fetchpriority="high"`; **"Load video immediately"** only
 > removes the deferral.
+
+### Accessibility
+
+Looping background videos get a pause/play button (WCAG 2.2.2) and stay paused for visitors with `prefers-reduced-motion` until they press play. Labels follow `<html lang>` (en, de) or `data-vo-label-pause` / `data-vo-label-play` on the `<video>`; custom markup opts in with `data-vo-toggle`. The lightbox is a native modal `<dialog>`: the page behind it is inert, focus stays inside and Escape closes it.
+
+### Player theme and subtitles in the native player
+
+The native `<video>` player applies the organization's player theme from `GET /embed/{uuid}` and the video's subtitle tracks. A block's own player option (controls, autoplay, loop, muted) wins over the theme.
+
+| Theme key | Native player |
+|---|---|
+| `controls`, `interactive` | `controls` attribute; `false` only takes effect on a video that autoplays (eager or on scroll), otherwise visitors keep the controls to start, pause and unmute (`interactive: false` also blocks clicks) |
+| `autoplay`, `mutedStart` | autoplay (always muted) on an eager player or on scroll, `muted` attribute. A block's autoplay "inherit" counts as on; with autoplay off the player never starts by itself and loads its source on the first play |
+| `loopButton` | `loop` attribute |
+| `preload` | capped: video data is never loaded before playback. Click-to-play and scroll-triggered players stay `none`; only an explicitly prioritised (eager) player uses the theme value, where the default `auto` is kept and `metadata`/`none` are honoured |
+| `accentColor` | CSS custom property `--vo-accent` on the `<video>` (tints the controls) |
+
+Other keys (`controlBarBg`, `playButton*`, `bigPlayButton`, `fullscreenButton`, `pictureInPicture`, `playbackSpeed`, `qualitySelector`, `volumeControl`, `timeDisplay`) have no native counterpart and are ignored. The hosted embed applies all of them.
+
+Subtitles are rendered as `<track kind srclang label src [default]>`; the `<video>` then gets `crossorigin="anonymous"` (the CDN allows any origin).
 
 ## 🧱 Content blocks
 
