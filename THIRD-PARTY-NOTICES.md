@@ -6,7 +6,7 @@ license.
 
 ## hls.js
 
-- Version: 1.5.17 (light build)
+- Version: 1.7.4 (light build)
 - File: `src/Resources/public/js/hls.light.min.js`
 - Homepage: https://github.com/video-dev/hls.js
 - License: Apache License 2.0
