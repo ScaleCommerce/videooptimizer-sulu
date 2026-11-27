@@ -6,6 +6,7 @@ namespace Scale\VideoOptimizerBundle\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
+use Scale\VideoOptimizerBundle\Api\UserAgentProvider;
 use Scale\VideoOptimizerBundle\Api\VideoOptimizerClient;
 use Scale\VideoOptimizerBundle\Service\SettingsManager;
 use Symfony\Component\HttpClient\MockHttpClient;
@@ -204,6 +205,34 @@ class VideoOptimizerClientTest extends TestCase
         self::assertStringEndsWith('/encodings', $captured['url']);
         self::assertSame('h264', $result['codecs'][0]['key']);
         self::assertSame('1080p', $result['resolutions'][0]['key']);
+    }
+
+    public function testEveryRequestCarriesThePluginUserAgent(): void
+    {
+        $userAgents = [];
+        $httpClient = new MockHttpClient(function (string $method, string $url, array $options) use (&$userAgents): MockResponse {
+            foreach ($options['headers'] ?? [] as $header) {
+                if (\is_string($header) && str_starts_with(strtolower($header), 'user-agent:')) {
+                    $userAgents[] = trim(substr($header, \strlen('user-agent:')));
+                }
+            }
+
+            return new MockResponse(json_encode(['data' => []], JSON_THROW_ON_ERROR));
+        });
+
+        $userAgent = new UserAgentProvider(null, 'https://www.example.com', static fn (string $package): ?string => [
+            'scalecommerce/videooptimizer-sulu' => 'v1.7.3',
+            'sulu/sulu' => '3.0.7',
+        ][$package] ?? null, '8.3.14');
+        $settings = $this->prophesize(SettingsManager::class);
+        $settings->getApiToken()->willReturn('vp_test-token');
+        $client = new VideoOptimizerClient($httpClient, $settings->reveal(), 'https://api.videooptimizer.eu/api/v1', $userAgent);
+
+        $client->listLibraries();
+        $client->getEmbed('v1');
+        $client->deleteVideo('v1');
+
+        self::assertSame(array_fill(0, 3, 'VideoOptimizer-Sulu/1.7.3 (Sulu 3.0.7; PHP 8.3.14; +https://www.example.com)'), $userAgents);
     }
 
     private function client(MockHttpClient $httpClient): VideoOptimizerClient

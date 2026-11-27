@@ -27,10 +27,16 @@
             <argument>%kernel.project_dir%</argument>
         </service>
 
+        <!-- $configuredSiteUrl is set by UserAgentSiteUrlPass from framework.router.default_uri. -->
+        <service id="Scale\VideoOptimizerBundle\Api\UserAgentProvider">
+            <argument key="$requestStack" type="service" id="request_stack" on-invalid="null"/>
+        </service>
+
         <service id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient">
             <argument type="service" id="http_client"/>
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\SettingsManager"/>
             <argument>%scale_video_optimizer.api_base_url%</argument>
+            <argument type="service" id="Scale\VideoOptimizerBundle\Api\UserAgentProvider"/>
         </service>
 
         <service id="Scale\VideoOptimizerBundle\Admin\VideoOptimizerAdmin">

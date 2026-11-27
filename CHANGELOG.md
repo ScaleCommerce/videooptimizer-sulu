@@ -6,6 +6,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- **The bundle now identifies itself to the VideoOptimizer API.** Every request carries
+  `User-Agent: VideoOptimizer-Sulu/<bundle version> (Sulu <version>; PHP <version>; +<site url>)`,
+  e.g. `VideoOptimizer-Sulu/1.7.3 (Sulu 3.0.7; PHP 8.3.14; +https://www.example.com)`, so the
+  VideoOptimizer admin can show which bundle versions each organization runs. Versions come from
+  Composer (`InstalledVersions`, leading `v` stripped; `unknown` if unavailable), the site URL from
+  `framework.router.default_uri` (the skeleton default `http://localhost` is ignored), else the
+  current request's scheme and host; without either (e.g. a CLI run without `DEFAULT_URI`) the URL
+  part is omitted. Every value is sanitized (printable ASCII, no `;`/`(`/`)`, max. 100 characters).
+  No new configuration; `VideoOptimizerClient` takes an optional fourth constructor argument
+  (`UserAgentProvider`) and builds a default one when it is omitted.
+
 ## [1.7.2] - 2026-09-29
 
 ### Fixed

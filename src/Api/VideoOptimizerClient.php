@@ -24,6 +24,7 @@ class VideoOptimizerClient
         private HttpClientInterface $httpClient,
         private SettingsManager $settingsManager,
         private string $baseUrl,
+        private ?UserAgentProvider $userAgentProvider = null,
     ) {
     }
 
@@ -304,8 +305,14 @@ class VideoOptimizerClient
             throw new VideoOptimizerException('VideoOptimizer API token is not configured.', 428);
         }
 
+        // Every request identifies the bundle, Sulu/PHP version and site (see UserAgentProvider).
+        $this->userAgentProvider ??= new UserAgentProvider();
         $options['headers'] = array_merge(
-            ['Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json'],
+            [
+                'Authorization' => 'Bearer ' . $token,
+                'Accept' => 'application/json',
+                'User-Agent' => $this->userAgentProvider->getUserAgent(),
+            ],
             (array) ($options['headers'] ?? []),
         );
 
