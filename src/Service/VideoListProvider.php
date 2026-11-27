@@ -17,7 +17,7 @@ class VideoListProvider
     public const MAX_PAGE_SIZE = 24;
     public const DEFAULT_PAGE_SIZE = 12;
 
-    private const TTL = 120;
+    public const TTL = 120;
 
     public function __construct(
         private VideoOptimizerClient $client,
@@ -36,9 +36,12 @@ class VideoListProvider
             return ['items' => [], 'next' => null, 'error' => false];
         }
         $libraryId = self::uuid($libraryId);
-        $cursor = null !== $cursor && 1 === preg_match('/^[A-Za-z0-9_\-=.+\/]{1,512}$/D', $cursor) ? $cursor : null;
+        // The API's cursor is opaque but base64url-shaped; anything else is dropped (first page).
+        $cursor = null !== $cursor && 1 === preg_match('/^[A-Za-z0-9_=-]{1,200}$/D', $cursor) ? $cursor : null;
         $tags = null !== $tags && '' !== trim($tags) ? mb_substr(trim($tags), 0, 200) : null;
         $limit = max(1, min($limit, self::MAX_PAGE_SIZE));
+        // Cached for TTL seconds: the reverse proxy must not keep the page longer than the list it shows.
+        $this->renderState?->capLifetime(self::TTL);
 
         try {
             /** @var array{items: list<array{uuid: string, title: string, poster: ?string, duration: ?int}>, next: ?string} $page */

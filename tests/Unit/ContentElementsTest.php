@@ -96,17 +96,18 @@ class ContentElementsTest extends TestCase
 
     public function testListCardsLinkToTheDetailPageAndPageWithTheCursor(): void
     {
-        $html = $this->render('vo_video_list.html.twig', ['block' => ['headline' => 'All videos', 'detailPage' => '/video', 'libraryId' => self::OTHER]], '/videos', [], [
+        $html = $this->render('vo_video_list.html.twig', ['block' => ['headline' => 'All videos', 'detailPage' => ['id' => self::OTHER, 'title' => 'Detail', 'url' => '/video'], 'libraryId' => self::OTHER]], '/videos', [], [
             'items' => [['uuid' => self::UUID, 'title' => 'Clip one', 'poster' => 'https://cdn.example.net/p.jpg', 'duration' => 75]],
             'next' => 'abc123',
             'error' => false,
         ]);
 
         self::assertStringContainsString('<h2>All videos</h2>', $html);
-        self::assertStringContainsString('href="/video?vo_video=' . self::UUID . '"', $html);
+        self::assertStringContainsString('href="/de/video?vo_video=' . self::UUID . '"', $html, 'The slug goes through sulu_content_path (locale prefix).');
         self::assertStringContainsString('>Clip one</a>', $html);
+        self::assertSame(1, substr_count($html, '<a ') - substr_count($html, 'vo-btn'), 'One link per card: a single tab stop (the pager links are extra).');
         self::assertStringContainsString('1:15', $html);
-        self::assertStringContainsString('src="https://cdn.example.net/poster.jpg"', $html);
+        self::assertStringContainsString('src="https://cdn.example.net/p.jpg"', $html, 'The card uses the poster of the list item.');
         self::assertStringContainsString('srcset="https://cdn.example.net/p-320.jpg 320w"', $html);
         self::assertStringContainsString('href="/videos?vo_cursor=abc123" rel="next"', $html);
         self::assertStringNotContainsString('data-vo-lightbox', $html);
@@ -120,8 +121,71 @@ class ContentElementsTest extends TestCase
             'error' => false,
         ]);
 
-        self::assertStringContainsString('data-vo-lightbox="https://videooptimizer.eu/embed/' . self::UUID . '?autoplay=1"', $html);
+        self::assertStringContainsString('<button type="button" class="vo-list__card" data-vo-lightbox="https://videooptimizer.eu/embed/' . self::UUID . '?autoplay=1"', $html);
         self::assertStringNotContainsString('rel="next"', $html);
+    }
+
+    public function testRenderingAListMakesNoPerVideoEmbedLookup(): void
+    {
+        $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
+        $resolver->getSources(\Prophecy\Argument::any())->shouldNotBeCalled();
+        $resolver->getDimensions(\Prophecy\Argument::any())->shouldNotBeCalled();
+        $resolver->getPosterSrcset(\Prophecy\Argument::any())->shouldNotBeCalled();
+        $resolver->peekPosterSrcset(\Prophecy\Argument::any())->willReturn(null);
+        $settings = $this->prophesize(SettingsManager::class);
+        $settings->getDefaultPlayer()->willReturn('hosted');
+        $provider = $this->prophesize(VideoListProvider::class);
+        $provider->page(\Prophecy\Argument::cetera())->willReturn(['items' => [
+            ['uuid' => self::UUID, 'title' => 'One', 'poster' => 'https://cdn.example.net/1.jpg', 'duration' => 5],
+            ['uuid' => self::OTHER, 'title' => '', 'poster' => null, 'duration' => null],
+        ], 'next' => null, 'error' => false]);
+
+        $loader = new FilesystemLoader();
+        $loader->addPath(\dirname(__DIR__, 2) . '/src/Resources/views', 'ScaleVideoOptimizer');
+        $twig = new Environment($loader, ['autoescape' => 'html', 'strict_variables' => false]);
+        $twig->addExtension(new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $settings->reveal(), null, 'https://api.videooptimizer.eu/api/v1', $provider->reveal()));
+
+        $html = $twig->render('@ScaleVideoOptimizer/blocks/vo_video_list.html.twig', ['block' => [], 'app' => (object) ['request' => Request::create('/videos')]]);
+
+        self::assertSame(2, substr_count($html, 'class="vo-list__card"'));
+        self::assertStringContainsString('Play video', $html, 'A card without a title still has a label.');
+    }
+
+    public function testPagerKeepsTheBasePathAndOtherQueryParameters(): void
+    {
+        $html = $this->render('vo_video_list.html.twig', ['block' => []], '/sub/videos?tag=a&vo_cursor=old', [], [
+            'items' => [['uuid' => self::UUID, 'title' => 'T', 'poster' => null, 'duration' => null]],
+            'next' => 'n3xt',
+            'error' => false,
+        ]);
+
+        self::assertStringContainsString('href="/sub/videos?tag=a&amp;vo_cursor=n3xt" rel="next"', $html);
+        self::assertStringContainsString('href="/sub/videos?tag=a">First page', $html);
+    }
+
+    public function testCursorUrl(): void
+    {
+        self::assertSame('/videos', VideoOptimizerExtension::cursorUrl('/videos?vo_cursor=a', null));
+        self::assertSame('/videos?vo_cursor=b', VideoOptimizerExtension::cursorUrl('/videos', 'b'));
+        self::assertSame('/x/videos?a=1&vo_cursor=b', VideoOptimizerExtension::cursorUrl('/x/videos?a=1&vo_cursor=a#frag', 'b'));
+    }
+
+    public function testDetailRendersAVideoWithAnEmptyTitle(): void
+    {
+        $html = $this->render('vo_video_detail.html.twig', ['block' => []], '/video?vo_video=' . self::OTHER, [self::OTHER => '']);
+
+        self::assertStringContainsString('/embed/' . self::OTHER, $html);
+        self::assertStringNotContainsString('<h2>', $html);
+        self::assertStringNotContainsString('was not found', $html);
+    }
+
+    public function testDetailIsTheMainContentSoItDoesNotFadeIn(): void
+    {
+        $html = $this->render('vo_video_detail.html.twig', ['block' => ['video' => ['uuid' => self::UUID]]], '/video');
+
+        self::assertStringNotContainsString('vo-reveal', $html);
+        self::assertStringContainsString('fetchpriority', $html . 'fetchpriority', 'priority players load eagerly');
+        self::assertStringContainsString('loading="eager"', $html);
     }
 
     public function testListShowsAFirstPageLinkOnLaterPages(): void
@@ -144,8 +208,22 @@ class ContentElementsTest extends TestCase
 
     public function testTextsFollowThePageLanguage(): void
     {
-        self::assertSame('Dieses Video wurde nicht gefunden.', VideoOptimizerExtension::translate('not_found', 'de-DE'));
-        self::assertSame('This video was not found.', VideoOptimizerExtension::translate('not_found', 'fr'));
+        $extension = $this->extension();
+        self::assertSame('Dieses Video wurde nicht gefunden.', $extension->translate('not_found', 'de-DE'));
+        self::assertSame('This video was not found.', $extension->translate('not_found', 'fr'));
+        self::assertSame('Szene 2 · 1:05', $extension->translate('scene', 'de', ['n' => '2', 'time' => '1:05']));
+    }
+
+    public function testTextsCanBeOverriddenWithASymfonyTranslation(): void
+    {
+        $translator = new \Symfony\Component\Translation\Translator('de');
+        $translator->addLoader('array', new \Symfony\Component\Translation\Loader\ArrayLoader());
+        $translator->addResource('array', ['next' => 'Mehr laden'], 'de', 'scale_video_optimizer');
+
+        $extension = $this->extension(translator: $translator);
+
+        self::assertSame('Mehr laden', $extension->translate('next', 'de'));
+        self::assertSame('Erste Seite', $extension->translate('first', 'de'), 'Keys the project does not override use the bundle catalog.');
     }
 
     /**
@@ -222,6 +300,53 @@ class ContentElementsTest extends TestCase
         self::assertSame(0, $calls);
     }
 
+    #[DataProvider('badCursors')]
+    public function testListProviderDropsMalformedCursors(string $cursor): void
+    {
+        $queries = [];
+        $provider = new VideoListProvider($this->client(function (string $m, string $u) use (&$queries): MockResponse {
+            $queries[] = $u;
+
+            return new MockResponse(json_encode(['data' => [], 'pagination' => ['next_cursor' => null, 'has_more' => false]], \JSON_THROW_ON_ERROR));
+        }), new ArrayAdapter());
+
+        $provider->page(null, null, $cursor);
+
+        self::assertStringNotContainsString('cursor', $queries[0]);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function badCursors(): iterable
+    {
+        yield 'spaces' => ['a b'];
+        yield 'slash' => ['a/b'];
+        yield 'plus' => ['a+b'];
+        yield 'query injection' => ['a&limit=100'];
+        yield 'too long' => [str_repeat('a', 201)];
+        yield 'empty' => [''];
+    }
+
+    public function testListProviderCapsThePageLifetimeAndCachesPerCursor(): void
+    {
+        $queries = [];
+        $state = new \Scale\VideoOptimizerBundle\Service\EmbedRenderState();
+        $provider = new VideoListProvider($this->client(function (string $m, string $u) use (&$queries): MockResponse {
+            $queries[] = $u;
+
+            return new MockResponse(json_encode(['data' => [], 'pagination' => ['next_cursor' => null, 'has_more' => false]], \JSON_THROW_ON_ERROR));
+        }), new ArrayAdapter(), $state);
+
+        $provider->page(null, null, null);
+        $provider->page(null, null, 'abc');
+        $provider->page(null, null, 'abc');
+
+        self::assertCount(2, $queries, 'One cached page per cursor.');
+        self::assertSame(VideoListProvider::TTL, $state->maxLifetime());
+        self::assertSame(120, VideoListProvider::TTL);
+    }
+
     public function testListProviderReportsAFailureWithoutCachingIt(): void
     {
         $calls = 0;
@@ -256,6 +381,8 @@ class ContentElementsTest extends TestCase
         self::assertCount(10, $extension->scenes(['uuid' => self::UUID], 99));
         self::assertSame(range(0, 9), array_column($extension->scenes(['uuid' => self::UUID], 10), 'index'));
         self::assertCount(5, $extension->scenes(['uuid' => self::UUID], 'x'));
+        self::assertCount(5, $extension->scenes(['uuid' => self::UUID], 0), 'A block saved before the field existed gets the default.');
+        self::assertCount(5, $extension->scenes(['uuid' => self::UUID], null));
     }
 
     public function testSceneTitlesReplaceTheNumberedLabelAndTranslateToGerman(): void
@@ -271,9 +398,17 @@ Finale", 'de');
         self::assertSame('Finale · 1:49', $scenes[2]['label']);
     }
 
+    public function testSceneStartsUseTheExactFractionalDuration(): void
+    {
+        // 131.9 / 11 * 10 = 119.9: rounding the duration first would give 120.
+        $scenes = $this->extension([], null, 131.9)->scenes(['uuid' => self::UUID], 3);
+
+        self::assertSame([11, 71, 119], array_column($scenes, 'start'));
+    }
+
     public function testNoScenesWithoutDurationOrVideo(): void
     {
-        self::assertSame([], $this->extension([], null, 0)->scenes(['uuid' => self::UUID]));
+        self::assertSame([], $this->extension([], null, 0.0)->scenes(['uuid' => self::UUID]));
         self::assertSame([], $this->extension()->scenes(null));
     }
 
@@ -300,7 +435,7 @@ B"]]);
 
     public function testChaptersBlockOmitsTheRowWithoutADuration(): void
     {
-        $html = $this->render('vo_video_chapters.html.twig', ['block' => ['video' => ['uuid' => self::UUID]]], '/', [], null, 0);
+        $html = $this->render('vo_video_chapters.html.twig', ['block' => ['video' => ['uuid' => self::UUID]]], '/', [], null, 0.0);
 
         self::assertStringNotContainsString('vo-chapters__scenes', $html);
         self::assertStringContainsString('vo-frame', $html);
@@ -392,12 +527,14 @@ B"]]);
      * @param array<string, string>               $titles  title per uuid; uuids without one count as unknown videos
      * @param array<string, mixed>|null           $list
      */
-    private function render(string $template, array $context, string $uri = '/', array $titles = [], ?array $list = null, int $duration = 120): string
+    private function render(string $template, array $context, string $uri = '/', array $titles = [], ?array $list = null, float $duration = 120.0): string
     {
         $loader = new FilesystemLoader();
         $loader->addPath(\dirname(__DIR__, 2) . '/src/Resources/views', 'ScaleVideoOptimizer');
         $twig = new Environment($loader, ['autoescape' => 'html', 'strict_variables' => false]);
         $twig->addExtension($this->extension($titles, $list, $duration));
+        // Sulu's route generator: prefixes the locale of a `{localization}` URL scheme.
+        $twig->addFunction(new \Twig\TwigFunction('sulu_content_path', static fn (string $slug): string => '/de' . $slug));
 
         $context['app'] = (object) ['request' => Request::create($uri)];
 
@@ -408,15 +545,17 @@ B"]]);
      * @param array<string, string>     $titles
      * @param array<string, mixed>|null $list
      */
-    private function extension(array $titles = [], ?array $list = null, int $duration = 120): VideoOptimizerExtension
+    private function extension(array $titles = [], ?array $list = null, float $duration = 120.0, ?\Symfony\Contracts\Translation\TranslatorInterface $translator = null): VideoOptimizerExtension
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
         $resolver->getDimensions(\Prophecy\Argument::any())->willReturn(['width' => 1920, 'height' => 1080, 'orientation' => 'landscape']);
         $resolver->getPosterSrcset(\Prophecy\Argument::any())->willReturn('https://cdn.example.net/p-320.jpg 320w');
+        $resolver->peekPosterSrcset(\Prophecy\Argument::any())->willReturn('https://cdn.example.net/p-320.jpg 320w');
         $resolver->getSources(\Prophecy\Argument::any())->will(static fn (array $args): array => [
             'title' => $titles[$args[0]] ?? null,
             'poster' => 'https://cdn.example.net/poster.jpg', 'hlsUrl' => null, 'width' => 1920, 'height' => 1080,
-            'duration' => $duration, 'srcset' => null, 'theme' => null, 'tracks' => [], 'sources' => [],
+            'duration' => $duration, 'srcset' => null, 'theme' => null, 'tracks' => [],
+            'sources' => \array_key_exists($args[0], $titles) || self::UUID === $args[0] ? [['src' => 'https://cdn.example.net/m.m3u8', 'type' => 'application/vnd.apple.mpegurl', 'label' => 'auto']] : [],
         ]);
 
         $settings = $this->prophesize(SettingsManager::class);
@@ -426,7 +565,7 @@ B"]]);
         $provider = $this->prophesize(VideoListProvider::class);
         $provider->page(\Prophecy\Argument::cetera())->willReturn($list ?? ['items' => [], 'next' => null, 'error' => false]);
 
-        return new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $settings->reveal(), null, 'https://api.videooptimizer.eu/api/v1', $provider->reveal());
+        return new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $settings->reveal(), null, 'https://api.videooptimizer.eu/api/v1', $provider->reveal(), $translator);
     }
 
     private function client(callable $callback): VideoOptimizerClient

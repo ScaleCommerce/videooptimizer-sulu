@@ -15,6 +15,21 @@ class EmbedRenderState implements ResetInterface
 {
     private bool $degraded = false;
 
+    private ?int $maxLifetime = null;
+
+    /**
+     * The page shows data cached for `$seconds` (e.g. a video list): its HTTP cache lifetime may not exceed that.
+     */
+    public function capLifetime(int $seconds): void
+    {
+        $this->maxLifetime = null === $this->maxLifetime ? $seconds : min($this->maxLifetime, $seconds);
+    }
+
+    public function maxLifetime(): ?int
+    {
+        return $this->maxLifetime;
+    }
+
     public function markDegraded(): void
     {
         $this->degraded = true;
@@ -28,5 +43,6 @@ class EmbedRenderState implements ResetInterface
     public function reset(): void
     {
         $this->degraded = false;
+        $this->maxLifetime = null;
     }
 }

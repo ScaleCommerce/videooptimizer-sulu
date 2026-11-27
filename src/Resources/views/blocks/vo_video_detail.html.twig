@@ -11,8 +11,10 @@
     {% set uuid = requested is iterable ? null : video_optimizer_uuid(requested) %}
 {% endif %}
 {% set title = uuid ? video_optimizer_title(uuid) : null %}
-{% set playable = uuid and (title or (block.video.uuid|default('') == uuid)) %}
-<section class="vo-block vo-detail{% if not block.priority|default(false) %} vo-reveal{% endif %}">
+{# A requested video must have sources (unknown, failed and not-ready ones have none); the default video always renders. #}
+{% set playable = uuid and (video_optimizer_available(uuid) or block.video.uuid|default('') == uuid) %}
+{# The detail video is the main content (LCP): no fade-in. #}
+<section class="vo-block vo-detail">
     <div class="vo-container vo-detail__inner">
         {% if uuid and playable %}
             {% set video = {uuid: uuid, title: title|default(block.video.title|default('')), posterUrl: block.video.uuid|default('') == uuid ? block.video.posterUrl|default(null) : null} %}

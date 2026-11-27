@@ -124,6 +124,52 @@ class VideoOptimizerEmbedResolverTest extends TestCase
         self::assertTrue($state->isDegraded());
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('clientErrorStatuses')]
+    public function testAnUnknownVideoNeverStopsTheLookupOfOtherVideos(int $status): void
+    {
+        $client = $this->prophesize(VideoOptimizerClient::class);
+        $client->getEmbed('missing')->willThrow(new VideoOptimizerException('not found', $status))->shouldBeCalledTimes(1);
+        $client->getEmbed('other')->willReturn(['sources' => [['src' => 'https://cdn.example.net/m.m3u8', 'type' => VideoOptimizerEmbedResolver::HLS_MIME]]])->shouldBeCalledTimes(1);
+
+        $ttls = [];
+        $resolver = new VideoOptimizerEmbedResolver($client->reveal(), $this->recordingCache($ttls));
+
+        self::assertSame([], $resolver->getSources('missing')['sources']);
+        self::assertNotSame([], $resolver->getSources('other')['sources'], 'No fail-fast flag was set.');
+        self::assertSame([60, 3600], $ttls, 'The unknown video is remembered for 60 s only.');
+    }
+
+    /**
+     * @return iterable<string, array{int}>
+     */
+    public static function clientErrorStatuses(): iterable
+    {
+        yield 'not found' => [404];
+        yield 'forbidden' => [403];
+        yield 'bad request' => [400];
+    }
+
+    public function testPeekingAtTheSrcsetNeverCallsTheApi(): void
+    {
+        $client = $this->prophesize(VideoOptimizerClient::class);
+        $client->getEmbed('abc')->willReturn(['sources' => [['src' => 'https://cdn.example.net/m.m3u8', 'type' => VideoOptimizerEmbedResolver::HLS_MIME]], 'posterSrcset' => [['width' => 320, 'height' => 180, 'url' => 'https://cdn.example.net/p.jpg']]])->shouldBeCalledTimes(1);
+        $client->getEmbed('cold')->shouldNotBeCalled();
+        $state = new EmbedRenderState();
+        $resolver = new VideoOptimizerEmbedResolver($client->reveal(), new ArrayAdapter(), $state);
+
+        self::assertNull($resolver->peekPosterSrcset('abc'), 'Not cached yet.');
+        $resolver->getSources('abc');
+        self::assertSame('https://cdn.example.net/p.jpg 320w', $resolver->peekPosterSrcset('abc'));
+        self::assertNull($resolver->peekPosterSrcset('cold'));
+        self::assertFalse($state->isDegraded());
+    }
+
+    public function testDurationKeepsItsFraction(): void
+    {
+        self::assertSame(12.9, VideoOptimizerEmbedResolver::extractSources(['duration' => 12.9])['duration']);
+        self::assertSame('PT13S', VideoOptimizerEmbedResolver::isoDuration(12.9));
+    }
+
     public function testFailFastDoesNotCacheTheSkippedVideoAndRecoversWhenTheFlagExpires(): void
     {
         $cache = new ArrayAdapter();
@@ -305,8 +351,8 @@ class VideoOptimizerEmbedResolverTest extends TestCase
 
     public function testParsesDurationSeconds(): void
     {
-        self::assertSame(6, VideoOptimizerEmbedResolver::extractSources(['duration' => '6'])['duration']);
-        self::assertSame(6, VideoOptimizerEmbedResolver::extractSources(['duration' => 6])['duration']);
+        self::assertSame(6.0, VideoOptimizerEmbedResolver::extractSources(['duration' => '6'])['duration']);
+        self::assertSame(6.0, VideoOptimizerEmbedResolver::extractSources(['duration' => 6])['duration']);
         self::assertNull(VideoOptimizerEmbedResolver::extractSources(['duration' => 'abc'])['duration']);
         self::assertNull(VideoOptimizerEmbedResolver::extractSources([])['duration']);
     }

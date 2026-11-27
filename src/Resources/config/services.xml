@@ -93,6 +93,7 @@
             <argument type="service" id="logger" on-invalid="null"/>
             <argument>%scale_video_optimizer.api_base_url%</argument>
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\VideoListProvider"/>
+            <argument type="service" id="translator" on-invalid="null"/>
             <tag name="twig.extension"/>
         </service>
 

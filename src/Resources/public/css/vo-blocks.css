@@ -416,7 +416,7 @@ dialog.vo-lightbox::backdrop {
     color: var(--vo-muted);
 }
 
-/* Video list */
+/* Video list: one tab stop per card, the whole card is clickable */
 .vo-list__items {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -424,6 +424,10 @@ dialog.vo-lightbox::backdrop {
     margin: 0;
     padding: 0;
     list-style: none;
+}
+
+.vo-list__item {
+    position: relative;
 }
 
 .vo-list__thumb {
@@ -436,7 +440,26 @@ dialog.vo-lightbox::backdrop {
     box-shadow: var(--vo-shadow);
 }
 
-.vo-list__thumb:focus-visible {
+.vo-list__card {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.vo-list__link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+.vo-list__link:focus-visible::after,
+.vo-list__card:focus-visible .vo-list__thumb {
     outline: 3px solid var(--vo-accent);
     outline-offset: 3px;
 }
@@ -455,7 +478,7 @@ dialog.vo-lightbox::backdrop {
     text-decoration: none;
 }
 
-a.vo-list__title:hover {
+.vo-list__item:hover .vo-list__title {
     text-decoration: underline;
 }
 
@@ -550,6 +573,11 @@ a.vo-list__title:hover {
 }
 
 /* Floating mini player: a started player scrolled out of view stays bottom right (toggled by vo-blocks.js, below modals). */
+.vo-float {
+    /* Margins of the player stay inside, so the placeholder height is exact. */
+    display: flow-root;
+}
+
 .vo-float__close {
     display: none;
 }

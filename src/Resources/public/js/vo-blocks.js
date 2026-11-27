@@ -319,7 +319,16 @@
     // and controls.
     function initNativeAutoload(baseUrl) {
         var videos = document.querySelectorAll('.vo-native[data-vo-native-autoload]');
-        if (!videos.length || prefersReducedMotion() || saveData()) {
+        if (!videos.length) {
+            return;
+        }
+        if (prefersReducedMotion() || saveData()) {
+            // No autoplay: behave like a player with autoplay off. Nothing is fetched but the poster; the source
+            // (hls.js where needed, never the MP4 alone) is attached on the visitor's first play.
+            videos.forEach(function (video) {
+                video.removeAttribute('data-vo-native-autoload');
+                video.setAttribute('data-vo-native-onplay', '');
+            });
             return;
         }
 
@@ -359,7 +368,8 @@
                 var entry = entries[entries.length - 1];
                 if (entry.intersectionRatio >= 0.5) {
                     start(video);
-                } else if (!video.paused && video.hasAttribute('data-vo-wired')) {
+                } else if (!video.paused && video.hasAttribute('data-vo-wired') && !video.hasAttribute('data-vo-visitor-started')) {
+                    // A visitor who took over (unmute, seek, pause then play) keeps it playing: the mini player follows.
                     pausedByScroll = true;
                     video.pause();
                 }
@@ -437,6 +447,7 @@
         }
 
         function open(trigger) {
+            document.dispatchEvent(new CustomEvent('vo-lightbox-open')); // a pinned mini player gives way
             lastFocus = document.activeElement;
             nativeHolder = null;
 
@@ -654,6 +665,7 @@
 
             buttons.forEach(function (button) {
                 button.addEventListener('click', function () {
+                    frame.dispatchEvent(new CustomEvent('vo-visitor-started')); // lets the mini player follow
                     var video = frame.querySelector('video');
                     if (video) {
                         seekNative(video, startOf(button), baseUrl);
@@ -697,29 +709,71 @@
             }
             var pinned = false;
             var dismissed = false; // closed by the visitor: stays unpinned until the player was in view again
-            var interacted = false; // the visitor clicked into the hosted iframe
+            var visitorStarted = false; // the visitor started or took over playback (never autoplay alone)
+            var lastGesture = 0;
             var close = document.createElement('button');
             close.type = 'button';
             close.className = 'vo-float__close';
             close.innerHTML = '&times;';
             close.setAttribute('aria-label', label('mini', wrap));
 
-            // Native: it is playing. Hosted: the embed plays by itself (autoplay=1) or the visitor clicked into it.
+            // A play, unmute or seek counts as the visitor's when it follows a pointer or key press on the player.
+            var gestureTarget = wrap.closest('[data-vo-chapters]') || wrap;
+            ['pointerdown', 'keydown', 'touchstart'].forEach(function (name) {
+                gestureTarget.addEventListener(name, function () { lastGesture = Date.now(); }, true);
+            });
+
+            function byVisitor() {
+                return Date.now() - lastGesture < 1000;
+            }
+
+            function visitorTookOver() {
+                visitorStarted = true;
+                var video = frame.querySelector('video');
+                if (video) {
+                    // Tells play-while-scrolling to leave this player alone from now on.
+                    video.setAttribute('data-vo-visitor-started', '');
+                }
+            }
+
+            var nativeVideo = frame.querySelector('video');
+            if (nativeVideo) {
+                ['play', 'volumechange', 'seeking'].forEach(function (name) {
+                    nativeVideo.addEventListener(name, function () {
+                        if (byVisitor()) {
+                            visitorTookOver();
+                        }
+                    });
+                });
+            }
+            // A scene click of the chapters block, also on the hosted embed.
+            frame.addEventListener('vo-visitor-started', visitorTookOver);
+            // A click into a cross-origin iframe shows up as the window losing focus to it.
+            window.addEventListener('blur', function () {
+                if (document.activeElement && document.activeElement.tagName === 'IFRAME' && frame.contains(document.activeElement)) {
+                    visitorTookOver();
+                }
+            });
+
             function started() {
+                if (!visitorStarted) {
+                    return false;
+                }
                 var video = frame.querySelector('video');
                 if (video) {
                     return !video.paused && !video.ended;
                 }
-                var iframe = frame.querySelector('iframe');
-                if (!iframe) {
-                    return false;
-                }
 
-                return interacted || /[?&]autoplay=1(&|$)/.test(iframe.getAttribute('src') || '');
+                return !!frame.querySelector('iframe');
+            }
+
+            function px(value) {
+                return parseFloat(value) || 0;
             }
 
             function pin() {
-                var height = frame.offsetHeight;
+                var margins = window.getComputedStyle ? window.getComputedStyle(frame) : {};
+                var height = frame.offsetHeight + px(margins.marginTop) + px(margins.marginBottom);
                 if (height > 0) {
                     wrap.style.height = height + 'px';
                 }
@@ -739,13 +793,27 @@
                 pinned = false;
             }
 
+            // The close button disappears with the mini player: focus goes to the player, never to the body.
+            function focusPlayer() {
+                var target = frame.querySelector('video, iframe');
+                if (!target) {
+                    frame.setAttribute('tabindex', '-1');
+                    target = frame;
+                }
+                target.focus();
+            }
+
             function dismiss(stop) {
                 dismissed = true;
+                visitorStarted = false;
+                var video = frame.querySelector('video');
+                if (video) {
+                    video.removeAttribute('data-vo-visitor-started');
+                }
                 unpin();
                 if (!stop) {
                     return;
                 }
-                var video = frame.querySelector('video');
                 if (video) {
                     video.pause();
                     return;
@@ -753,7 +821,6 @@
                 var iframe = frame.querySelector('iframe');
                 if (iframe) {
                     // Reloading without autoplay stops the hosted player; it stays unpinned.
-                    interacted = false;
                     try {
                         var url = new URL(iframe.getAttribute('src') || '', window.location.href);
                         url.searchParams.set('autoplay', '0');
@@ -765,16 +832,19 @@
                 }
             }
 
-            close.addEventListener('click', function () { dismiss(true); });
+            close.addEventListener('click', function () {
+                dismiss(true);
+                focusPlayer();
+            });
             frame.addEventListener('keydown', function (event) {
                 if (pinned && 'Escape' === event.key) {
                     dismiss(false);
+                    focusPlayer();
                 }
             });
-            // A click into a cross-origin iframe shows up as the window losing focus to it.
-            window.addEventListener('blur', function () {
-                if (document.activeElement && document.activeElement.tagName === 'IFRAME' && frame.contains(document.activeElement)) {
-                    interacted = true;
+            document.addEventListener('vo-lightbox-open', function () {
+                if (pinned) {
+                    dismiss(!!frame.querySelector('video'));
                 }
             });
             if (wide.addEventListener) {
