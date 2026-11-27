@@ -259,7 +259,12 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
         onClick: this.startIngest,
         loading: this.ingesting,
         disabled: !this.ingestSourceUrl.trim()
-      }, (0, _utils.translate)('scale_videooptimizer.ingest'))), this.ingestStatus && /*#__PURE__*/_react["default"].createElement("div", {
+      }, (0, _utils.translate)('scale_videooptimizer.ingest'))), /*#__PURE__*/_react["default"].createElement("div", {
+        className: "vo-hint",
+        style: {
+          padding: '4px 0 0'
+        }
+      }, (0, _utils.translate)('scale_videooptimizer.ingest_url_help')), this.ingestStatus && /*#__PURE__*/_react["default"].createElement("div", {
         className: "vo-upload-status"
       }, this.ingestStatus));
     }
@@ -499,7 +504,7 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
           _this11.uploading = false;
           _this11.uploadStatus = null;
           if (video.status === 'failed') {
-            _this11.error = (0, _utils.translate)('scale_videooptimizer.processing_failed');
+            _this11.error = (0, _api.failureMessage)(video);
             return;
           }
           _this11.reloadVideos();
@@ -508,7 +513,7 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
       })["catch"]((0, _mobx.action)(function (e) {
         _this11.uploading = false;
         _this11.uploadStatus = null;
-        _this11.error = e.message || String(e);
+        _this11.error = (0, _api.errorText)(e);
       }));
     };
   }
@@ -556,7 +561,7 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
           _this14.ingesting = false;
           _this14.ingestStatus = null;
           if (video.status === 'failed') {
-            _this14.error = (0, _utils.translate)('scale_videooptimizer.processing_failed');
+            _this14.error = (0, _api.failureMessage)(video);
             return;
           }
           _this14.ingestSourceUrl = '';
@@ -566,7 +571,7 @@ var Videos = (0, _mobxReact.observer)(_class = (_class2 = /*#__PURE__*/function 
       })["catch"]((0, _mobx.action)(function (e) {
         _this14.ingesting = false;
         _this14.ingestStatus = null;
-        _this14.error = e.message || String(e);
+        _this14.error = (0, _api.errorText)(e);
       }));
     };
   }

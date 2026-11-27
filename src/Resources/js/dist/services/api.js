@@ -13,6 +13,8 @@ exports.createLibrary = createLibrary;
 exports.deleteLibrary = deleteLibrary;
 exports.deletePoster = deletePoster;
 exports.deleteVideo = deleteVideo;
+exports.errorText = errorText;
+exports.failureMessage = failureMessage;
 exports.getAllVideos = getAllVideos;
 exports.getEncodings = getEncodings;
 exports.getLibraries = getLibraries;
@@ -39,18 +41,21 @@ require("core-js/modules/es.array.slice.js");
 require("core-js/modules/es.date.now.js");
 require("core-js/modules/es.object.to-string.js");
 require("core-js/modules/es.promise.js");
+require("core-js/modules/es.string.trim.js");
 require("core-js/modules/esnext.iterator.constructor.js");
 require("core-js/modules/esnext.iterator.reduce.js");
 require("core-js/modules/web.timers.js");
 var _services = require("sulu-admin-bundle/services");
+var _utils = require("sulu-admin-bundle/utils");
 var BASE = '/admin/api/videooptimizer';
 
 // Requester rejects with the raw Response object on non-2xx. Convert that into a
 // proper Error carrying the server's { message } and HTTP status, so views can show a
 // readable text and branch on "not configured" (428) vs "routes missing" (404).
-function toError(message, status) {
+function toError(message, status, code) {
   var error = new Error(message);
   error.status = status || null;
+  error.code = code || null;
   return error;
 }
 function messageForStatus(status, serverMessage) {
@@ -65,13 +70,31 @@ function normalize(promise) {
     if (rejection && typeof rejection.json === 'function') {
       var status = rejection.status || null;
       return rejection.json().then(function (data) {
-        throw toError(messageForStatus(status, data && data.message), status);
+        throw toError(messageForStatus(status, data && data.message), status, data && data.code);
       }, function () {
         throw toError(messageForStatus(status, null), status);
       });
     }
     throw rejection instanceof Error ? rejection : new Error(String(rejection));
   });
+}
+
+// Readable text for a failed request: known API error codes get a translated hint, everything
+// else keeps the upstream message.
+function errorText(error) {
+  if (error && error.code === 'source_url_video_platform') {
+    return (0, _utils.translate)('scale_videooptimizer.ingest_platform_link');
+  }
+  return error && error.message || String(error);
+}
+
+// Message for a video that ended in status 'failed': the API's readable reason (e.g. a URL import
+// download error) when present, otherwise the generic text.
+function failureMessage(video) {
+  var reason = video && typeof video.error === 'string' ? video.error.trim() : '';
+  return reason ? (0, _utils.translate)('scale_videooptimizer.processing_failed_reason', {
+    reason: reason
+  }) : (0, _utils.translate)('scale_videooptimizer.processing_failed');
 }
 function getSettings() {
   return normalize(_services.Requester.get(BASE + '/settings'));
@@ -99,8 +122,13 @@ function updateLibrary(id, data) {
 function deleteLibrary(id) {
   return normalize(_services.Requester["delete"](BASE + '/libraries/' + encodeURIComponent(id)));
 }
+
+// force: also re-encode renditions that are already finished (needed after changing encoding_quality).
 function reprocessLibrary(id) {
-  return normalize(_services.Requester.post(BASE + '/libraries/' + encodeURIComponent(id) + '/reprocess', {}));
+  var force = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+  return normalize(_services.Requester.post(BASE + '/libraries/' + encodeURIComponent(id) + '/reprocess', force ? {
+    force: true
+  } : {}));
 }
 
 // Codecs and resolutions the organization may enable on a library. Each entry is
