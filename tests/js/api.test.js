@@ -77,6 +77,35 @@ describe('request normalisation', () => {
     });
 });
 
+describe('error codes from the proxy', () => {
+    it('explains a rejected token in the editor language', async () => {
+        Requester.get.mockRejectedValue(rejection(502, {message: 'English text', code: 'token_rejected'}));
+
+        const error = await getAllVideos().catch((e) => e);
+
+        expect(error.message).toBe('scale_videooptimizer.error_token_rejected');
+        expect(error.status).toBe(502);
+    });
+
+    it('keeps the API text for a 403 that carries one (plan limit, trial, suspended organization)', async () => {
+        Requester.get.mockRejectedValue(rejection(502, {message: 'Library limit reached.', code: 'token_forbidden', upstream: true}));
+
+        expect((await getAllVideos().catch((e) => e)).message).toBe('Library limit reached.');
+    });
+
+    it('falls back to a hint for a 403 without an API text', async () => {
+        Requester.get.mockRejectedValue(rejection(502, {message: 'generic', code: 'token_forbidden'}));
+
+        expect((await getAllVideos().catch((e) => e)).message).toBe('scale_videooptimizer.error_token_forbidden');
+    });
+
+    it('shows a neutral text when VideoOptimizer is unreachable', async () => {
+        Requester.get.mockRejectedValue(rejection(502, {message: 'x', code: 'unreachable'}));
+
+        expect((await getAllVideos().catch((e) => e)).message).toBe('scale_videooptimizer.error_unreachable');
+    });
+});
+
 describe('messages', () => {
     it('translates the video platform error code', () => {
         expect(errorText({code: 'source_url_video_platform', message: 'x'})).toBe('scale_videooptimizer.ingest_platform_link');

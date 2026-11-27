@@ -4,7 +4,15 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Upgrade
+- Admin proxy routes answer an upstream 401/403 as HTTP 502 with `code` `token_rejected`/`token_forbidden` (and an unreachable API as 502 `unreachable`) instead of passing 401/403 through: custom admin code that branches on those statuses must use the `code` ([#20](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/20))
+- Uncached videos are not looked up for 60 s after the API failed (transport error, 429, 502, 503, 504): affected pages render without the video and stay cacheable for at most 60 s ([#20](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/20))
+
+### Changed
+- API transport errors and timeouts become a neutral 502 message (the upstream URL is only logged); embed lookups while rendering no longer wait for `Retry-After` ([#20](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/20))
+
 ### Added
+- Admin explains rejected tokens and missing permissions in the editor's language and keeps the API's own message for plan limits and suspended organizations ([#20](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/20))
 - JavaScript tests (Vitest) for the admin API service and `vo-blocks.js`, run in CI next to PHPUnit and PHPStan ([#21](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/21))
 
 ## [1.8.2] - 2026-11-27

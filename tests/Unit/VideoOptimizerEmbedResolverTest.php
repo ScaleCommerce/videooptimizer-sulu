@@ -7,6 +7,8 @@ namespace Scale\VideoOptimizerBundle\Tests\Unit;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
 use Scale\VideoOptimizerBundle\Api\VideoOptimizerClient;
+use Scale\VideoOptimizerBundle\Api\VideoOptimizerException;
+use Scale\VideoOptimizerBundle\Service\EmbedRenderState;
 use Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Contracts\Cache\CacheInterface;
@@ -86,6 +88,61 @@ class VideoOptimizerEmbedResolverTest extends TestCase
         $resolver->getSources('abc');
 
         self::assertSame([60], $ttls, 'A video that is not ready yet must not be hidden for long.');
+    }
+
+    /**
+     * @return iterable<string, array{int}>
+     */
+    public static function outageStatuses(): iterable
+    {
+        yield 'transport error' => [502];
+        yield 'rate limit' => [429];
+        yield 'unavailable' => [503];
+        yield 'gateway timeout' => [504];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('outageStatuses')]
+    public function testOutagesStopFurtherLookupsForAShortTime(int $status): void
+    {
+        $client = $this->prophesize(VideoOptimizerClient::class);
+        $client->getEmbed('first')->willThrow(new VideoOptimizerException('down', $status))->shouldBeCalledTimes(1);
+        $client->getEmbed('second')->shouldNotBeCalled();
+
+        $state = new EmbedRenderState();
+        $resolver = new VideoOptimizerEmbedResolver($client->reveal(), new ArrayAdapter(), $state);
+
+        self::assertSame([], $resolver->getSources('first')['sources']);
+        self::assertSame([], $resolver->getSources('second')['sources'], 'Fails fast without asking the API.');
+        self::assertTrue($state->isDegraded());
+    }
+
+    public function testFailFastDoesNotCacheTheSkippedVideoAndRecoversWhenTheFlagExpires(): void
+    {
+        $cache = new ArrayAdapter();
+        $client = $this->prophesize(VideoOptimizerClient::class);
+        $client->getEmbed('first')->willThrow(new VideoOptimizerException('down', 502));
+        $resolver = new VideoOptimizerEmbedResolver($client->reveal(), $cache);
+        $resolver->getSources('first');
+        $resolver->getSources('second');
+
+        self::assertFalse($cache->hasItem('vo_embed_v2_second'), 'A skipped video must not be negatively cached.');
+
+        $cache->deleteItem('vo_embed_api_down');
+        $client->getEmbed('second')->willReturn(['sources' => [['src' => 'https://cdn.example.net/m.m3u8', 'type' => 'application/vnd.apple.mpegurl']]]);
+
+        self::assertCount(1, $resolver->getSources('second')['sources']);
+    }
+
+    public function testAVideoSpecificErrorDoesNotTripFailFast(): void
+    {
+        $client = $this->prophesize(VideoOptimizerClient::class);
+        $client->getEmbed('missing')->willThrow(new VideoOptimizerException('Video not found', 404));
+        $client->getEmbed('other')->willReturn(['sources' => [['src' => 'https://cdn.example.net/m.m3u8', 'type' => 'application/vnd.apple.mpegurl']]]);
+
+        $resolver = new VideoOptimizerEmbedResolver($client->reveal(), new ArrayAdapter());
+        $resolver->getSources('missing');
+
+        self::assertCount(1, $resolver->getSources('other')['sources']);
     }
 
     public function testForgetDropsTheCachedEntry(): void

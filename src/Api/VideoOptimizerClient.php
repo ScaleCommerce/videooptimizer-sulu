@@ -127,7 +127,7 @@ class VideoOptimizerClient
     {
         // Runs during page rendering: cap the request so a slow/hanging upstream falls back fast
         // to the poster / default frame instead of blocking the response.
-        return $this->requestData('GET', '/embed/' . rawurlencode($uuid), ['max_duration' => 3.0]);
+        return $this->requestData('GET', '/embed/' . rawurlencode($uuid), ['max_duration' => 3.0], false);
     }
 
     /**
@@ -284,9 +284,9 @@ class VideoOptimizerClient
      *
      * @return array<string, mixed>
      */
-    private function requestData(string $method, string $path, array $options = []): array
+    private function requestData(string $method, string $path, array $options = [], bool $retryOnRateLimit = true): array
     {
-        $response = $this->request($method, $path, $options);
+        $response = $this->request($method, $path, $options, $retryOnRateLimit);
         $payload = $response['data'] ?? null;
         if (!\is_array($payload)) {
             return [];
@@ -298,10 +298,11 @@ class VideoOptimizerClient
 
     /**
      * @param array<string, mixed> $options
+     * @param bool                 $retryOnRateLimit wait for Retry-After once on a 429; off while rendering pages, where a sleep would hold the response open
      *
      * @return array<string, mixed>
      */
-    private function request(string $method, string $path, array $options = []): array
+    private function request(string $method, string $path, array $options = [], bool $retryOnRateLimit = true): array
     {
         $token = $this->settingsManager->getApiToken();
         if (null === $token) {
@@ -338,11 +339,14 @@ class VideoOptimizerClient
                 $status = $response->getStatusCode();
                 $content = $response->getContent(false);
             } catch (\Throwable $e) {
-                throw new VideoOptimizerException('Could not reach VideoOptimizer: ' . $e->getMessage(), 0, $e);
+                // The transport message names the full upstream URL: log it, show a neutral text.
+                $this->logger?->warning('VideoOptimizer API could not be reached.', ['method' => $method, 'url' => $url, 'error' => $e->getMessage()]);
+
+                throw new VideoOptimizerException('The VideoOptimizer API could not be reached or did not respond in time.', 502, $e, 'unreachable');
             }
 
             // Respect Retry-After once on a rate-limited request; paginated loops can trip the limit.
-            if (429 === $status && 0 === $attempt) {
+            if (429 === $status && 0 === $attempt && $retryOnRateLimit) {
                 sleep($this->retryAfterSeconds($response));
 
                 continue;

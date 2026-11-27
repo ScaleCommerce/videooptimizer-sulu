@@ -58,13 +58,34 @@ var BASE = '/admin/api/videooptimizer';
 // Requester rejects with the raw Response object on non-2xx. Convert that into a
 // proper Error carrying the server's { message } and HTTP status, so views can show a
 // readable text and branch on "not configured" (428) vs "routes missing" (404).
-function toError(message, status, code) {
+function toError(message, status, code, upstream) {
   var error = new Error(message);
   error.status = status || null;
   error.code = code || null;
+  error.upstream = !!upstream;
   return error;
 }
-function messageForStatus(status, serverMessage) {
+
+// The proxy answers upstream auth problems and outages with a 502 and a code (never 401/403, which
+// would log the editor out of Sulu). Show those in the editor's language; a 403 keeps the API's own
+// text when it sent one (plan limit, trial restriction, suspended organization).
+function messageForCode(code, serverMessage, upstream) {
+  if ('token_rejected' === code) {
+    return (0, _utils.translate)('scale_videooptimizer.error_token_rejected');
+  }
+  if ('token_forbidden' === code) {
+    return upstream && serverMessage ? serverMessage : (0, _utils.translate)('scale_videooptimizer.error_token_forbidden');
+  }
+  if ('unreachable' === code) {
+    return (0, _utils.translate)('scale_videooptimizer.error_unreachable');
+  }
+  return null;
+}
+function messageForStatus(status, serverMessage, code, upstream) {
+  var byCode = messageForCode(code, serverMessage, upstream);
+  if (byCode) {
+    return byCode;
+  }
   if (404 === status) {
     // The proxy routes are not registered — a missing installation step, not a runtime failure.
     return 'The VideoOptimizer admin API is not reachable (404). Import its routes in ' + 'config/routes/sulu_admin.yaml — see the installation guide.';
@@ -76,7 +97,7 @@ function normalize(promise) {
     if (rejection && typeof rejection.json === 'function') {
       var status = rejection.status || null;
       return rejection.json().then(function (data) {
-        throw toError(messageForStatus(status, data && data.message), status, data && data.code);
+        throw toError(messageForStatus(status, data && data.message, data && data.code, data && data.upstream), status, data && data.code, data && data.upstream);
       }, function () {
         throw toError(messageForStatus(status, null), status);
       });

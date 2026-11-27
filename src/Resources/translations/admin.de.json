@@ -20,7 +20,7 @@
     "scale_videooptimizer.remove_token": "Token entfernen",
     "scale_videooptimizer.remove_token_confirm": "Den hinterlegten API-Token wirklich entfernen? Redakteure können danach keine Videos mehr auswählen oder hochladen, bis ein neuer Token gespeichert wird.",
     "scale_videooptimizer.token_removed": "Token entfernt.",
-    "scale_videooptimizer.not_configured": "Es ist noch kein VideoOptimizer-Token hinterlegt. Bitte trage ihn zuerst unter Einstellungen ein.",
+    "scale_videooptimizer.not_configured": "Es ist kein VideoOptimizer-Token hinterlegt. Bitte zuerst unter Einstellungen konfigurieren.",
     "scale_videooptimizer.field_label": "VideoOptimizer-Video",
     "scale_videooptimizer.select_video": "Video auswählen",
     "scale_videooptimizer.change_video": "Video ändern",
@@ -41,7 +41,6 @@
     "scale_videooptimizer.search_videos": "Videos durchsuchen …",
     "scale_videooptimizer.ready_only": "Nur fertige",
     "scale_videooptimizer.no_matches": "Keine Videos passen zur Suche.",
-    "scale_videooptimizer.not_configured": "Es ist kein VideoOptimizer-Token hinterlegt. Bitte zuerst unter Einstellungen konfigurieren.",
     "scale_videooptimizer.new_library": "Neue Bibliothek",
     "scale_videooptimizer.library_name": "Name",
     "scale_videooptimizer.create": "Anlegen",
@@ -108,5 +107,8 @@
     "scale_videooptimizer.encoding_quality_help": "Performance: kompakte Dateien, schneller Start. Qualität: sichtbar schärfer, etwa 2,5–3× so viel CDN-Traffic.",
     "scale_videooptimizer.quality_reprocess_hint": "Nach dem Speichern „Neu verarbeiten“ mit „Alle Qualitäten neu encodieren“ ausführen, damit vorhandene Videos den neuen Modus nutzen.",
     "scale_videooptimizer.reprocess_force": "Alle Qualitäten neu encodieren (auch bereits verarbeitete Videos)",
-    "scale_videooptimizer.poll_timeout": "Zeitüberschreitung beim Warten auf VideoOptimizer. Liste neu laden und Status prüfen."
+    "scale_videooptimizer.poll_timeout": "Zeitüberschreitung beim Warten auf VideoOptimizer. Liste neu laden und Status prüfen.",
+    "scale_videooptimizer.error_token_rejected": "VideoOptimizer hat den API-Token abgelehnt. Prüfen Sie den Token unter VideoOptimizer > Einstellungen.",
+    "scale_videooptimizer.error_token_forbidden": "Der API-Token darf diese Aktion nicht ausführen. Prüfen Sie die Token-Berechtigungen in VideoOptimizer.",
+    "scale_videooptimizer.error_unreachable": "VideoOptimizer ist nicht erreichbar oder antwortet nicht rechtzeitig. Bitte versuchen Sie es gleich noch einmal."
 }

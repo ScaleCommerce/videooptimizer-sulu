@@ -70,7 +70,9 @@ class SettingsController
         try {
             $libraries = $this->client->listLibraries();
         } catch (VideoOptimizerException $e) {
-            return new JsonResponse(['ok' => false, 'message' => $e->getMessage()], 200);
+            $described = ApiErrorResponse::describe($e);
+
+            return new JsonResponse(['ok' => false] + $described['body'], 200);
         }
 
         return new JsonResponse(['ok' => true, 'libraryCount' => \count($libraries)]);

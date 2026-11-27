@@ -162,6 +162,57 @@ class AdminControllersTest extends TestCase
         $resolver->checkProphecyMethodsPredictions();
     }
 
+    /**
+     * @return iterable<string, array{int, string, string, string, bool}>
+     */
+    public static function upstreamAuthErrors(): iterable
+    {
+        yield '401 rejected token' => [401, 'Unauthorized', 'token_rejected', 'The VideoOptimizer API rejected the API token. Check the token under VideoOptimizer > Settings.', false];
+        yield '403 plan limit keeps the API message' => [403, 'Library limit of your plan reached.', 'token_forbidden', 'Library limit of your plan reached.', true];
+        yield '403 without message gets a hint' => [403, '', 'token_forbidden', 'The VideoOptimizer API token is not permitted to perform this action. Check the token permissions in VideoOptimizer.', false];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('upstreamAuthErrors')]
+    public function testUpstreamAuthErrorsNeverReachTheAdminAs401Or403(int $upstream, string $apiMessage, string $code, string $message, bool $upstreamText): void
+    {
+        $body = '' === $apiMessage ? '{}' : json_encode(['message' => $apiMessage], JSON_THROW_ON_ERROR);
+        $controller = new VideoController($this->client(fn () => new MockResponse($body, ['http_code' => $upstream])));
+
+        $response = $controller->get('5c0a1e6e-7d3b-4c2a-9f10-0000000000de');
+
+        // Sulu's admin treats a 401 as an expired session and would log the editor out.
+        self::assertSame(502, $response->getStatusCode());
+        $decoded = json_decode((string) $response->getContent(), true);
+        self::assertSame($code, $decoded['code']);
+        self::assertSame($message, $decoded['message']);
+        self::assertSame($upstreamText, $decoded['upstream'] ?? false);
+    }
+
+    public function testUnreachableApiIsReportedAs502WithACode(): void
+    {
+        $controller = new LibraryController($this->client(fn () => new MockResponse('', ['error' => 'timeout'])));
+
+        $response = $controller->cget();
+
+        self::assertSame(502, $response->getStatusCode());
+        self::assertSame('unreachable', json_decode((string) $response->getContent(), true)['code']);
+    }
+
+    public function testConnectionTestExplainsARejectedToken(): void
+    {
+        $settings = $this->prophesize(SettingsManager::class);
+        $controller = new \Scale\VideoOptimizerBundle\Controller\Admin\SettingsController(
+            $settings->reveal(),
+            $this->client(fn () => new MockResponse('{}', ['http_code' => 401])),
+        );
+
+        $decoded = json_decode((string) $controller->test()->getContent(), true);
+
+        self::assertFalse($decoded['ok']);
+        self::assertSame('token_rejected', $decoded['code']);
+        self::assertStringContainsString('rejected the API token', $decoded['message']);
+    }
+
     private function client(callable $callback): VideoOptimizerClient
     {
         $settings = $this->prophesize(SettingsManager::class);

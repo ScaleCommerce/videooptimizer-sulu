@@ -282,6 +282,57 @@ class VideoOptimizerClientTest extends TestCase
         self::assertSame(array_fill(0, 3, 'VideoOptimizer-Sulu/1.7.3 (Sulu 3.0.7; PHP 8.3.14; +https://www.example.com)'), $userAgents);
     }
 
+    public function testTransportErrorsBecomeANeutralBadGatewayWithoutTheUpstreamUrl(): void
+    {
+        $httpClient = new MockHttpClient(fn () => new MockResponse('', ['error' => 'Could not resolve host: api.videooptimizer.eu (secret-detail)']));
+
+        try {
+            $this->client($httpClient)->listLibraries();
+            self::fail('Expected an exception.');
+        } catch (VideoOptimizerException $e) {
+            self::assertSame(502, $e->getStatusCode());
+            self::assertSame('unreachable', $e->getApiCode());
+            self::assertStringNotContainsString('secret-detail', $e->getMessage());
+            self::assertStringNotContainsString('videooptimizer.eu', $e->getMessage());
+        }
+    }
+
+    public function testRateLimitedRequestIsRetriedOnceAfterRetryAfter(): void
+    {
+        $calls = 0;
+        $httpClient = new MockHttpClient(function () use (&$calls): MockResponse {
+            ++$calls;
+
+            return 1 === $calls
+                ? new MockResponse('{}', ['http_code' => 429, 'response_headers' => ['Retry-After: 0']])
+                : new MockResponse(json_encode(['data' => []], JSON_THROW_ON_ERROR));
+        });
+
+        self::assertSame([], $this->client($httpClient)->listLibraries());
+        self::assertSame(2, $calls);
+    }
+
+    public function testEmbedLookupDuringRenderingNeverSleepsOnRateLimit(): void
+    {
+        $calls = 0;
+        $httpClient = new MockHttpClient(function () use (&$calls): MockResponse {
+            ++$calls;
+
+            return new MockResponse('{}', ['http_code' => 429, 'response_headers' => ['Retry-After: 5']]);
+        });
+
+        $started = microtime(true);
+        try {
+            $this->client($httpClient)->getEmbed('v1');
+            self::fail('Expected an exception.');
+        } catch (VideoOptimizerException $e) {
+            self::assertSame(429, $e->getStatusCode());
+        }
+
+        self::assertSame(1, $calls);
+        self::assertLessThan(1.0, microtime(true) - $started);
+    }
+
     private function client(MockHttpClient $httpClient): VideoOptimizerClient
     {
         $settings = $this->prophesize(SettingsManager::class);

@@ -155,12 +155,7 @@ class LibraryController
         try {
             return $callback();
         } catch (VideoOptimizerException $e) {
-            $body = ['message' => $e->getMessage()];
-            if (null !== $e->getApiCode()) {
-                $body['code'] = $e->getApiCode();
-            }
-
-            return new JsonResponse($body, $e->getStatusCode() ?: 502);
+            return ApiErrorResponse::create($e);
         }
     }
 }
