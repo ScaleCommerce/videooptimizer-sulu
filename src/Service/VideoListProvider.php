@@ -59,7 +59,8 @@ class VideoListProvider
                     $next = null;
                     $pageCursor = $cursor;
                     for ($call = 0; $call < self::MAX_API_CALLS; ++$call) {
-                        $response = $this->client->listVideosPage($libraryId, $pageCursor, $limit, $tags);
+                        // Ask only for what is still missing: the page never exceeds its size and the next cursor is exact.
+                        $response = $this->client->listVideosPage($libraryId, $pageCursor, $limit - \count($items), $tags);
                         $items = array_merge($items, self::items($response['videos']));
                         $next = $response['has_more'] ? $response['next_cursor'] : null;
                         if (null === $next || \count($items) >= $limit) {

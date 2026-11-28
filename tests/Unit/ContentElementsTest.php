@@ -337,6 +337,31 @@ class ContentElementsTest extends TestCase
         self::assertSame('c3', $page['next'], 'The next link continues after the last page read.');
         self::assertStringContainsString('cursor=c1', $queries[1]);
         self::assertStringContainsString('cursor=c2', $queries[2]);
+        self::assertStringContainsString('limit=3', $queries[0]);
+        self::assertStringContainsString('limit=3', $queries[2], 'Nothing is ready yet, so the full page size is still missing.');
+    }
+
+    public function testListFollowUpCallsAskOnlyForTheMissingVideos(): void
+    {
+        $queries = [];
+        $pages = [
+            ['data' => [['uuid' => self::UUID, 'status' => 'ready'], ['uuid' => self::OTHER, 'status' => 'failed']], 'pagination' => ['next_cursor' => 'c1', 'has_more' => true]],
+            ['data' => [['uuid' => self::OTHER, 'status' => 'processing']], 'pagination' => ['next_cursor' => 'c2', 'has_more' => true]],
+            ['data' => [['uuid' => self::UUID, 'status' => 'ready']], 'pagination' => ['next_cursor' => 'c3', 'has_more' => true]],
+        ];
+        $provider = new VideoListProvider($this->client(function (string $m, string $u) use (&$queries, &$pages): MockResponse {
+            $queries[] = $u;
+
+            return new MockResponse(json_encode(array_shift($pages), \JSON_THROW_ON_ERROR));
+        }), new ArrayAdapter());
+
+        $page = $provider->page(null, null, null, 3);
+
+        self::assertStringContainsString('limit=3', $queries[0]);
+        self::assertStringContainsString('limit=2', $queries[1]);
+        self::assertStringContainsString('limit=2', $queries[2]);
+        self::assertCount(2, $page['items']);
+        self::assertSame('c3', $page['next']);
     }
 
     public function testListProviderStopsReadingOnceThePageIsFull(): void
