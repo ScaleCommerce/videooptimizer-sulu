@@ -13,7 +13,7 @@ jobs:
       matrix:
         php-version: ['8.2', '8.3']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -37,11 +37,11 @@ jobs:
   admin-assets:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Install admin JS build deps
         working-directory: src/Resources/js
@@ -57,11 +57,11 @@ jobs:
   admin-js-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Install admin JS deps
         working-directory: src/Resources/js
