@@ -1,0 +1,13 @@
+{
+    "scene": "Szene %n% · %time%",
+    "scene_title": "%title% · %time%",
+    "scenes": "Szenen",
+    "not_found": "Dieses Video wurde nicht gefunden.",
+    "no_videos": "Keine Videos gefunden.",
+    "unavailable": "Die Videos sind derzeit nicht verfügbar.",
+    "pagination": "Videoseiten",
+    "first": "Erste Seite",
+    "next": "Weitere Videos",
+    "play": "Video abspielen",
+    "temporarily_unavailable": "Dieses Video ist vorübergehend nicht verfügbar."
+}

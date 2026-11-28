@@ -49,6 +49,55 @@ class EmbedPageCacheListenerTest extends TestCase
         self::assertFalse($state->isDegraded(), 'State is reset after the response.');
     }
 
+    public function testPagesWithAVideoListAreCappedAtTheListCacheLifetime(): void
+    {
+        $state = new EmbedRenderState();
+        $state->capLifetime(120);
+        $state->capLifetime(300); // the shortest cap wins
+        $response = $this->response();
+
+        $this->fire($state, $response);
+
+        self::assertSame('120', $response->headers->getCacheControlDirective('s-maxage'));
+        self::assertSame('120', $response->headers->getCacheControlDirective('max-age'));
+        self::assertSame('120', $response->headers->get('X-Reverse-Proxy-TTL'));
+        self::assertNull($state->maxLifetime(), 'State is reset after the response.');
+    }
+
+    public function testADegradedPageWithAListStillGetsTheShorterCap(): void
+    {
+        $state = new EmbedRenderState();
+        $state->capLifetime(120);
+        $state->markDegraded();
+        $response = $this->response();
+
+        $this->fire($state, $response);
+
+        self::assertSame('60', $response->headers->getCacheControlDirective('s-maxage'));
+    }
+
+    public function testTemporaryStatesAreMarkedNoindex(): void
+    {
+        $state = new EmbedRenderState();
+        $state->markNoIndex();
+        $response = $this->response();
+
+        $this->fire($state, $response);
+
+        self::assertSame('noindex', $response->headers->get('X-Robots-Tag'));
+        self::assertSame('86400', $response->headers->getCacheControlDirective('s-maxage'), 'Only the header changes.');
+        self::assertFalse($state->isNoIndex());
+    }
+
+    public function testHealthyPageHasNoRobotsHeader(): void
+    {
+        $response = $this->response();
+
+        $this->fire(new EmbedRenderState(), $response);
+
+        self::assertFalse($response->headers->has('X-Robots-Tag'));
+    }
+
     public function testHealthyPageKeepsItsLifetime(): void
     {
         $response = $this->response();

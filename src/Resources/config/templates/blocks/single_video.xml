@@ -1,0 +1,144 @@
+<?xml version="1.0" ?>
+<template xmlns="http://schemas.sulu.io/template/template"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://schemas.sulu.io/template/template http://schemas.sulu.io/template/template-1.0.xsd">
+    <key>vo_single_video</key>
+    <meta>
+        <title lang="en">[VO] Single video</title>
+        <title lang="de">[VO] Einzelnes Video</title>
+    </meta>
+    <properties>
+        <property name="video" type="video_optimizer">
+            <meta>
+                <title lang="en">Video</title>
+                <title lang="de">Video</title>
+            </meta>
+        </property>
+        <property name="headline" type="text_line">
+            <meta><title lang="en">Headline</title><title lang="de">Überschrift</title></meta>
+        </property>
+        <property name="caption" type="text_area">
+            <meta><title lang="en">Caption</title><title lang="de">Bildunterschrift</title></meta>
+        </property>
+        <property name="presentation" type="single_select">
+            <meta><title lang="en">Presentation</title><title lang="de">Darstellung</title></meta>
+            <params>
+                <param name="default_value" value="facade"/>
+                <param name="values" type="collection">
+                    <param name="facade"><meta><title lang="en">Thumbnail, load player on click</title><title lang="de">Vorschaubild, Klick lädt Player</title></meta></param>
+                    <param name="lightbox"><meta><title lang="en">Thumbnail, open in lightbox</title><title lang="de">Vorschaubild, Lightbox</title></meta></param>
+                    <param name="direct"><meta><title lang="en">Embed player directly</title><title lang="de">Player direkt einbetten</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="player" type="single_select">
+            <meta><title lang="en">Player</title><title lang="de">Player</title></meta>
+            <params>
+                <param name="default_value" value="inherit"/>
+                <param name="values" type="collection">
+                    <param name="inherit"><meta><title lang="en">Global default</title><title lang="de">Globaler Standard</title></meta></param>
+                    <param name="hosted"><meta><title lang="en">Hosted player (iframe)</title><title lang="de">Gehosteter Player (iframe)</title></meta></param>
+                    <param name="native"><meta><title lang="en">Native player</title><title lang="de">Nativer Player</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="autoplay" type="single_select">
+            <meta><title lang="en">Autoplay</title><title lang="de">Autoplay</title></meta>
+            <params>
+                <param name="default_value" value="inherit"/>
+                <param name="values" type="collection">
+                    <param name="inherit"><meta><title lang="en">Theme default</title><title lang="de">Theme-Standard</title></meta></param>
+                    <param name="1"><meta><title lang="en">On</title><title lang="de">An</title></meta></param>
+                    <param name="0"><meta><title lang="en">Off</title><title lang="de">Aus</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="controls" type="single_select">
+            <meta><title lang="en">Player controls</title><title lang="de">Player-Bedienelemente</title></meta>
+            <params>
+                <param name="default_value" value="inherit"/>
+                <param name="values" type="collection">
+                    <param name="inherit"><meta><title lang="en">Theme default</title><title lang="de">Theme-Standard</title></meta></param>
+                    <param name="1"><meta><title lang="en">On</title><title lang="de">An</title></meta></param>
+                    <param name="0"><meta><title lang="en">Off</title><title lang="de">Aus</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="loop" type="single_select">
+            <meta><title lang="en">Loop</title><title lang="de">Endlosschleife</title></meta>
+            <params>
+                <param name="default_value" value="inherit"/>
+                <param name="values" type="collection">
+                    <param name="inherit"><meta><title lang="en">Theme default</title><title lang="de">Theme-Standard</title></meta></param>
+                    <param name="1"><meta><title lang="en">On</title><title lang="de">An</title></meta></param>
+                    <param name="0"><meta><title lang="en">Off</title><title lang="de">Aus</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="muted" type="single_select">
+            <meta><title lang="en">Muted</title><title lang="de">Stummgeschaltet</title></meta>
+            <params>
+                <param name="default_value" value="inherit"/>
+                <param name="values" type="collection">
+                    <param name="inherit"><meta><title lang="en">Theme default</title><title lang="de">Theme-Standard</title></meta></param>
+                    <param name="1"><meta><title lang="en">On</title><title lang="de">An</title></meta></param>
+                    <param name="0"><meta><title lang="en">Off</title><title lang="de">Aus</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="format" type="single_select">
+            <meta><title lang="en">Format</title><title lang="de">Format</title><info_text lang="en">Crops the video to this ratio (it fills the area). The hosted player crops centered; the focal point applies to the native player and the poster only.</info_text><info_text lang="de">Beschneidet das Video auf dieses Verhältnis (es füllt die Fläche). Der gehostete Player beschneidet zentriert; der Fokuspunkt gilt nur für den nativen Player und das Poster.</info_text></meta>
+            <params>
+                <param name="default_value" value="original"/>
+                <param name="values" type="collection">
+                    <param name="original"><meta><title lang="en">Original (video ratio)</title><title lang="de">Original (Video-Seitenverhältnis)</title></meta></param>
+                    <param name="16_9"><meta><title lang="en">16:9</title><title lang="de">16:9</title></meta></param>
+                    <param name="9_16"><meta><title lang="en">9:16 (portrait)</title><title lang="de">9:16 (Hochformat)</title></meta></param>
+                    <param name="1_1"><meta><title lang="en">1:1 (square)</title><title lang="de">1:1 (quadratisch)</title></meta></param>
+                    <param name="4_5"><meta><title lang="en">4:5</title><title lang="de">4:5</title></meta></param>
+                    <param name="21_9"><meta><title lang="en">21:9 (banner)</title><title lang="de">21:9 (Banner)</title></meta></param>
+                </param>
+            </params>
+        </property>
+        <property name="focusX" type="number">
+            <meta>
+                <title lang="en">Focal point X (%)</title>
+                <title lang="de">Fokuspunkt X (%)</title>
+                <info_text lang="en">0 = left, 100 = right (default 50). Not supported by the hosted player.</info_text>
+                <info_text lang="de">0 = links, 100 = rechts (Standard 50). Vom gehosteten Player nicht unterstützt.</info_text>
+            </meta>
+            <params>
+                <param name="min" value="0"/>
+                <param name="max" value="100"/>
+            </params>
+        </property>
+        <property name="focusY" type="number">
+            <meta>
+                <title lang="en">Focal point Y (%)</title>
+                <title lang="de">Fokuspunkt Y (%)</title>
+                <info_text lang="en">0 = top, 100 = bottom (default 50). Not supported by the hosted player.</info_text>
+                <info_text lang="de">0 = oben, 100 = unten (Standard 50). Vom gehosteten Player nicht unterstützt.</info_text>
+            </meta>
+            <params>
+                <param name="min" value="0"/>
+                <param name="max" value="100"/>
+            </params>
+        </property>
+        <property name="floating" type="checkbox">
+            <meta>
+                <title lang="en">Floating mini player</title>
+                <title lang="de">Schwebender Mini-Player</title>
+                <info_text lang="en">Once the visitor started the video and scrolls past it, it stays pinned bottom right as a small player (viewports from 600px, direct presentation only) with a close button.</info_text>
+                <info_text lang="de">Hat der Besucher das Video gestartet und scrollt daran vorbei, bleibt es als kleiner Player unten rechts stehen (ab 600px Breite, nur bei direkter Einbettung) mit Schließen-Button.</info_text>
+            </meta>
+        </property>
+        <property name="priority" type="checkbox">
+            <meta>
+                <title lang="en">Prioritize loading (above the fold)</title>
+                <title lang="de">Bevorzugt laden (above the fold)</title>
+                <info_text lang="en">Enable for the topmost/LCP block: loads its poster eagerly and skips the fade-in.</info_text>
+                <info_text lang="de">Für den obersten/LCP-Block aktivieren: lädt das Poster sofort und überspringt die Einblend-Animation.</info_text>
+            </meta>
+        </property>
+    </properties>
+</template>

@@ -105,6 +105,7 @@
     "scale_videooptimizer.encoding_quality_performance": "Performance (default)",
     "scale_videooptimizer.encoding_quality_quality": "Quality (sharper)",
     "scale_videooptimizer.encoding_quality_help": "Performance: compact files, fast start. Quality: visibly sharper, about 2.5–3× the CDN traffic.",
+    "scale_videooptimizer.encoding_quality_apply_note": "A changed quality mode only applies to existing videos after a reprocess with \"Re-encode all qualities\"; finished renditions stay as they are otherwise.",
     "scale_videooptimizer.quality_reprocess_hint": "After saving, run \"Reprocess\" with \"Re-encode all qualities\" so existing videos use the new quality mode.",
     "scale_videooptimizer.reprocess_force": "Re-encode all qualities (also videos that are already processed)",
     "scale_videooptimizer.poll_timeout": "Timed out while waiting for VideoOptimizer. Reload the list and check the status.",

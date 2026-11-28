@@ -2,6 +2,33 @@
 
 All notable changes to this package. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [SemVer](https://semver.org/).
 
+## [2.2.0] - 2026-11-28
+
+### Upgrade
+- Republish the bundle assets (`assets:install`) for the new `vo-blocks.js`/`vo-blocks.css`; add `<type ref="vo_single_video"/>`, `vo_video_chapters`, `vo_video_list` and `vo_video_detail` to your own page templates to offer the new blocks (the showcase template has them); rebuild the Sulu admin assets and hard-reload the admin for the encoding quality note ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25), [#31](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/31))
+- `duration` returned by `video_optimizer_sources()` and `getSources()` is a float now (e.g. `12.9`, was cut to `12`): custom templates that compare it with an int or print it must cast it ([#26](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/26))
+- Embed cache key is `vo_embed_v4_<uuid>` (it carries the title now; `duration` is a float, scene times use it unrounded): cached embeds are looked up again once after the update ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))
+- Native autoplay-on-scroll now pauses off screen and ignores Save-Data (see Changed); the video list block stores its detail page as a page selection (a plain URL saved by an earlier draft still works), card links go through `sulu_content_path`; pages with a video list get a reverse-proxy lifetime of at most 120 s; the list has no `player` option and always opens the hosted embed in the lightbox ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))
+- The lightbox shows a native player letterboxed (`object-fit: contain`) instead of cropped; custom CSS for `.vo-lightbox .vo-native` is unaffected ([#27](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/27))
+
+### Changed
+- Native players with autoplay on pause when they leave the viewport (half visible starts them) unless the visitor took over, a visitor's pause sticks, and Save-Data/reduced-motion visitors get no autoplay (hls.js is attached on the first play); before they kept playing once started ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))
+
+### Added
+- Frontend texts are the translation domain `scale_video_optimizer` (en, de, overridable); `video_optimizer_t` takes `%name%` placeholders ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))
+- Blocks `vo_single_video`, `vo_video_list` (library, tags, cursor paging, link to a detail page or lightbox) and `vo_video_detail` (`?vo_video=<uuid>` with default video, neutral not-found); `VideoListProvider` (2 min cache) and Twig functions `video_optimizer_videos|uuid|title|detail_url|duration|t` ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))
+- Block `vo_video_chapters`: 3 to 10 scene previews (thumbnails 0..9, start `floor(duration / 11 * (i + 1))`) that seek the native player or restart the hosted embed with `t`; Twig function `video_optimizer_scenes()` ([#26](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/26))
+- Format (original, 16:9, 9:16, 1:1, 4:5, 21:9) and focal point options on `vo_single_video` and `vo_media_split`; the hosted embed URL gets `fit=cover`; Twig functions `video_optimizer_format()` ([#27](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/27))
+- Floating mini player option on `vo_single_video` and `vo_video_chapters`: a direct player the visitor started or took over (a play, volume change or seek the script did not cause, also on the native control bar; a scene click) stays pinned bottom right when scrolled out of view, with close button, Escape, focus return and a placeholder; off below 600px, unpinned by a lightbox ([#28](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/28))
+- Permanent note next to the encoding quality field: a changed quality only applies to existing videos after a reprocess with "Re-encode all qualities" ([#31](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/31))
+
+### Security
+- Video detail verifies a uuid from the URL with the site's token (404 for videos of other organizations), optionally against a library, before rendering anything about it; positive results are cached for an hour, negative ones for five minutes, uncached lookups are limited to 30 per minute site-wide; an exhausted budget, an outage and a video that is not ready yet say "temporarily unavailable" (page cache at most 60 s, tagged with the video so `video.ready` refreshes it); temporary states send `X-Robots-Tag: noindex`; listed ready videos are remembered as verified (a list link costs no lookup); verdicts are scoped to the token and dropped by webhooks and admin changes of the video; during an outage it says "temporarily unavailable" ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))
+
+### Fixed
+- Video list reads up to three API pages to fill a page with ready videos; follow-up calls request only the missing number, so a page never exceeds its size and the next cursor is exact ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))
+- Reprocess answers 400 when `force` is present but not a boolean instead of silently treating it as false ([#30](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/30))
+
 ## [2.1.0] - 2026-11-28
 
 ### Upgrade

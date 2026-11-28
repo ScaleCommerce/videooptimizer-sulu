@@ -399,7 +399,7 @@ Subtitles are rendered as `<track kind srclang label src [default]>`; the `<vide
 
 ## 🧱 Content blocks
 
-Beyond the single field, the bundle ships four ready-to-use **Sulu content blocks** for richer
+Beyond the single field, the bundle ships eight ready-to-use **Sulu content blocks** for richer
 video-driven pages — each delivered as an XML template fragment plus a matching Twig view, so there's
 nothing to copy-paste.
 
@@ -409,6 +409,32 @@ nothing to copy-paste.
 | `vo_background_hero` | Full-bleed native `<video>` HLS background        | `blocks/vo_background_hero.html.twig`  |
 | `vo_spotlight`       | Poster that opens the video in a lightbox         | `blocks/vo_spotlight.html.twig`        |
 | `vo_video_grid`      | Repeatable grid of videos, each opening a lightbox | `blocks/vo_video_grid.html.twig`       |
+| `vo_single_video`    | One video with headline and caption; format, focal point, mini player | `blocks/vo_single_video.html.twig` |
+| `vo_video_chapters`  | Video with a row of scene previews that seek the player | `blocks/vo_video_chapters.html.twig` |
+| `vo_video_list`      | Paged cards of the videos of a library            | `blocks/vo_video_list.html.twig`       |
+| `vo_video_detail`    | The video named by `?vo_video=<uuid>` in the URL   | `blocks/vo_video_detail.html.twig`     |
+
+### Video list and video detail
+
+`vo_video_list` shows the finished videos of one library (**Library ID**, empty = all libraries; optional **Tags**, comma-separated) as cards with poster, title and duration, 12 per page (3 to 24; videos that are still processing are skipped and up to three API pages are read per render, each asking only for the videos still missing, so a page is never longer than its size, the next link is exact and the page is not empty while older ready videos exist). **More videos** and **First page** links page through the API cursor with `?vo_cursor=`. **Detail page** (Sulu's page selection) is the page that holds a `vo_video_detail` block: cards link to `<page>?vo_video=<uuid>` (a plain URL stored by an earlier draft still works); without it a card opens the video in the lightbox. The library is entered as a UUID (shown in the Libraries view of the VideoOptimizer admin): there is no library picker, an invalid value shows no videos instead of every library. Each list page is cached for two minutes and the page's HTTP cache lifetime (`max-age`, `s-maxage`, `X-Reverse-Proxy-TTL`) is capped at 120 s, so new and processed videos show up within two minutes. A card uses the poster of the list item (a srcset only when the video's embed data is already cached), so rendering a list makes no per-video API call; without a detail page it opens the hosted embed in the lightbox (there is no player option on the list). The cards link with Sulu's `sulu_content_path` (locale prefix of your URL scheme), the pager keeps the base path and other query parameters, and `vo_cursor` must look like an API cursor (letters, digits and `_=+/.:-`, up to 200 characters), otherwise the first page is shown. Texts ("More videos", "Scene n", "not found" …) are the Symfony translation domain `scale_video_optimizer` (en, de): override keys in your project's `translations/scale_video_optimizer.<locale>.yaml`. A page with several list blocks shares one `vo_cursor`.
+
+`vo_video_detail` shows the video from `?vo_video=<uuid>` (title, player, JSON-LD) or its **Default video** when the URL names none. A uuid from the URL is checked with the site's API token first (`GET /videos/{uuid}`: videos of other organizations and unknown ones answer 404; the result is cached for an hour, a negative one for five minutes; at most 30 new uuids per minute are looked up site-wide, further ones are "not found" without an API call) and, when the block's optional **Library ID** is set, against that library; only a ready video of your organization is shown, and nothing about any other one (title, poster, JSON-LD). During an API outage the block says the video is temporarily unavailable. An invalid or unknown uuid shows a neutral "not found" text (the page itself still answers 200; the block cannot change the status code or the page title, set those in your own template if you need them).
+
+### Chapters and scenes
+
+`vo_video_chapters` shows the player directly with 3 to 10 scene previews below it (default 5, spread evenly over the video; scroll horizontally on small screens). The previews are the video's auto-generated thumbnails (`GET /videos/{uuid}/thumbnails/{0..9}`, public); a scene starts at `floor(duration / 11 * (index + 1))` seconds, so the row is left out while the duration is unknown. **Scene titles** (one per line) replace "Scene n". A click seeks the native player (the source is attached on the first click, nothing loads before) or restarts the hosted embed with `t=<seconds>&autoplay=1`, and marks the scene with `aria-current`. Autoplay defaults to off for new blocks.
+
+### Play while scrolling
+
+A native player with autoplay on (direct presentation) starts muted once it is at least half visible and pauses when it leaves the viewport. A pause by the visitor sticks until they press play again; with `prefers-reduced-motion` or Save-Data it does not autoplay at all: it fetches nothing but the poster and attaches the source (hls.js) on the first play. The hosted embed cannot be paused from outside and keeps playing.
+
+### Format and focal point
+
+`vo_single_video` and `vo_media_split` have a **Format** option: original (video ratio), 16:9, 9:16, 1:1, 4:5 or 21:9. The video fills the area (`object-fit: cover` for the native player and the poster, `fit=cover` for the hosted embed); 9:16 and 4:5 are at most 420px wide and centred. **Focal point X/Y** (percent, default 50) sets `object-position` for the native player and the poster; the hosted embed always crops centred. The lightbox always shows the whole video.
+
+### Floating mini player
+
+`vo_single_video` and `vo_video_chapters` have a **Floating mini player** option (direct presentation only). Once the video plays and scrolls out of view, it stays pinned bottom right (320px wide, 16:9 or its format) with a close button; a placeholder keeps the page height. Only CSS classes toggle, the `<video>`/`<iframe>` is never moved. Closing pauses a native player and reloads a hosted embed without autoplay; Escape unpins, scrolling back unpins. Not active below 600px viewport width or while the lightbox is open. It pins only after the visitor started or took over the video: any play, volume change or seek that the script did not cause itself counts (also on the browser's native control bar), as does a scene click; autoplay and play-while-scrolling alone never pin. A player the visitor took over is no longer paused by play-while-scrolling. A hosted embed counts after a click into it or a scene click. Opening the lightbox unpins (and pauses a native player), and closing moves the focus back to the player.
 
 ### Fastest path: the shipped showcase template
 

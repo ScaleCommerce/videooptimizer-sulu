@@ -1,0 +1,38 @@
+{#
+    Shows the video whose uuid is in the URL (?vo_video=<uuid>, as linked by the video list block), or the
+    block's default video when the URL names none. An invalid or unknown uuid renders a neutral "not found".
+#}
+{% set locale = app.request.locale|default('en') %}
+{# `query.all` instead of `query.get`: a non-scalar value (?vo_video[]=x) must not throw a 400. #}
+{% set requested = app.request.query.all.vo_video|default(null) %}
+{# A video named in the URL is verified with the site's token before anything about it is rendered; the
+   block's default video is the editor's own choice. #}
+{% if requested is null or requested == '' %}
+    {% set uuid = block.video.uuid|default(null) %}
+    {% set state = uuid ? 'ok' : 'missing' %}
+{% else %}
+    {% set uuid = requested is iterable ? null : video_optimizer_uuid(requested) %}
+    {% set state = uuid ? video_optimizer_verify(uuid, block.libraryId|default(null)) : 'missing' %}
+{% endif %}
+{% set title = state == 'ok' ? video_optimizer_title(uuid) : null %}
+{# The detail video is the main content (LCP): no fade-in. #}
+<section class="vo-block vo-detail">
+    <div class="vo-container vo-detail__inner">
+        {% if state == 'ok' %}
+            {% set video = {uuid: uuid, title: title|default(block.video.uuid|default('') == uuid ? block.video.title|default('') : ''), posterUrl: block.video.uuid|default('') == uuid ? block.video.posterUrl|default(null) : null} %}
+            {% if video.title %}<h2>{{ video.title }}</h2>{% endif %}
+            {% include '@ScaleVideoOptimizer/blocks/_video.html.twig' with {
+                video: video,
+                presentation: block.presentation|default('direct'),
+                player: video_optimizer_player(block),
+                playerOpts: video_optimizer_player_options(block),
+                label: video.title,
+                sizes: '(min-width: 1000px) 960px, 100vw',
+                priority: true
+            } only %}
+        {% else %}
+            <!--vo-assets-->
+            <p class="vo-detail__missing" role="status">{{ video_optimizer_t(state == 'unavailable' ? 'temporarily_unavailable' : 'not_found', locale) }}</p>
+        {% endif %}
+    </div>
+</section>

@@ -12,6 +12,35 @@
         return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     }
 
+    // Playback events the script causes itself (its own play(), the source attach with its start seek, autoplay
+    // at load) are marked as expected for a short time; any other play / volumechange / seeking event is the
+    // visitor's, whatever control they used. The native control bar sends no events into the page, so this is
+    // the only reliable way to tell the two apart (the mini player pins only for the visitor's).
+    function expectEvents(video, names, ms) {
+        var until = Date.now() + ms;
+        video.voExpected = video.voExpected || {};
+        names.forEach(function (name) { video.voExpected[name] = until; });
+    }
+
+    function clearExpected(video, name) {
+        if (video.voExpected) {
+            delete video.voExpected[name];
+        }
+    }
+
+    // True when the event was announced; an `Infinity` mark (autoplay at load) is used up by the first event.
+    function takeExpected(video, name) {
+        var until = video.voExpected && video.voExpected[name];
+        if (!until || Date.now() >= until) {
+            return false;
+        }
+        if (until === Infinity) {
+            delete video.voExpected[name];
+        }
+
+        return true;
+    }
+
     // Calls fn(element) once each element comes near the viewport (or right away without
     // IntersectionObserver). rootMargin starts slightly early so playback is ready in time.
     function whenNearViewport(elements, fn) {
@@ -56,14 +85,22 @@
         var hls = null;
         var fellBack = false;
         video.setAttribute('data-vo-wired', '');
+        // Attaching a source can seek (start position) and, with autoplay, starts playback. When the attach is
+        // the visitor's own play (opts.visitor), that play event is theirs and must not be announced away.
+        expectEvents(video, opts && opts.visitor ? ['seeking', 'volumechange'] : ['play', 'seeking', 'volumechange'], 4000);
 
         function play() {
             // A pause pressed before the source was ready (data-vo-user-paused) must stay a pause.
             if (wantPlay && !video.hasAttribute('data-vo-user-paused')) {
+                if (!(opts && opts.visitor)) {
+                    expectEvents(video, ['play'], 1500);
+                }
                 var result = video.play();
                 if (result && result.catch) {
                     result.catch(function () {
                         // Autoplay-policy rejections are expected; tell the playback toggle it is paused.
+                        // Nothing started, so the visitor's first play must not be taken for ours.
+                        clearExpected(video, 'play');
                         video.dispatchEvent(new Event('vo-play-blocked'));
                     });
                 }
@@ -150,8 +187,8 @@
     }
 
     var LABELS = {
-        en: {pause: 'Pause background video', play: 'Play background video', close: 'Close', dialog: 'Video player'},
-        de: {pause: 'Hintergrundvideo anhalten', play: 'Hintergrundvideo abspielen', close: 'Schließen', dialog: 'Videoplayer'}
+        en: {pause: 'Pause background video', play: 'Play background video', close: 'Close', dialog: 'Video player', mini: 'Close mini player'},
+        de: {pause: 'Hintergrundvideo anhalten', play: 'Hintergrundvideo abspielen', close: 'Schließen', dialog: 'Videoplayer', mini: 'Mini-Player schließen'}
     };
 
     // Label in the page language (html lang, default en); `el` may override with data-vo-label-<key>.
@@ -232,7 +269,7 @@
                     result.catch(function () { sync(true); });
                 }
             } else {
-                attachHls(video, baseUrl, {play: true});
+                attachHls(video, baseUrl, {play: true, visitor: true});
             }
         });
     }
@@ -306,20 +343,75 @@
         });
     }
 
-    // Direct + non-priority native <video>: deferred (preload="none", no autoplay) and visible
-    // from the start, so — mirroring initAutoload() for the hosted/iframe player — wire its HLS
-    // master and play() it once it scrolls into view. Respects prefers-reduced-motion exactly like
-    // initBackgroundVideos(): when set, the <video> is left unwired, showing only its poster and
-    // native controls, never auto-playing.
+    // Visitors who asked to save data do not get autoplaying video.
+    function saveData() {
+        var connection = navigator.connection;
+        return !!(connection && connection.saveData);
+    }
+
+    // Direct + non-priority native <video> with autoplay on: deferred (preload="none") and visible from the
+    // start. It plays once it is at least half visible and pauses when it leaves the viewport again; the source
+    // is attached on the first play only. A pause by the visitor sticks (data-vo-user-paused) until they press
+    // play again. With prefers-reduced-motion or Save-Data the <video> is left unwired, showing only its poster
+    // and controls.
     function initNativeAutoload(baseUrl) {
         var videos = document.querySelectorAll('.vo-native[data-vo-native-autoload]');
-        if (!videos.length || prefersReducedMotion()) {
+        if (!videos.length) {
+            return;
+        }
+        if (prefersReducedMotion() || saveData()) {
+            // No autoplay: behave like a player with autoplay off. Nothing is fetched but the poster; the source
+            // (hls.js where needed, never the MP4 alone) is attached on the visitor's first play.
+            videos.forEach(function (video) {
+                video.removeAttribute('data-vo-native-autoload');
+                video.setAttribute('data-vo-native-onplay', '');
+            });
             return;
         }
 
-        whenNearViewport(videos, function (video) {
+        function start(video) {
+            if (video.hasAttribute('data-vo-user-paused')) {
+                return;
+            }
+            if (video.hasAttribute('data-vo-wired')) {
+                expectEvents(video, ['play'], 1500);
+                var result = video.play();
+                if (result && result.catch) {
+                    result.catch(function () { clearExpected(video, 'play'); });
+                }
+                return;
+            }
             video.removeAttribute('data-vo-native-autoload');
             attachHls(video, baseUrl, {play: true});
+        }
+
+        videos.forEach(function (video) {
+            var pausedByScroll = false;
+            video.addEventListener('pause', function () {
+                if (pausedByScroll) {
+                    pausedByScroll = false;
+                } else if (!video.ended) {
+                    video.setAttribute('data-vo-user-paused', '');
+                }
+            });
+            video.addEventListener('play', function () {
+                video.removeAttribute('data-vo-user-paused');
+            });
+
+            if (!('IntersectionObserver' in window)) {
+                start(video);
+                return;
+            }
+            new IntersectionObserver(function (entries) {
+                var entry = entries[entries.length - 1];
+                if (entry.intersectionRatio >= 0.5) {
+                    start(video);
+                } else if (!video.paused && video.hasAttribute('data-vo-wired') && !video.hasAttribute('data-vo-visitor-started')) {
+                    // A visitor who took over (unmute, seek, pause then play) keeps it playing: the mini player follows.
+                    pausedByScroll = true;
+                    video.pause();
+                }
+            }, {threshold: [0, 0.5]}).observe(video);
         });
     }
 
@@ -330,7 +422,10 @@
         document.querySelectorAll('.vo-native[data-vo-native-onplay]').forEach(function (video) {
             video.addEventListener('play', function () {
                 video.removeAttribute('data-vo-native-onplay');
-                attachHls(video, baseUrl, {play: true});
+                if (video.hasAttribute('data-vo-wired')) {
+                    return; // a chapter button already attached the source
+                }
+                attachHls(video, baseUrl, {play: true, visitor: true});
             }, {once: true});
         });
     }
@@ -343,7 +438,7 @@
             return null;
         }
         // Plays once the source is attached (inside the click for native HLS / MP4).
-        attachHls(video, baseUrl, {play: true});
+        attachHls(video, baseUrl, {play: true, visitor: true});
         video.removeAttribute('data-hls'); // avoid re-wiring hls.js if revealed again
         return video;
     }
@@ -390,6 +485,7 @@
         }
 
         function open(trigger) {
+            document.dispatchEvent(new CustomEvent('vo-lightbox-open')); // a pinned mini player gives way
             lastFocus = document.activeElement;
             nativeHolder = null;
 
@@ -402,7 +498,7 @@
             if (video) {
                 slot.replaceChildren(video); // moves the <video> node into the lightbox slot
                 nativeHolder = holder;
-                attachHls(video, baseUrl, {play: true});
+                attachHls(video, baseUrl, {play: true, visitor: true});
                 video.removeAttribute('data-hls');
             } else {
                 slot.replaceChildren(embedIframe(trigger.getAttribute('data-vo-lightbox')));
@@ -537,6 +633,276 @@
         });
     }
 
+    // Seeks a native player to `time` and plays it. A source that is not attached yet (deferred player)
+    // is attached first; the position is applied as soon as the metadata is known.
+    function seekNative(video, time, baseUrl) {
+        function seek() {
+            video.currentTime = time;
+        }
+        if (video.readyState >= 1) {
+            seek();
+        } else {
+            video.addEventListener('loadedmetadata', seek, {once: true});
+        }
+        if (video.hasAttribute('data-vo-wired') || !video.hasAttribute('data-hls')) {
+            video.removeAttribute('data-vo-user-paused');
+            var result = video.play();
+            if (result && result.catch) {
+                result.catch(function () {});
+            }
+            return;
+        }
+        video.removeAttribute('data-vo-native-autoload');
+        video.removeAttribute('data-vo-native-onplay');
+        attachHls(video, baseUrl, {play: true, visitor: true});
+    }
+
+    // Starts the hosted embed at `time`: the iframe is created when the autoload has not happened yet.
+    function seekHosted(frame, embedUrl, time) {
+        var url;
+        try {
+            url = new URL(embedUrl, window.location.href);
+        } catch (e) {
+            return;
+        }
+        url.searchParams.set('t', String(time));
+        url.searchParams.set('autoplay', '1');
+        var iframe = frame.querySelector('iframe');
+        if (!iframe) {
+            frame.removeAttribute('data-vo-autoload');
+            iframe = embedIframe(url.toString());
+            frame.replaceChildren(iframe);
+            return;
+        }
+        iframe.src = url.toString();
+    }
+
+    // Chapters and scenes: a click on a scene preview starts the video there and marks the scene.
+    function initChapters(baseUrl) {
+        document.querySelectorAll('[data-vo-chapters]').forEach(function (root) {
+            var frame = root.querySelector('.vo-frame');
+            var buttons = Array.prototype.slice.call(root.querySelectorAll('[data-vo-start]'));
+            if (!frame || !buttons.length) {
+                return;
+            }
+            var embedUrl = root.getAttribute('data-vo-chapters-embed');
+
+            function mark(active) {
+                buttons.forEach(function (button) {
+                    if (button === active) {
+                        button.setAttribute('aria-current', 'true');
+                    } else {
+                        button.removeAttribute('aria-current');
+                    }
+                });
+            }
+
+            function startOf(button) {
+                return Number(button.getAttribute('data-vo-start')) || 0;
+            }
+
+            buttons.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    frame.dispatchEvent(new CustomEvent('vo-visitor-started')); // lets the mini player follow
+                    var video = frame.querySelector('video');
+                    if (video) {
+                        seekNative(video, startOf(button), baseUrl);
+                    } else if (embedUrl) {
+                        seekHosted(frame, embedUrl, startOf(button));
+                    }
+                    mark(button);
+                });
+            });
+
+            // The native player reports its position, so the active scene follows playback; the hosted embed cannot.
+            var native = frame.querySelector('video');
+            if (native) {
+                native.addEventListener('timeupdate', function () {
+                    var active = null;
+                    buttons.forEach(function (button) {
+                        if (startOf(button) <= native.currentTime) {
+                            active = button;
+                        }
+                    });
+                    mark(active);
+                });
+            }
+        });
+    }
+
+    // Floating mini player: a started player that scrolls out of view stays pinned bottom right. Only CSS
+    // classes are toggled, the <video>/<iframe> never moves in the DOM (an iframe would reload). The wrapper
+    // keeps the original height so the page does not jump.
+    function initFloating() {
+        var wraps = document.querySelectorAll('[data-vo-float]');
+        if (!wraps.length || !('IntersectionObserver' in window)) {
+            return;
+        }
+        var wide = window.matchMedia ? window.matchMedia('(min-width: 600px)') : {matches: true};
+
+        wraps.forEach(function (wrap) {
+            var frame = wrap.querySelector('.vo-frame');
+            if (!frame) {
+                return;
+            }
+            var pinned = false;
+            var dismissed = false; // closed by the visitor: stays unpinned until the player was in view again
+            var visitorStarted = false; // the visitor started or took over playback (never autoplay alone)
+            var close = document.createElement('button');
+            close.type = 'button';
+            close.className = 'vo-float__close';
+            close.innerHTML = '&times;';
+            close.setAttribute('aria-label', label('mini', wrap));
+
+            function visitorTookOver() {
+                visitorStarted = true;
+                var video = frame.querySelector('video');
+                if (video) {
+                    // Tells play-while-scrolling to leave this player alone from now on.
+                    video.setAttribute('data-vo-visitor-started', '');
+                }
+            }
+
+            var nativeVideo = frame.querySelector('video');
+            if (nativeVideo) {
+                if (nativeVideo.autoplay && nativeVideo.paused) {
+                    expectEvents(nativeVideo, ['play'], Infinity); // autoplay at load is not the visitor
+                }
+                ['play', 'volumechange', 'seeking'].forEach(function (name) {
+                    nativeVideo.addEventListener(name, function () {
+                        // A loop restart seeks to the start by itself.
+                        if (!takeExpected(nativeVideo, name) && !('seeking' === name && nativeVideo.loop && nativeVideo.currentTime < 1)) {
+                            visitorTookOver();
+                        }
+                    });
+                });
+            }
+            // A scene click of the chapters block, also on the hosted embed.
+            frame.addEventListener('vo-visitor-started', visitorTookOver);
+            // A click into a cross-origin iframe shows up as the window losing focus to it.
+            window.addEventListener('blur', function () {
+                if (document.activeElement && document.activeElement.tagName === 'IFRAME' && frame.contains(document.activeElement)) {
+                    visitorTookOver();
+                }
+            });
+
+            function started() {
+                if (!visitorStarted) {
+                    return false;
+                }
+                var video = frame.querySelector('video');
+                if (video) {
+                    return !video.paused && !video.ended;
+                }
+
+                return !!frame.querySelector('iframe');
+            }
+
+            function px(value) {
+                return parseFloat(value) || 0;
+            }
+
+            function pin() {
+                var margins = window.getComputedStyle ? window.getComputedStyle(frame) : {};
+                var height = frame.offsetHeight + px(margins.marginTop) + px(margins.marginBottom);
+                if (height > 0) {
+                    wrap.style.height = height + 'px';
+                }
+                // The autoload replaces the frame's children, so the button is added once the player exists.
+                if (close.parentNode !== frame) {
+                    frame.appendChild(close);
+                }
+                wrap.classList.add('vo-float--pinned');
+                frame.classList.add('vo-frame--pinned');
+                pinned = true;
+            }
+
+            function unpin() {
+                wrap.classList.remove('vo-float--pinned');
+                frame.classList.remove('vo-frame--pinned');
+                wrap.style.height = '';
+                pinned = false;
+            }
+
+            // The close button disappears with the mini player: focus goes to the player, never to the body.
+            function focusPlayer() {
+                var target = frame.querySelector('video, iframe');
+                if (!target) {
+                    frame.setAttribute('tabindex', '-1');
+                    target = frame;
+                }
+                target.focus({preventScroll: true});
+            }
+
+            function dismiss(stop) {
+                dismissed = true;
+                visitorStarted = false;
+                var video = frame.querySelector('video');
+                if (video) {
+                    video.removeAttribute('data-vo-visitor-started');
+                }
+                unpin();
+                if (!stop) {
+                    return;
+                }
+                if (video) {
+                    video.pause();
+                    return;
+                }
+                var iframe = frame.querySelector('iframe');
+                if (iframe) {
+                    // Reloading without autoplay stops the hosted player; it stays unpinned.
+                    try {
+                        var url = new URL(iframe.getAttribute('src') || '', window.location.href);
+                        url.searchParams.set('autoplay', '0');
+                        url.searchParams.delete('t');
+                        iframe.src = url.toString();
+                    } catch (e) {
+                        iframe.removeAttribute('src');
+                    }
+                }
+            }
+
+            close.addEventListener('click', function () {
+                dismiss(true);
+                focusPlayer();
+            });
+            frame.addEventListener('keydown', function (event) {
+                if (pinned && 'Escape' === event.key) {
+                    dismiss(false);
+                    focusPlayer();
+                }
+            });
+            document.addEventListener('vo-lightbox-open', function () {
+                if (pinned) {
+                    // Stops a native player and reloads a hosted one without autoplay: no double audio.
+                    dismiss(true);
+                }
+            });
+            if (wide.addEventListener) {
+                wide.addEventListener('change', function () {
+                    if (!wide.matches && pinned) {
+                        unpin();
+                    }
+                });
+            }
+
+            new IntersectionObserver(function (entries) {
+                var entry = entries[entries.length - 1];
+                if (entry.intersectionRatio >= 0.01) {
+                    dismissed = false;
+                    if (pinned) {
+                        unpin();
+                    }
+                    return;
+                }
+                if (!pinned && !dismissed && wide.matches && !document.querySelector('dialog.vo-lightbox[open]') && started()) {
+                    pin();
+                }
+            }, {threshold: [0, 0.01]}).observe(wrap);
+        });
+    }
+
     function initReveal() {
         var els = document.querySelectorAll('.vo-reveal');
         if (!els.length || !('IntersectionObserver' in window) || prefersReducedMotion()) {
@@ -565,6 +931,8 @@
         initLightbox(baseUrl);
         initFacades(baseUrl);
         initAutoload();
+        initChapters(baseUrl);
+        initFloating();
         initReveal();
     }
 

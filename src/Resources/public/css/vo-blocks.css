@@ -106,6 +106,17 @@
     margin-inline: auto;
 }
 
+/* "Format" option: the surface has a fixed ratio and the video / poster fill it; tall ones get a maximum width. */
+.vo-frame--tall {
+    max-width: min(100%, 420px);
+    margin-inline: auto;
+}
+
+.vo-native,
+.vo-poster__img {
+    object-position: var(--vo-focus, 50% 50%);
+}
+
 /* Facade poster button that fills the frame until clicked (then replaced by the iframe). */
 .vo-facade {
     position: absolute;
@@ -187,6 +198,12 @@ dialog.vo-lightbox::backdrop {
     border-radius: var(--vo-radius);
     overflow: hidden;
     background: #000;
+}
+
+/* The lightbox shows the whole video, whatever format the page surface crops it to. */
+.vo-lightbox__inner .vo-native {
+    object-fit: contain;
+    object-position: center;
 }
 
 .vo-lightbox__inner iframe {
@@ -373,4 +390,232 @@ dialog.vo-lightbox::backdrop {
 .vo-grid__item figcaption {
     margin-top: 0.75rem;
     font-weight: 600;
+}
+
+/* Single video / video detail */
+.vo-single__inner,
+.vo-detail__inner {
+    max-width: 60rem;
+    margin-inline: auto;
+}
+
+.vo-single .vo-frame,
+.vo-detail .vo-frame {
+    margin-top: 1.5rem;
+}
+
+.vo-single__caption {
+    margin-top: 1rem;
+    color: var(--vo-muted);
+    font-size: 0.95rem;
+}
+
+.vo-detail__missing,
+.vo-list__empty {
+    padding: 2rem 0;
+    color: var(--vo-muted);
+}
+
+/* Video list: one tab stop per card, the whole card is clickable */
+.vo-list__items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--vo-gap);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.vo-list__item {
+    position: relative;
+}
+
+.vo-list__thumb {
+    position: relative;
+    display: block;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: var(--vo-radius);
+    background: #000;
+    box-shadow: var(--vo-shadow);
+}
+
+.vo-list__card {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.vo-list__link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+.vo-list__link:focus-visible::after,
+.vo-list__card:focus-visible .vo-list__thumb {
+    outline: 3px solid var(--vo-accent);
+    outline-offset: 3px;
+}
+
+.vo-list__body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    align-items: baseline;
+    margin: 0.75rem 0 0;
+}
+
+.vo-list__title {
+    font-weight: 600;
+    color: inherit;
+    text-decoration: none;
+}
+
+.vo-list__item:hover .vo-list__title {
+    text-decoration: underline;
+}
+
+.vo-list__meta {
+    color: var(--vo-muted);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.vo-list__pager {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-top: 2.5rem;
+}
+
+.vo-btn--ghost {
+    background: transparent;
+    color: var(--vo-accent);
+    box-shadow: inset 0 0 0 2px var(--vo-accent);
+}
+
+/* Video with chapters: scene previews below the player */
+.vo-chapters__inner {
+    max-width: 60rem;
+    margin-inline: auto;
+}
+
+.vo-chapters .vo-frame {
+    margin-top: 1.5rem;
+}
+
+.vo-chapters__scenes {
+    display: flex;
+    gap: 0.75rem;
+    margin: 1rem 0 0;
+    padding: 0 0 0.5rem;
+    list-style: none;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+}
+
+.vo-chapters__scene {
+    flex: 0 0 clamp(120px, 22%, 180px);
+    scroll-snap-align: start;
+}
+
+.vo-scene {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.vo-scene img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: calc(var(--vo-radius) / 2);
+    background: #000;
+    outline: 3px solid transparent;
+    outline-offset: 2px;
+    transition: outline-color 0.15s ease;
+}
+
+.vo-scene:hover img,
+.vo-scene:focus-visible img,
+.vo-scene[aria-current="true"] img {
+    outline-color: var(--vo-accent);
+}
+
+.vo-scene__time {
+    display: block;
+    margin-top: 0.4rem;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--vo-muted);
+}
+
+.vo-scene__title {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* Floating mini player: a started player scrolled out of view stays bottom right (toggled by vo-blocks.js, below modals). */
+.vo-float {
+    /* Margins of the player stay inside, so the placeholder height is exact. */
+    display: flow-root;
+}
+
+.vo-float__close {
+    display: none;
+}
+
+.vo-frame--pinned {
+    position: fixed;
+    right: max(1rem, env(safe-area-inset-right));
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    z-index: 900;
+    width: min(320px, 60vw);
+    max-width: none;
+    margin: 0;
+}
+
+.vo-frame--pinned.vo-frame--tall {
+    width: min(180px, 40vw);
+}
+
+.vo-frame--pinned .vo-float__close {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(2, 6, 23, 0.7);
+    color: #fff;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.vo-frame--pinned .vo-float__close:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 2px;
 }

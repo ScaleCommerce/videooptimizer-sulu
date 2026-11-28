@@ -105,6 +105,7 @@
     "scale_videooptimizer.encoding_quality_performance": "Performance (Standard)",
     "scale_videooptimizer.encoding_quality_quality": "Qualität (schärfer)",
     "scale_videooptimizer.encoding_quality_help": "Performance: kompakte Dateien, schneller Start. Qualität: sichtbar schärfer, etwa 2,5–3× so viel CDN-Traffic.",
+    "scale_videooptimizer.encoding_quality_apply_note": "Ein geänderter Qualitätsmodus gilt für vorhandene Videos erst nach „Neu verarbeiten“ mit „Alle Qualitäten neu encodieren“; fertige Renditions bleiben sonst unverändert.",
     "scale_videooptimizer.quality_reprocess_hint": "Nach dem Speichern „Neu verarbeiten“ mit „Alle Qualitäten neu encodieren“ ausführen, damit vorhandene Videos den neuen Modus nutzen.",
     "scale_videooptimizer.reprocess_force": "Alle Qualitäten neu encodieren (auch bereits verarbeitete Videos)",
     "scale_videooptimizer.poll_timeout": "Zeitüberschreitung beim Warten auf VideoOptimizer. Liste neu laden und Status prüfen.",

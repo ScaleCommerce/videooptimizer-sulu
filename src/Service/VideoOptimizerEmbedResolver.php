@@ -33,11 +33,12 @@ class VideoOptimizerEmbedResolver
         private CacheInterface $cache,
         private ?EmbedRenderState $renderState = null,
         private ?ReferenceStoreInterface $referenceStore = null,
+        private ?VideoOwnership $ownership = null,
     ) {
     }
 
     /**
-     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
+     * @return array{title: ?string, poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?float, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
      */
     public function getSources(string $uuid): array
     {
@@ -55,7 +56,7 @@ class VideoOptimizerEmbedResolver
     }
 
     /**
-     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
+     * @return array{title: ?string, poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?float, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
      */
     private function lookup(string $uuid): array
     {
@@ -127,6 +128,7 @@ class VideoOptimizerEmbedResolver
      */
     public function forget(string $uuid): void
     {
+        $this->ownership?->forget($uuid);
         try {
             $this->cache->delete(self::cacheKey($uuid));
         } catch (\Throwable) {
@@ -136,16 +138,16 @@ class VideoOptimizerEmbedResolver
 
     private static function cacheKey(string $uuid): string
     {
-        // v3: entries cached before 2.1.0 carry no subtitle tracks; v2 predates 1.8.1 (24 h lifetime).
-        return 'vo_embed_v3_' . $uuid;
+        // v4: entries cached before 2.2.0 carry no title; v3: before 2.1.0 no subtitle tracks; v2 predates 1.8.1 (24 h lifetime).
+        return 'vo_embed_v4_' . $uuid;
     }
 
     /**
-     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
+     * @return array{title: ?string, poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?float, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
      */
     private static function unavailable(): array
     {
-        return ['poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'srcset' => null, 'theme' => null, 'tracks' => [], 'sources' => []];
+        return ['title' => null, 'poster' => null, 'hlsUrl' => null, 'width' => null, 'height' => null, 'duration' => null, 'srcset' => null, 'theme' => null, 'tracks' => [], 'sources' => []];
     }
 
     /**
@@ -154,6 +156,26 @@ class VideoOptimizerEmbedResolver
     public function getPosterSrcset(string $uuid): ?string
     {
         return $this->getSources($uuid)['srcset'] ?? null;
+    }
+
+    /**
+     * The poster srcset of a video whose embed data is already cached, else null. Never calls the API, never
+     * marks the page degraded and does not tag it.
+     */
+    public function peekPosterSrcset(string $uuid): ?string
+    {
+        try {
+            /** @var mixed $entry */
+            $entry = $this->cache->get(self::cacheKey($uuid), static function (ItemInterface $item, bool &$save): mixed {
+                $save = false;
+
+                return null;
+            });
+
+            return \is_array($entry) && \is_string($entry['srcset'] ?? null) ? $entry['srcset'] : null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**
@@ -177,7 +199,7 @@ class VideoOptimizerEmbedResolver
     /**
      * @param array<string, mixed> $data
      *
-     * @return array{poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?int, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
+     * @return array{title: ?string, poster: ?string, hlsUrl: ?string, width: ?int, height: ?int, duration: ?float, srcset: ?string, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>, sources: array<int, array{src:string,type:string,label:string}>}
      */
     public static function extractSources(array $data): array
     {
@@ -206,9 +228,10 @@ class VideoOptimizerEmbedResolver
 
         [$width, $height] = self::parseResolution($data['resolution'] ?? null);
 
-        $duration = \is_numeric($data['duration'] ?? null) ? (int) $data['duration'] : null;
+        $duration = \is_numeric($data['duration'] ?? null) ? (float) $data['duration'] : null;
 
         return [
+            'title' => \is_string($data['title'] ?? null) && '' !== $data['title'] ? $data['title'] : null,
             'poster' => $poster,
             'hlsUrl' => $hlsUrl,
             'width' => $width,
@@ -311,9 +334,10 @@ class VideoOptimizerEmbedResolver
     /**
      * Formats a duration in seconds as an ISO-8601 duration (e.g. 90 -> "PT1M30S") for schema.org.
      */
-    public static function isoDuration(?int $seconds): ?string
+    public static function isoDuration(int|float|null $seconds): ?string
     {
-        if (null === $seconds || $seconds <= 0) {
+        $seconds = null === $seconds ? 0 : (int) round($seconds);
+        if ($seconds <= 0) {
             return null;
         }
 

@@ -15,6 +15,36 @@ class EmbedRenderState implements ResetInterface
 {
     private bool $degraded = false;
 
+    private ?int $maxLifetime = null;
+    private bool $noIndex = false;
+
+    /**
+     * The page shows a temporary state (e.g. a video that is unavailable right now): search engines must not index it.
+     */
+    public function markNoIndex(): void
+    {
+        $this->noIndex = true;
+    }
+
+    public function isNoIndex(): bool
+    {
+        return $this->noIndex;
+    }
+
+
+    /**
+     * The page shows data cached for `$seconds` (e.g. a video list): its HTTP cache lifetime may not exceed that.
+     */
+    public function capLifetime(int $seconds): void
+    {
+        $this->maxLifetime = null === $this->maxLifetime ? $seconds : min($this->maxLifetime, $seconds);
+    }
+
+    public function maxLifetime(): ?int
+    {
+        return $this->maxLifetime;
+    }
+
     public function markDegraded(): void
     {
         $this->degraded = true;
@@ -28,5 +58,7 @@ class EmbedRenderState implements ResetInterface
     public function reset(): void
     {
         $this->degraded = false;
+        $this->maxLifetime = null;
+        $this->noIndex = false;
     }
 }

@@ -458,6 +458,12 @@ class Libraries extends React.Component<*> {
                             {translate('scale_videooptimizer.encoding_quality_help')}
                         </div>
 
+                        {!isNew && (
+                            <div className="vo-hint" style={{padding: '4px 0 0'}}>
+                                {translate('scale_videooptimizer.encoding_quality_apply_note')}
+                            </div>
+                        )}
+
                         {!isNew && (this.qualityChanged() || this.forceReprocessSuggestedFor === this.activeId) && (
                             <div className="vo-hint" style={{padding: '12px 0 0'}}>
                                 {translate('scale_videooptimizer.quality_reprocess_hint')}

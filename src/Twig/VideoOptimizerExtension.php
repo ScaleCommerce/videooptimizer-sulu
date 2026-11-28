@@ -8,7 +8,10 @@ use Psr\Log\LoggerInterface;
 use Scale\VideoOptimizerBundle\Api\BaseUrlGuard;
 use Scale\VideoOptimizerBundle\EventListener\AssetInjectionListener;
 use Scale\VideoOptimizerBundle\Service\SettingsManager;
+use Scale\VideoOptimizerBundle\Service\VideoListProvider;
 use Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver;
+use Scale\VideoOptimizerBundle\Service\VideoOwnership;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
@@ -28,6 +31,10 @@ class VideoOptimizerExtension extends AbstractExtension
         private VideoOptimizerEmbedResolver $embedResolver,
         private SettingsManager $settingsManager,
         private ?LoggerInterface $logger = null,
+        private string $apiBaseUrl = 'https://api.videooptimizer.eu/api/v1',
+        private ?VideoListProvider $videoList = null,
+        private ?TranslatorInterface $translator = null,
+        private ?VideoOwnership $ownership = null,
     ) {
     }
 
@@ -44,6 +51,18 @@ class VideoOptimizerExtension extends AbstractExtension
             new TwigFunction('video_optimizer_srcset', [$this, 'srcset']),
             new TwigFunction('video_optimizer_poster', [$this, 'poster']),
             new TwigFunction('video_optimizer_asset_version', [$this, 'assetVersion']),
+            new TwigFunction('video_optimizer_format', [$this, 'format']),
+            new TwigFunction('video_optimizer_scenes', [$this, 'scenes']),
+            new TwigFunction('video_optimizer_videos', [$this, 'videos']),
+            new TwigFunction('video_optimizer_uuid', [VideoListProvider::class, 'uuid']),
+            new TwigFunction('video_optimizer_title', [$this, 'title']),
+            new TwigFunction('video_optimizer_detail_url', [$this, 'detailUrl']),
+            new TwigFunction('video_optimizer_duration', [self::class, 'timeLabel']),
+            new TwigFunction('video_optimizer_t', [$this, 'translate']),
+            new TwigFunction('video_optimizer_page_slug', [$this, 'pageSlug']),
+            new TwigFunction('video_optimizer_verify', [$this, 'verify']),
+            new TwigFunction('video_optimizer_cursor_url', [self::class, 'cursorUrl']),
+            new TwigFunction('video_optimizer_card_srcset', [$this, 'cachedSrcset']),
             new TwigFunction('video_optimizer_native', [$this, 'renderNative'], ['is_safe' => ['html']]),
             // No 'is_safe': this returns data, not markup. See sources() for why a consumer
             // that renders its own markup must wire the frontend assets itself.
@@ -75,19 +94,278 @@ class VideoOptimizerExtension extends AbstractExtension
      *
      * @param array<string, mixed>|null $block
      *
-     * @return array{autoplay: string, controls: string, loop: string, muted: string}
+     * @return array{autoplay: string, controls: string, loop: string, muted: string, fit?: string}
      */
     public function playerOptions(?array $block): array
     {
         $block ??= [];
         $autoplay = self::str($block['autoplay'] ?? 'inherit');
 
-        return [
+        $options = [
             'autoplay' => 'inherit' === $autoplay ? '1' : $autoplay,
             'controls' => self::str($block['controls'] ?? 'inherit'),
             'loop' => self::str($block['loop'] ?? 'inherit'),
             'muted' => self::str($block['muted'] ?? 'inherit'),
         ];
+        if (null !== $this->format($block)['ratio']) {
+            // A fixed format makes the hosted embed fill the area instead of letterboxing.
+            $options['fit'] = 'cover';
+        }
+
+        return $options;
+    }
+
+    private const FORMATS = [
+        '16_9' => ['16 / 9', false],
+        '9_16' => ['9 / 16', true],
+        '1_1' => ['1 / 1', false],
+        '4_5' => ['4 / 5', true],
+        '21_9' => ['21 / 9', false],
+    ];
+
+    /**
+     * The "Format" and focal-point options of a block: the CSS aspect ratio (null = the video's own),
+     * whether the surface is a tall one that gets a maximum width, and the `object-position` value
+     * (null = centred). Out-of-range or non-numeric focal values are clamped or ignored.
+     *
+     * @param array<string, mixed>|null $block
+     *
+     * @return array{key: string, ratio: ?string, tall: bool, focus: ?string}
+     */
+    public function format(?array $block): array
+    {
+        $key = self::str($block['format'] ?? 'original');
+        $entry = self::FORMATS[$key] ?? null;
+        $x = self::percent($block['focusX'] ?? null);
+        $y = self::percent($block['focusY'] ?? null);
+
+        return [
+            'key' => null === $entry ? 'original' : $key,
+            'ratio' => $entry[0] ?? null,
+            'tall' => $entry[1] ?? false,
+            'focus' => 50 === $x && 50 === $y ? null : $x . '% ' . $y . '%',
+        ];
+    }
+
+    private static function percent(mixed $value): int
+    {
+        return \is_numeric($value) ? max(0, min(100, (int) round((float) $value))) : 50;
+    }
+
+    /**
+     * Scene previews for the chapters block: the video's auto-generated thumbnails (`thumbnails/0..9`,
+     * sampled by the encoder at duration / 11 * (i + 1)), `$count` of them spread evenly. Empty when the
+     * duration is unknown or there is no video.
+     *
+     * @param array<string, mixed>|null $video
+     *
+     * @return list<array{index: int, start: int, time: string, title: string, label: string, src: string}>
+     */
+    public function scenes(?array $video, int|string|null $count = 5, ?string $titles = null, string $locale = 'en'): array
+    {
+        $uuid = self::uuidOf($video);
+        if (null === $uuid) {
+            return [];
+        }
+        $duration = $this->embedResolver->getSources($uuid)['duration'] ?? null;
+        if (null === $duration || $duration <= 0) {
+            return [];
+        }
+        try {
+            BaseUrlGuard::assertHttps($this->apiBaseUrl, 'API base URL');
+        } catch (\InvalidArgumentException $e) {
+            $this->logger?->warning($e->getMessage(), ['url' => $this->apiBaseUrl]);
+
+            return [];
+        }
+
+        // Unset (or 0, e.g. a block saved before the field existed) means the default of 5.
+        $count = \is_numeric($count) && (int) $count > 0 ? max(3, min(10, (int) $count)) : 5;
+        $lines = array_map('trim', preg_split('/\R/', (string) $titles) ?: []);
+        $scenes = [];
+        for ($k = 0; $k < $count; ++$k) {
+            $index = (int) round($k * 9 / ($count - 1));
+            $start = (int) floor($duration / 11 * ($index + 1)); // the exact duration, unrounded: this is how the encoder samples
+            $time = self::timeLabel($start);
+            $title = $lines[$k] ?? '';
+            $scenes[] = [
+                'index' => $index,
+                'start' => $start,
+                'time' => $time,
+                'title' => $title,
+                'label' => '' !== $title
+                    ? $this->translate('scene_title', $locale, ['title' => $title, 'time' => $time])
+                    : $this->translate('scene', $locale, ['n' => (string) ($k + 1), 'time' => $time]),
+                'src' => rtrim($this->apiBaseUrl, '/') . '/videos/' . rawurlencode($uuid) . '/thumbnails/' . $index,
+            ];
+        }
+
+        return $scenes;
+    }
+
+    /**
+     * Seconds as `m:ss` (or `h:mm:ss` from one hour).
+     */
+    public static function timeLabel(?int $seconds): string
+    {
+        $seconds = max(0, (int) $seconds);
+
+        return $seconds >= 3600
+            ? \sprintf('%d:%02d:%02d', intdiv($seconds, 3600), intdiv($seconds % 3600, 60), $seconds % 60)
+            : \sprintf('%d:%02d', intdiv($seconds, 60), $seconds % 60);
+    }
+
+    private const DOMAIN = 'scale_video_optimizer';
+
+    /** @var array<string, array<string, string>> */
+    private static array $catalogs = [];
+
+    /**
+     * Frontend text in the page language. Overridable like any Symfony translation (domain
+     * `scale_video_optimizer`, e.g. `translations/scale_video_optimizer.de.yaml` in the project); without a
+     * translator, or for a missing key, the bundle's own catalog (en, de; other languages use en) applies.
+     *
+     * @param array<string, string> $replace placeholders without the percent signs, e.g. ['n' => '2']
+     */
+    public function translate(string $key, ?string $locale = null, array $replace = []): string
+    {
+        $lang = strtolower(substr((string) $locale, 0, 2));
+        $params = [];
+        foreach ($replace as $name => $value) {
+            $params['%' . $name . '%'] = $value;
+        }
+
+        if (null !== $this->translator) {
+            $text = $this->translator->trans($key, $params, self::DOMAIN, '' !== $lang ? $lang : null);
+            if ($text !== $key) {
+                return $text;
+            }
+        }
+
+        return strtr(self::catalog($lang)[$key] ?? self::catalog('en')[$key] ?? $key, $params);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function catalog(string $lang): array
+    {
+        $lang = \in_array($lang, ['en', 'de'], true) ? $lang : 'en';
+        if (!isset(self::$catalogs[$lang])) {
+            $json = @file_get_contents(\dirname(__DIR__) . '/Resources/translations/' . self::DOMAIN . '.' . $lang . '.json');
+            $data = false === $json ? [] : json_decode($json, true);
+            /** @var array<string, string> $data */
+            $data = \is_array($data) ? $data : [];
+            self::$catalogs[$lang] = $data;
+        }
+
+        return self::$catalogs[$lang];
+    }
+
+    /**
+     * One page of the finished videos of a library for the list block.
+     *
+     * @return array{items: list<array{uuid: string, title: string, poster: ?string, duration: ?int}>, next: ?string, error: bool}
+     */
+    public function videos(?string $libraryId, ?string $tags = null, ?string $cursor = null, int|string|null $limit = null): array
+    {
+        if (null === $this->videoList) {
+            return ['items' => [], 'next' => null, 'error' => true];
+        }
+
+        return $this->videoList->page($libraryId, $tags, $cursor, \is_numeric($limit) && (int) $limit > 0 ? (int) $limit : VideoListProvider::DEFAULT_PAGE_SIZE);
+    }
+
+    /**
+     * Whether a video named in the URL may be shown: 'ok', 'missing' (unknown, foreign, not ready, not in the
+     * given library) or 'unavailable' (the check could not be made). Nothing of an unverified video is rendered.
+     */
+    public function verify(?string $uuid, ?string $libraryId = null): string
+    {
+        $uuid = VideoListProvider::uuid($uuid);
+        if (null === $uuid) {
+            return VideoOwnership::MISSING;
+        }
+
+        return null === $this->ownership ? VideoOwnership::UNAVAILABLE : $this->ownership->check($uuid, $libraryId);
+    }
+
+    /**
+     * The poster srcset of a video if its embed data is already cached; never calls the API.
+     */
+    public function cachedSrcset(?string $uuid): ?string
+    {
+        $uuid = VideoListProvider::uuid($uuid);
+
+        return null === $uuid ? null : $this->embedResolver->peekPosterSrcset($uuid);
+    }
+
+    /**
+     * The current URI with `vo_cursor` replaced (null: removed), keeping the base path (subdirectory installs)
+     * and every other query parameter.
+     */
+    public static function cursorUrl(string $requestUri, ?string $cursor): string
+    {
+        $path = (string) strtok($requestUri, '?#');
+        parse_str((string) parse_url($requestUri, \PHP_URL_QUERY), $query);
+        unset($query['vo_cursor']);
+        if (null !== $cursor && '' !== $cursor) {
+            $query['vo_cursor'] = $cursor;
+        }
+
+        return $path . ([] === $query ? '' : '?' . http_build_query($query));
+    }
+
+    /**
+     * Title of a video from the cached embed lookup, or null.
+     */
+    public function title(?string $uuid): ?string
+    {
+        $uuid = VideoListProvider::uuid($uuid);
+        $title = null === $uuid ? null : ($this->embedResolver->getSources($uuid)['title'] ?? null);
+
+        return \is_string($title) && '' !== $title ? $title : null;
+    }
+
+    /**
+     * The route slug of the block's page selection (the resolved value: a map with a `url`, or the page object)
+     * or of a plain URL stored by an earlier version; null when there is none. A template turns a slug into a
+     * path with Sulu's `sulu_content_path()` (locale prefix, URL scheme) before calling detailUrl().
+     */
+    public function pageSlug(mixed $page): ?string
+    {
+        if (\is_object($page) && !$page instanceof \ArrayAccess) {
+            $page = method_exists($page, 'getUrl') ? $page->getUrl() : ($page->url ?? null);
+        } elseif (\is_array($page) || $page instanceof \ArrayAccess) {
+            $page = $page['url'] ?? null;
+        }
+        $page = trim(\is_string($page) ? $page : '');
+
+        return '' === $page ? null : $page;
+    }
+
+    /**
+     * Link from a list card to the detail page: `<path>?vo_video=<uuid>`, where `$page` is the path of the page
+     * (already generated for the locale) or anything pageSlug() accepts. Only site-relative paths and http(s)
+     * URLs count; anything else (javascript:, data:, protocol-relative, an unresolved page uuid) yields null.
+     */
+    public function detailUrl(mixed $page, ?string $uuid): ?string
+    {
+        $page = $this->pageSlug($page) ?? '';
+        $uuid = VideoListProvider::uuid($uuid);
+        if (null === $uuid || '' === $page || 1 === preg_match('/[\x00-\x20\\\\]/', $page)) {
+            return null;
+        }
+        $relative = str_starts_with($page, '/') && !str_starts_with($page, '//');
+        if (!$relative && 1 !== preg_match('#^https?://[^/]#i', $page)) {
+            return null;
+        }
+        $page = preg_replace('/#.*$/', '', $page) ?? $page;
+        // Replace a vo_video of an earlier link instead of stacking them.
+        $page = preg_replace('/([?&])vo_video=[^&]*&?/', '$1', $page) ?? $page;
+        $page = rtrim($page, '?&');
+
+        return $page . (str_contains($page, '?') ? '&' : '?') . 'vo_video=' . $uuid;
     }
 
     /**
@@ -211,6 +489,10 @@ class VideoOptimizerExtension extends AbstractExtension
             if ('0' === $value || '1' === $value) {
                 $query[$param] = $value;
             }
+        }
+
+        if ('cover' === ($options['fit'] ?? null)) {
+            $query['fit'] = 'cover';
         }
 
         if ([] !== $query) {
@@ -435,7 +717,7 @@ class VideoOptimizerExtension extends AbstractExtension
      *
      * @param array<string, mixed>|null $video the stored video property (needs `uuid`)
      *
-     * @return array{poster: ?string, srcset: ?string, hlsUrl: ?string, sources: array<int, array{src: string, type: string, label: string}>, width: ?int, height: ?int, duration: ?int, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>}|null
+     * @return array{poster: ?string, srcset: ?string, hlsUrl: ?string, sources: array<int, array{src: string, type: string, label: string}>, width: ?int, height: ?int, duration: ?float, theme: ?array<int|string, mixed>, tracks: array<int, array{src: string, srclang: string, label: string, kind: string, default: bool}>}|null
      *                                  null when no video is selected — same null behaviour as the
      *                                  rendering functions, which return an empty string there
      */
