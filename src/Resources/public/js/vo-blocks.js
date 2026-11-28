@@ -22,6 +22,12 @@
         names.forEach(function (name) { video.voExpected[name] = until; });
     }
 
+    function clearExpected(video, name) {
+        if (video.voExpected) {
+            delete video.voExpected[name];
+        }
+    }
+
     // True when the event was announced; an `Infinity` mark (autoplay at load) is used up by the first event.
     function takeExpected(video, name) {
         var until = video.voExpected && video.voExpected[name];
@@ -93,6 +99,8 @@
                 if (result && result.catch) {
                     result.catch(function () {
                         // Autoplay-policy rejections are expected; tell the playback toggle it is paused.
+                        // Nothing started, so the visitor's first play must not be taken for ours.
+                        clearExpected(video, 'play');
                         video.dispatchEvent(new Event('vo-play-blocked'));
                     });
                 }
@@ -369,7 +377,7 @@
                 expectEvents(video, ['play'], 1500);
                 var result = video.play();
                 if (result && result.catch) {
-                    result.catch(function () {});
+                    result.catch(function () { clearExpected(video, 'play'); });
                 }
                 return;
             }

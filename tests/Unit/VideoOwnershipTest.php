@@ -9,6 +9,7 @@ use Prophecy\PhpUnit\ProphecyTrait;
 use Scale\VideoOptimizerBundle\Api\VideoOptimizerClient;
 use Scale\VideoOptimizerBundle\Api\VideoOptimizerException;
 use Scale\VideoOptimizerBundle\Service\EmbedRenderState;
+use Scale\VideoOptimizerBundle\Service\SettingsManager;
 use Scale\VideoOptimizerBundle\Service\VideoOwnership;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
@@ -39,12 +40,63 @@ class VideoOwnershipTest extends TestCase
         self::assertSame('missing', $ownership->check(self::UUID));
     }
 
-    public function testAVideoThatIsNotReadyIsNotShown(): void
+    public function testAVideoThatIsNotReadyIsTemporaryAndTheirPageShortLivedAndTagged(): void
     {
         $client = $this->prophesize(VideoOptimizerClient::class);
         $client->getVideo(self::UUID)->willReturn(['status' => 'processing', 'library_id' => self::LIBRARY]);
+        $state = new EmbedRenderState();
+        $store = $this->prophesize(\Sulu\Bundle\HttpCacheBundle\ReferenceStore\ReferenceStoreInterface::class);
+        $store->add(self::UUID, 'video_optimizer')->shouldBeCalled();
 
-        self::assertSame('missing', (new VideoOwnership($client->reveal(), new ArrayAdapter()))->check(self::UUID));
+        $result = (new VideoOwnership($client->reveal(), new ArrayAdapter(), $state, null, $store->reveal()))->check(self::UUID);
+
+        self::assertSame('unavailable', $result);
+        self::assertTrue($state->isDegraded(), 'The page is cached for 60 s at most.');
+    }
+
+    public function testAnExhaustedRateLimitIsUnavailableAndDegradesThePageNeverMissing(): void
+    {
+        $client = $this->prophesize(VideoOptimizerClient::class);
+        $client->getVideo(\Prophecy\Argument::any())->willThrow(new VideoOptimizerException('not found', 404));
+        $state = new EmbedRenderState();
+        $ownership = new VideoOwnership($client->reveal(), new ArrayAdapter(), $state);
+        for ($i = 0; $i < VideoOwnership::MAX_NEW_PER_MINUTE; ++$i) {
+            $ownership->check(sprintf('00000000-0000-4000-8000-%012d', $i));
+        }
+        $state->reset();
+
+        self::assertSame('unavailable', $ownership->check(self::UUID));
+        self::assertTrue($state->isDegraded());
+    }
+
+    public function testVerdictsAreScopedToTheTokenAndForgottenOnDemand(): void
+    {
+        $cache = new ArrayAdapter();
+        $client = $this->prophesize(VideoOptimizerClient::class);
+        $client->getVideo(self::UUID)->willReturn(['status' => 'ready', 'library_id' => self::LIBRARY])->shouldBeCalledTimes(3);
+        $settings = $this->prophesize(SettingsManager::class);
+        $settings->getApiToken()->willReturn('vp_one', 'vp_one', 'vp_two', 'vp_two', 'vp_two', 'vp_two');
+
+        $ownership = new VideoOwnership($client->reveal(), $cache, null, $settings->reveal());
+
+        self::assertSame('ok', $ownership->check(self::UUID)); // call 1 (token one)
+        self::assertSame('ok', $ownership->check(self::UUID)); // cached
+        self::assertSame('ok', $ownership->check(self::UUID)); // token two: looked up again
+        $ownership->forget(self::UUID);
+        self::assertSame('ok', $ownership->check(self::UUID)); // forgotten: looked up again
+    }
+
+    public function testAWebhookOrAdminChangeDropsTheVerdict(): void
+    {
+        $client = $this->prophesize(VideoOptimizerClient::class);
+        $client->getVideo(self::UUID)->willReturn(['status' => 'ready', 'library_id' => self::LIBRARY])->shouldBeCalledTimes(2);
+        $cache = new ArrayAdapter();
+        $ownership = new VideoOwnership($client->reveal(), $cache);
+        $resolver = new \Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver($client->reveal(), $cache, null, null, $ownership);
+
+        $ownership->check(self::UUID);
+        $resolver->forget(self::UUID); // what the webhook and the admin proxy call
+        $ownership->check(self::UUID);
     }
 
     public function testTheLibraryOfTheBlockMustContainTheVideo(): void
@@ -118,7 +170,8 @@ class VideoOwnershipTest extends TestCase
 
         self::assertSame(30, VideoOwnership::MAX_NEW_PER_MINUTE);
         self::assertSame(VideoOwnership::MAX_NEW_PER_MINUTE, $calls);
-        self::assertSame(['missing'], array_values(array_unique($results)));
+        self::assertSame(['missing'], array_values(array_unique(array_slice($results, 0, VideoOwnership::MAX_NEW_PER_MINUTE))));
+        self::assertSame(['unavailable'], array_values(array_unique(array_slice($results, VideoOwnership::MAX_NEW_PER_MINUTE))), 'Beyond the budget: no API call, and not a cacheable "missing".');
     }
 
     public function testCachedVerdictsDoNotUseTheBudget(): void

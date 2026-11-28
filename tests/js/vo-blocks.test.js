@@ -538,6 +538,23 @@ describe('floating mini player', () => {
         expect(frame.classList.contains('vo-frame--pinned')).toBe(false);
     });
 
+    it('does not let a blocked autoplay swallow the first play of the visitor', async () => {
+        HTMLMediaElement.prototype.canPlayType = () => 'maybe';
+        HTMLMediaElement.prototype.play = vi.fn(() => Promise.reject(new Error('NotAllowedError')));
+        mount('<div class="vo-float" data-vo-float><div class="vo-frame"><video class="vo-native" autoplay muted data-hls="https://cdn/x.m3u8"></video></div></div>');
+        load();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        const video = document.querySelector('video');
+        const wrap = document.querySelector('[data-vo-float]');
+        const observer = observers.find((o) => o.target === wrap);
+
+        Object.defineProperty(video, 'paused', {value: false, configurable: true});
+        video.dispatchEvent(new Event('play')); // the visitor presses play after the autoplay was refused
+        observer.callback([{intersectionRatio: 0, isIntersecting: false}]);
+
+        expect(document.querySelector('.vo-frame').classList.contains('vo-frame--pinned')).toBe(true);
+    });
+
     it('counts the visitor pressing play on a player that attaches its source on play', () => {
         HTMLMediaElement.prototype.canPlayType = () => 'maybe';
         mount('<div class="vo-float" data-vo-float><div class="vo-frame"><video class="vo-native" data-vo-native-onplay data-hls="https://cdn/x.m3u8"></video></div></div>');

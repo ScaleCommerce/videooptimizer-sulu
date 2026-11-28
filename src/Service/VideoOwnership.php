@@ -6,6 +6,7 @@ namespace Scale\VideoOptimizerBundle\Service;
 
 use Scale\VideoOptimizerBundle\Api\VideoOptimizerClient;
 use Scale\VideoOptimizerBundle\Api\VideoOptimizerException;
+use Sulu\Bundle\HttpCacheBundle\ReferenceStore\ReferenceStoreInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
@@ -20,6 +21,8 @@ class VideoOwnership
     public const OK = 'ok';
     public const MISSING = 'missing';
     public const UNAVAILABLE = 'unavailable';
+    /** Internal: owned but not ready yet; check() reports it as unavailable. */
+    private const PENDING = 'pending';
 
     /** Verified, ready videos are remembered as long as embed data is. */
     private const TTL_OK = 3600;
@@ -35,7 +38,31 @@ class VideoOwnership
         private VideoOptimizerClient $client,
         private CacheInterface $cache,
         private ?EmbedRenderState $renderState = null,
+        private ?SettingsManager $settings = null,
+        private ?ReferenceStoreInterface $referenceStore = null,
     ) {
+    }
+
+    /**
+     * Drops the remembered verdict of a video (webhook, change or deletion in the admin).
+     */
+    public function forget(string $uuid): void
+    {
+        try {
+            $this->cache->delete($this->key($uuid));
+        } catch (\Throwable) {
+            // Best effort: the verdict expires on its own.
+        }
+    }
+
+    /**
+     * Verdicts belong to the token that was used: a changed token never reuses them.
+     */
+    private function key(string $uuid): string
+    {
+        $token = null === $this->settings ? null : $this->settings->getApiToken();
+
+        return 'vo_own_v1_' . substr(sha1((string) $token), 0, 12) . '_' . $uuid;
     }
 
     /**
@@ -57,11 +84,12 @@ class VideoOwnership
 
         try {
             /** @var array{state: string, library: ?string} $entry */
-            $entry = $this->cache->get('vo_own_v1_' . $uuid, function (ItemInterface $item, bool &$save) use ($uuid): array {
+            $entry = $this->cache->get($this->key($uuid), function (ItemInterface $item, bool &$save) use ($uuid): array {
                 if (!$this->takeNewLookup()) {
+                    // Not a verdict: the page must not be cached as "not found" for long.
                     $save = false;
 
-                    return ['state' => self::MISSING, 'library' => null];
+                    return ['state' => self::UNAVAILABLE, 'library' => null];
                 }
 
                 try {
@@ -82,12 +110,19 @@ class VideoOwnership
                 $item->expiresAfter($ready ? self::TTL_OK : self::TTL_PENDING);
                 $videoLibrary = \is_string($video['library_id'] ?? null) ? strtolower($video['library_id']) : null;
 
-                return ['state' => $ready ? self::OK : self::MISSING, 'library' => $videoLibrary];
+                return ['state' => $ready ? self::OK : self::PENDING, 'library' => $videoLibrary];
             });
         } catch (\Throwable) {
             $entry = ['state' => self::UNAVAILABLE, 'library' => null];
         }
 
+        if (self::PENDING === $entry['state']) {
+            // The page is tagged with the video, so its video.ready webhook invalidates it; until then it is short-lived.
+            $this->referenceStore?->add($uuid, 'video_optimizer');
+            $this->renderState?->markDegraded();
+
+            return self::UNAVAILABLE;
+        }
         if (self::UNAVAILABLE === $entry['state']) {
             $this->renderState?->markDegraded();
 

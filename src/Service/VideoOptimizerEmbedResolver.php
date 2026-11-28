@@ -33,6 +33,7 @@ class VideoOptimizerEmbedResolver
         private CacheInterface $cache,
         private ?EmbedRenderState $renderState = null,
         private ?ReferenceStoreInterface $referenceStore = null,
+        private ?VideoOwnership $ownership = null,
     ) {
     }
 
@@ -127,6 +128,7 @@ class VideoOptimizerEmbedResolver
      */
     public function forget(string $uuid): void
     {
+        $this->ownership?->forget($uuid);
         try {
             $this->cache->delete(self::cacheKey($uuid));
         } catch (\Throwable) {
