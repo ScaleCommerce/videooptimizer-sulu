@@ -2,7 +2,7 @@
 
 All notable changes to this package. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [2.2.0] - 2026-11-28
 
 ### Upgrade
 - Republish the bundle assets (`assets:install`) for the new `vo-blocks.js`/`vo-blocks.css`; add `<type ref="vo_single_video"/>`, `vo_video_chapters`, `vo_video_list` and `vo_video_detail` to your own page templates to offer the new blocks (the showcase template has them); rebuild the Sulu admin assets and hard-reload the admin for the encoding quality note ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25), [#31](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/31))
