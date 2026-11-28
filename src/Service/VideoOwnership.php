@@ -56,6 +56,30 @@ class VideoOwnership
     }
 
     /**
+     * Records that a video is ours and ready, from a token-authenticated list result: a link from the list to
+     * the detail page then needs no lookup.
+     */
+    public function remember(string $uuid, ?string $libraryId): void
+    {
+        $uuid = VideoListProvider::uuid($uuid);
+        if (null === $uuid) {
+            return;
+        }
+        $library = null !== $libraryId ? strtolower($libraryId) : null;
+        try {
+            $key = $this->key($uuid);
+            $this->cache->delete($key);
+            $this->cache->get($key, static function (ItemInterface $item) use ($library): array {
+                $item->expiresAfter(self::TTL_OK);
+
+                return ['state' => self::OK, 'library' => $library];
+            });
+        } catch (\Throwable) {
+            // Best effort.
+        }
+    }
+
+    /**
      * Verdicts belong to the token that was used: a changed token never reuses them.
      */
     private function key(string $uuid): string
@@ -120,11 +144,13 @@ class VideoOwnership
             // The page is tagged with the video, so its video.ready webhook invalidates it; until then it is short-lived.
             $this->referenceStore?->add($uuid, 'video_optimizer');
             $this->renderState?->markDegraded();
+            $this->renderState?->markNoIndex();
 
             return self::UNAVAILABLE;
         }
         if (self::UNAVAILABLE === $entry['state']) {
             $this->renderState?->markDegraded();
+            $this->renderState?->markNoIndex();
 
             return self::UNAVAILABLE;
         }

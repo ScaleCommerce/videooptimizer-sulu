@@ -79,6 +79,7 @@
             <argument type="service" id="Scale\VideoOptimizerBundle\Api\VideoOptimizerClient"/>
             <argument type="service" id="scale_video_optimizer.cache"/>
             <argument type="service" id="Scale\VideoOptimizerBundle\Service\EmbedRenderState"/>
+            <argument type="service" id="Scale\VideoOptimizerBundle\Service\VideoOwnership"/>
         </service>
 
         <service id="Scale\VideoOptimizerBundle\Service\VideoOwnership">

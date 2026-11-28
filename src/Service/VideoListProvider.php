@@ -26,6 +26,7 @@ class VideoListProvider
         private VideoOptimizerClient $client,
         private CacheInterface $cache,
         private ?EmbedRenderState $renderState = null,
+        private ?VideoOwnership $ownership = null,
     ) {
     }
 
@@ -62,6 +63,7 @@ class VideoListProvider
                         // Ask only for what is still missing: the page never exceeds its size and the next cursor is exact.
                         $response = $this->client->listVideosPage($libraryId, $pageCursor, $limit - \count($items), $tags);
                         $items = array_merge($items, self::items($response['videos']));
+                        $this->seedOwnership($response['videos']);
                         $next = $response['has_more'] ? $response['next_cursor'] : null;
                         if (null === $next || \count($items) >= $limit) {
                             break;
@@ -80,6 +82,24 @@ class VideoListProvider
         }
 
         return $page + ['error' => false];
+    }
+
+    /**
+     * The list call is authenticated with the site's token: every ready video in it is ours, so the detail page
+     * a card links to needs no lookup of its own.
+     *
+     * @param array<int, array<string, mixed>> $videos
+     */
+    private function seedOwnership(array $videos): void
+    {
+        if (null === $this->ownership) {
+            return;
+        }
+        foreach ($videos as $video) {
+            if ('ready' === ($video['status'] ?? null) && \is_string($video['uuid'] ?? null)) {
+                $this->ownership->remember($video['uuid'], \is_string($video['library_id'] ?? null) ? $video['library_id'] : null);
+            }
+        }
     }
 
     /**

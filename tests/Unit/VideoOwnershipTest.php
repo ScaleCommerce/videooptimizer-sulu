@@ -99,6 +99,60 @@ class VideoOwnershipTest extends TestCase
         $ownership->check(self::UUID);
     }
 
+    public function testUnavailableAndNotReadyVideosMarkThePageNoindex(): void
+    {
+        foreach ([new VideoOptimizerException('down', 503), ['status' => 'processing', 'library_id' => self::LIBRARY]] as $answer) {
+            $client = $this->prophesize(VideoOptimizerClient::class);
+            $call = $client->getVideo(self::UUID);
+            $answer instanceof \Throwable ? $call->willThrow($answer) : $call->willReturn($answer);
+            $state = new EmbedRenderState();
+
+            (new VideoOwnership($client->reveal(), new ArrayAdapter(), $state))->check(self::UUID);
+
+            self::assertTrue($state->isNoIndex());
+        }
+    }
+
+    public function testAMissingVideoDoesNotMarkNoindex(): void
+    {
+        $client = $this->prophesize(VideoOptimizerClient::class);
+        $client->getVideo(self::UUID)->willThrow(new VideoOptimizerException('nope', 404));
+        $state = new EmbedRenderState();
+
+        (new VideoOwnership($client->reveal(), new ArrayAdapter(), $state))->check(self::UUID);
+
+        self::assertFalse($state->isNoIndex());
+    }
+
+    public function testListedReadyVideosAreRememberedSoTheDetailLinkCostsNoLookup(): void
+    {
+        $client = $this->prophesize(VideoOptimizerClient::class);
+        $client->getVideo(\Prophecy\Argument::any())->shouldNotBeCalled();
+        $cache = new ArrayAdapter();
+        $ownership = new VideoOwnership($client->reveal(), $cache);
+        $ownership->remember(self::UUID, strtoupper(self::LIBRARY));
+
+        self::assertSame('ok', $ownership->check(self::UUID));
+        self::assertSame('ok', $ownership->check(self::UUID, self::LIBRARY));
+        self::assertSame('missing', $ownership->check(self::UUID, '99999999-2222-4333-8444-555555555555'));
+        $ownership->remember('not-a-uuid', null); // ignored
+    }
+
+    public function testTheListProviderSeedsTheVerdictsOfReadyVideosOnly(): void
+    {
+        $other = '33333333-2222-4333-8444-555555555555';
+        $api = $this->prophesize(VideoOptimizerClient::class);
+        $api->listVideosPage(\Prophecy\Argument::cetera())->willReturn(['videos' => [
+            ['uuid' => self::UUID, 'status' => 'ready', 'library_id' => self::LIBRARY],
+            ['uuid' => $other, 'status' => 'processing', 'library_id' => self::LIBRARY],
+        ], 'next_cursor' => null, 'has_more' => false]);
+        $ownership = $this->prophesize(VideoOwnership::class);
+        $ownership->remember(self::UUID, self::LIBRARY)->shouldBeCalledTimes(1);
+        $ownership->remember($other, \Prophecy\Argument::any())->shouldNotBeCalled();
+
+        (new \Scale\VideoOptimizerBundle\Service\VideoListProvider($api->reveal(), new ArrayAdapter(), null, $ownership->reveal()))->page(null, null, null);
+    }
+
     public function testTheLibraryOfTheBlockMustContainTheVideo(): void
     {
         $client = $this->prophesize(VideoOptimizerClient::class);

@@ -555,6 +555,24 @@ describe('floating mini player', () => {
         expect(document.querySelector('.vo-frame').classList.contains('vo-frame--pinned')).toBe(true);
     });
 
+    it('counts a scene click that starts a not yet attached player without controls as the visitor', () => {
+        HTMLMediaElement.prototype.canPlayType = () => 'maybe';
+        mount('<div data-vo-chapters><div class="vo-float" data-vo-float><div class="vo-frame"><video class="vo-native" data-vo-native-onplay data-hls="https://cdn/x.m3u8"></video></div></div><button type="button" data-vo-start="10">a</button></div>');
+        HTMLMediaElement.prototype.play = vi.fn(function () {
+            Object.defineProperty(this, 'paused', {value: false, configurable: true});
+            this.dispatchEvent(new Event('play'));
+            return Promise.resolve();
+        });
+        load();
+        const wrap = document.querySelector('[data-vo-float]');
+        const observer = observers.find((o) => o.target === wrap);
+
+        document.querySelector('[data-vo-start]').click();
+        observer.callback([{intersectionRatio: 0, isIntersecting: false}]);
+
+        expect(document.querySelector('.vo-frame').classList.contains('vo-frame--pinned')).toBe(true);
+    });
+
     it('counts the visitor pressing play on a player that attaches its source on play', () => {
         HTMLMediaElement.prototype.canPlayType = () => 'maybe';
         mount('<div class="vo-float" data-vo-float><div class="vo-frame"><video class="vo-native" data-vo-native-onplay data-hls="https://cdn/x.m3u8"></video></div></div>');

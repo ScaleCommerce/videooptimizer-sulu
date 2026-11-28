@@ -30,6 +30,10 @@ class EmbedPageCacheListener
             return;
         }
 
+        if ($this->state->isNoIndex()) {
+            $event->getResponse()->headers->set('X-Robots-Tag', 'noindex');
+        }
+
         $max = $this->state->maxLifetime();
         if ($this->state->isDegraded()) {
             $max = null === $max ? self::MAX_TTL : min($max, self::MAX_TTL);

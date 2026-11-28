@@ -269,7 +269,7 @@
                     result.catch(function () { sync(true); });
                 }
             } else {
-                attachHls(video, baseUrl, {play: true});
+                attachHls(video, baseUrl, {play: true, visitor: true});
             }
         });
     }
@@ -438,7 +438,7 @@
             return null;
         }
         // Plays once the source is attached (inside the click for native HLS / MP4).
-        attachHls(video, baseUrl, {play: true});
+        attachHls(video, baseUrl, {play: true, visitor: true});
         video.removeAttribute('data-hls'); // avoid re-wiring hls.js if revealed again
         return video;
     }
@@ -498,7 +498,7 @@
             if (video) {
                 slot.replaceChildren(video); // moves the <video> node into the lightbox slot
                 nativeHolder = holder;
-                attachHls(video, baseUrl, {play: true});
+                attachHls(video, baseUrl, {play: true, visitor: true});
                 video.removeAttribute('data-hls');
             } else {
                 slot.replaceChildren(embedIframe(trigger.getAttribute('data-vo-lightbox')));
@@ -654,7 +654,7 @@
         }
         video.removeAttribute('data-vo-native-autoload');
         video.removeAttribute('data-vo-native-onplay');
-        attachHls(video, baseUrl, {play: true});
+        attachHls(video, baseUrl, {play: true, visitor: true});
     }
 
     // Starts the hosted embed at `time`: the iframe is created when the autoload has not happened yet.
