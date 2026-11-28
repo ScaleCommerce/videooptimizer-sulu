@@ -12,6 +12,29 @@
         return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     }
 
+    // Playback events the script causes itself (its own play(), the source attach with its start seek, autoplay
+    // at load) are marked as expected for a short time; any other play / volumechange / seeking event is the
+    // visitor's, whatever control they used. The native control bar sends no events into the page, so this is
+    // the only reliable way to tell the two apart (the mini player pins only for the visitor's).
+    function expectEvents(video, names, ms) {
+        var until = Date.now() + ms;
+        video.voExpected = video.voExpected || {};
+        names.forEach(function (name) { video.voExpected[name] = until; });
+    }
+
+    // True when the event was announced; an `Infinity` mark (autoplay at load) is used up by the first event.
+    function takeExpected(video, name) {
+        var until = video.voExpected && video.voExpected[name];
+        if (!until || Date.now() >= until) {
+            return false;
+        }
+        if (until === Infinity) {
+            delete video.voExpected[name];
+        }
+
+        return true;
+    }
+
     // Calls fn(element) once each element comes near the viewport (or right away without
     // IntersectionObserver). rootMargin starts slightly early so playback is ready in time.
     function whenNearViewport(elements, fn) {
@@ -56,10 +79,16 @@
         var hls = null;
         var fellBack = false;
         video.setAttribute('data-vo-wired', '');
+        // Attaching a source can seek (start position) and, with autoplay, starts playback. When the attach is
+        // the visitor's own play (opts.visitor), that play event is theirs and must not be announced away.
+        expectEvents(video, opts && opts.visitor ? ['seeking', 'volumechange'] : ['play', 'seeking', 'volumechange'], 4000);
 
         function play() {
             // A pause pressed before the source was ready (data-vo-user-paused) must stay a pause.
             if (wantPlay && !video.hasAttribute('data-vo-user-paused')) {
+                if (!(opts && opts.visitor)) {
+                    expectEvents(video, ['play'], 1500);
+                }
                 var result = video.play();
                 if (result && result.catch) {
                     result.catch(function () {
@@ -337,6 +366,7 @@
                 return;
             }
             if (video.hasAttribute('data-vo-wired')) {
+                expectEvents(video, ['play'], 1500);
                 var result = video.play();
                 if (result && result.catch) {
                     result.catch(function () {});
@@ -387,7 +417,7 @@
                 if (video.hasAttribute('data-vo-wired')) {
                     return; // a chapter button already attached the source
                 }
-                attachHls(video, baseUrl, {play: true});
+                attachHls(video, baseUrl, {play: true, visitor: true});
             }, {once: true});
         });
     }
@@ -710,22 +740,11 @@
             var pinned = false;
             var dismissed = false; // closed by the visitor: stays unpinned until the player was in view again
             var visitorStarted = false; // the visitor started or took over playback (never autoplay alone)
-            var lastGesture = 0;
             var close = document.createElement('button');
             close.type = 'button';
             close.className = 'vo-float__close';
             close.innerHTML = '&times;';
             close.setAttribute('aria-label', label('mini', wrap));
-
-            // A play, unmute or seek counts as the visitor's when it follows a pointer or key press on the player.
-            var gestureTarget = wrap.closest('[data-vo-chapters]') || wrap;
-            ['pointerdown', 'keydown', 'touchstart'].forEach(function (name) {
-                gestureTarget.addEventListener(name, function () { lastGesture = Date.now(); }, true);
-            });
-
-            function byVisitor() {
-                return Date.now() - lastGesture < 1000;
-            }
 
             function visitorTookOver() {
                 visitorStarted = true;
@@ -738,9 +757,13 @@
 
             var nativeVideo = frame.querySelector('video');
             if (nativeVideo) {
+                if (nativeVideo.autoplay && nativeVideo.paused) {
+                    expectEvents(nativeVideo, ['play'], Infinity); // autoplay at load is not the visitor
+                }
                 ['play', 'volumechange', 'seeking'].forEach(function (name) {
                     nativeVideo.addEventListener(name, function () {
-                        if (byVisitor()) {
+                        // A loop restart seeks to the start by itself.
+                        if (!takeExpected(nativeVideo, name) && !('seeking' === name && nativeVideo.loop && nativeVideo.currentTime < 1)) {
                             visitorTookOver();
                         }
                     });
@@ -800,7 +823,7 @@
                     frame.setAttribute('tabindex', '-1');
                     target = frame;
                 }
-                target.focus();
+                target.focus({preventScroll: true});
             }
 
             function dismiss(stop) {
@@ -844,7 +867,8 @@
             });
             document.addEventListener('vo-lightbox-open', function () {
                 if (pinned) {
-                    dismiss(!!frame.querySelector('video'));
+                    // Stops a native player and reloads a hosted one without autoplay: no double audio.
+                    dismiss(true);
                 }
             });
             if (wide.addEventListener) {

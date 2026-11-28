@@ -78,6 +78,21 @@ class VideoOwnershipTest extends TestCase
         self::assertTrue($state->isDegraded());
     }
 
+    public function testAQueryDrivenLookupNeverTripsTheEmbedFailFastFlag(): void
+    {
+        // The flag of VideoOptimizerEmbedResolver would blank every video of the site for a minute: a visitor
+        // must not be able to set it with a crafted ?vo_video= or ?vo_cursor=.
+        $cache = new ArrayAdapter();
+        $client = $this->prophesize(VideoOptimizerClient::class);
+        $client->getVideo(self::UUID)->willThrow(new VideoOptimizerException('down', 503));
+        $client->listVideosPage(\Prophecy\Argument::cetera())->willThrow(new VideoOptimizerException('rate limit', 429));
+
+        (new VideoOwnership($client->reveal(), $cache))->check(self::UUID);
+        (new \Scale\VideoOptimizerBundle\Service\VideoListProvider($client->reveal(), $cache))->page(null, null, 'abc');
+
+        self::assertFalse($cache->hasItem('vo_embed_api_down'));
+    }
+
     public function testRejectedTokensAreUnavailableToo(): void
     {
         $client = $this->prophesize(VideoOptimizerClient::class);

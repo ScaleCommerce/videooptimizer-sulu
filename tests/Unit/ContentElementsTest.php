@@ -417,11 +417,30 @@ class ContentElementsTest extends TestCase
     public static function badCursors(): iterable
     {
         yield 'spaces' => ['a b'];
-        yield 'slash' => ['a/b'];
-        yield 'plus' => ['a+b'];
+        yield 'percent' => ['a%2Fb'];
         yield 'query injection' => ['a&limit=100'];
         yield 'too long' => [str_repeat('a', 201)];
         yield 'empty' => [''];
+        yield 'angle bracket' => ['a<b'];
+    }
+
+    public function testListProviderAcceptsBase64AndTimestampShapedCursors(): void
+    {
+        $queries = [];
+        $provider = new VideoListProvider($this->client(function (string $m, string $u) use (&$queries): MockResponse {
+            $queries[] = $u;
+
+            return new MockResponse(json_encode(['data' => [], 'pagination' => ['next_cursor' => null, 'has_more' => false]], \JSON_THROW_ON_ERROR));
+        }), new ArrayAdapter());
+
+        foreach (['abc+def/ghi==', '2026-09-23T07:09:22.761Z:174', 'MjAyNi0wOS0yM1QwNzowOToyMi43NjFafDE3NA'] as $cursor) {
+            $provider->page(null, null, $cursor);
+        }
+
+        self::assertCount(3, $queries);
+        foreach ($queries as $query) {
+            self::assertStringContainsString('cursor=', $query);
+        }
     }
 
     public function testListProviderCapsThePageLifetimeAndCachesPerCursor(): void

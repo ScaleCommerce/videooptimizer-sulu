@@ -491,9 +491,8 @@ describe('floating mini player', () => {
         Object.defineProperty(video, 'paused', {value: !on, configurable: true});
     }
 
-    // The visitor presses play: a pointer press on the player, then the play event.
+    // The visitor presses play (also on the native control bar, which sends nothing but the play event).
     function visitorPlays(frame, video) {
-        frame.dispatchEvent(new Event('pointerdown', {bubbles: true}));
         setPlaying(video, true);
         video.dispatchEvent(new Event('play'));
     }
@@ -512,14 +511,67 @@ describe('floating mini player', () => {
     });
 
     it('does not pin an autoplaying player the visitor never touched', () => {
-        const {frame, scroll} = mountFloating('<video class="vo-native"></video>');
+        const {frame, scroll} = mountFloating('<video class="vo-native" autoplay></video>');
         const video = frame.querySelector('video');
         setPlaying(video, true);
-        video.dispatchEvent(new Event('play')); // autoplay: no gesture
+        video.dispatchEvent(new Event('play')); // autoplay at load: expected, not the visitor
 
         scroll(0);
 
         expect(frame.classList.contains('vo-frame--pinned')).toBe(false);
+
+        // A later play (pause, then play again) is the visitor's.
+        video.dispatchEvent(new Event('play'));
+        scroll(1);
+        scroll(0);
+        expect(frame.classList.contains('vo-frame--pinned')).toBe(true);
+    });
+
+    it('does not count a loop restart as the visitor seeking', () => {
+        const {frame, scroll} = mountFloating('<video class="vo-native" loop></video>');
+        const video = frame.querySelector('video');
+        setPlaying(video, true);
+
+        video.dispatchEvent(new Event('seeking')); // currentTime is 0: the loop wrapped around
+        scroll(0);
+
+        expect(frame.classList.contains('vo-frame--pinned')).toBe(false);
+    });
+
+    it('counts the visitor pressing play on a player that attaches its source on play', () => {
+        HTMLMediaElement.prototype.canPlayType = () => 'maybe';
+        mount('<div class="vo-float" data-vo-float><div class="vo-frame"><video class="vo-native" data-vo-native-onplay data-hls="https://cdn/x.m3u8"></video></div></div>');
+        load();
+        const video = document.querySelector('video');
+        const wrap = document.querySelector('[data-vo-float]');
+        const observer = observers.find((o) => o.target === wrap);
+
+        Object.defineProperty(video, 'paused', {value: false, configurable: true});
+        video.dispatchEvent(new Event('play')); // the native control bar's play button
+        observer.callback([{intersectionRatio: 0, isIntersecting: false}]);
+
+        expect(video.hasAttribute('data-vo-wired')).toBe(true);
+        expect(document.querySelector('.vo-frame').classList.contains('vo-frame--pinned')).toBe(true);
+    });
+
+    it('does not count what the script itself starts: source attach and play() on scroll', () => {
+        HTMLMediaElement.prototype.canPlayType = () => 'maybe';
+        mount('<div class="vo-float" data-vo-float><div class="vo-frame"><video class="vo-native" muted data-vo-native-autoload data-hls="https://cdn/x.m3u8"></video></div></div>');
+        HTMLMediaElement.prototype.play = vi.fn(function () {
+            Object.defineProperty(this, 'paused', {value: false, configurable: true});
+            this.dispatchEvent(new Event('play'));
+            return Promise.resolve();
+        });
+        load();
+        const video = document.querySelector('video');
+        const ratio = (r) => observers.filter((o) => o.target === video || o.target === document.querySelector('[data-vo-float]')).forEach((o) => o.callback([{intersectionRatio: r, isIntersecting: r > 0}]));
+
+        ratio(0.8); // play-while-scrolling starts it
+        video.dispatchEvent(new Event('seeking')); // hls.js start position
+        ratio(0); // scrolled away
+
+        expect(document.querySelector('.vo-frame').classList.contains('vo-frame--pinned')).toBe(false);
+        expect(video.hasAttribute('data-vo-visitor-started')).toBe(false);
     });
 
     it('takes over after the visitor unmutes, seeks or resumes an autoplaying player', () => {
@@ -528,7 +580,6 @@ describe('floating mini player', () => {
             const {frame, scroll} = mountFloating('<video class="vo-native"></video>');
             const video = frame.querySelector('video');
             setPlaying(video, true);
-            frame.dispatchEvent(new Event('pointerdown', {bubbles: true}));
             video.dispatchEvent(new Event(name));
 
             scroll(0);
@@ -601,6 +652,19 @@ describe('floating mini player', () => {
         expect(frame.classList.contains('vo-frame--pinned')).toBe(false);
         expect(video.pause).not.toHaveBeenCalled();
         expect(document.activeElement).toBe(video);
+    });
+
+    it('unpins a hosted mini player and reloads it without autoplay when a lightbox opens', () => {
+        const {frame, scroll} = mountFloating('<iframe src="https://videooptimizer.eu/embed/abc?autoplay=1"></iframe>');
+        frame.querySelector('iframe').focus();
+        window.dispatchEvent(new Event('blur'));
+        scroll(0);
+        expect(frame.classList.contains('vo-frame--pinned')).toBe(true);
+
+        document.dispatchEvent(new CustomEvent('vo-lightbox-open'));
+
+        expect(frame.classList.contains('vo-frame--pinned')).toBe(false);
+        expect(new URL(frame.querySelector('iframe').getAttribute('src')).searchParams.get('autoplay')).toBe('0');
     });
 
     it('unpins and pauses a native mini player when a lightbox opens', () => {
