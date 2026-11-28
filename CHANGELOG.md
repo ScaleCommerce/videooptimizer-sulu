@@ -25,7 +25,7 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 - Video detail verifies a uuid from the URL with the site's token (404 for videos of other organizations), optionally against a library, before rendering anything about it; positive results are cached for an hour, negative ones for five minutes, uncached lookups are limited to 30 per minute site-wide; during an outage it says "temporarily unavailable" ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))
 
 ### Fixed
-- Video list reads up to three API pages to fill a page with ready videos ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))
+- Video list reads up to three API pages to fill a page with ready videos; follow-up calls request only the missing number, so a page never exceeds its size and the next cursor is exact ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))
 - Reprocess answers 400 when `force` is present but not a boolean instead of silently treating it as false ([#30](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/30))
 
 ## [2.1.0] - 2026-11-28
