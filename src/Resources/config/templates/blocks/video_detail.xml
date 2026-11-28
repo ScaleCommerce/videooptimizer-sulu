@@ -14,6 +14,14 @@
                 <title lang="de">Standardvideo</title>
             </meta>
         </property>
+        <property name="libraryId" type="text_line">
+            <meta>
+                <title lang="en">Library ID</title>
+                <title lang="de">Bibliotheks-ID</title>
+                <info_text lang="en">Optional UUID of a VideoOptimizer library: only videos of this library can be shown via the URL. Videos of other organizations are never shown.</info_text>
+                <info_text lang="de">Optionale UUID einer VideoOptimizer-Bibliothek: nur Videos dieser Bibliothek lassen sich per URL anzeigen. Videos anderer Organisationen werden nie angezeigt.</info_text>
+            </meta>
+        </property>
         <property name="presentation" type="single_select">
             <meta><title lang="en">Presentation</title><title lang="de">Darstellung</title></meta>
             <params>

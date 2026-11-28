@@ -19,6 +19,9 @@ class VideoListProvider
 
     public const TTL = 120;
 
+    /** API pages read per render while looking for ready videos. */
+    public const MAX_API_CALLS = 3;
+
     public function __construct(
         private VideoOptimizerClient $client,
         private CacheInterface $cache,
@@ -49,9 +52,23 @@ class VideoListProvider
                 'vo_list_v1_' . sha1(json_encode([$libraryId, $tags, $cursor, $limit], \JSON_THROW_ON_ERROR)),
                 function (ItemInterface $item) use ($libraryId, $tags, $cursor, $limit): array {
                     $item->expiresAfter(self::TTL);
-                    $response = $this->client->listVideosPage($libraryId, $cursor, $limit, $tags);
 
-                    return ['items' => self::items($response['videos']), 'next' => $response['has_more'] ? $response['next_cursor'] : null];
+                    // Videos that are still processing or failed are skipped; keep reading API pages (at most
+                    // MAX_API_CALLS per render) so the page is not empty while older ready videos exist.
+                    $items = [];
+                    $next = null;
+                    $pageCursor = $cursor;
+                    for ($call = 0; $call < self::MAX_API_CALLS; ++$call) {
+                        $response = $this->client->listVideosPage($libraryId, $pageCursor, $limit, $tags);
+                        $items = array_merge($items, self::items($response['videos']));
+                        $next = $response['has_more'] ? $response['next_cursor'] : null;
+                        if (null === $next || \count($items) >= $limit) {
+                            break;
+                        }
+                        $pageCursor = $next;
+                    }
+
+                    return ['items' => $items, 'next' => $next];
                 },
             );
         } catch (\Throwable) {

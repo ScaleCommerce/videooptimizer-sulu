@@ -10,6 +10,7 @@ use Scale\VideoOptimizerBundle\EventListener\AssetInjectionListener;
 use Scale\VideoOptimizerBundle\Service\SettingsManager;
 use Scale\VideoOptimizerBundle\Service\VideoListProvider;
 use Scale\VideoOptimizerBundle\Service\VideoOptimizerEmbedResolver;
+use Scale\VideoOptimizerBundle\Service\VideoOwnership;
 use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
@@ -33,6 +34,7 @@ class VideoOptimizerExtension extends AbstractExtension
         private string $apiBaseUrl = 'https://api.videooptimizer.eu/api/v1',
         private ?VideoListProvider $videoList = null,
         private ?TranslatorInterface $translator = null,
+        private ?VideoOwnership $ownership = null,
     ) {
     }
 
@@ -58,7 +60,7 @@ class VideoOptimizerExtension extends AbstractExtension
             new TwigFunction('video_optimizer_duration', [self::class, 'timeLabel']),
             new TwigFunction('video_optimizer_t', [$this, 'translate']),
             new TwigFunction('video_optimizer_page_slug', [$this, 'pageSlug']),
-            new TwigFunction('video_optimizer_available', [$this, 'available']),
+            new TwigFunction('video_optimizer_verify', [$this, 'verify']),
             new TwigFunction('video_optimizer_cursor_url', [self::class, 'cursorUrl']),
             new TwigFunction('video_optimizer_card_srcset', [$this, 'cachedSrcset']),
             new TwigFunction('video_optimizer_native', [$this, 'renderNative'], ['is_safe' => ['html']]),
@@ -275,13 +277,17 @@ class VideoOptimizerExtension extends AbstractExtension
     }
 
     /**
-     * Whether the embed lookup of a video found playable sources (an unknown, failed or not-ready video has none).
+     * Whether a video named in the URL may be shown: 'ok', 'missing' (unknown, foreign, not ready, not in the
+     * given library) or 'unavailable' (the check could not be made). Nothing of an unverified video is rendered.
      */
-    public function available(?string $uuid): bool
+    public function verify(?string $uuid, ?string $libraryId = null): string
     {
         $uuid = VideoListProvider::uuid($uuid);
+        if (null === $uuid) {
+            return VideoOwnership::MISSING;
+        }
 
-        return null !== $uuid && [] !== $this->embedResolver->getSources($uuid)['sources'];
+        return null === $this->ownership ? VideoOwnership::UNAVAILABLE : $this->ownership->check($uuid, $libraryId);
     }
 
     /**

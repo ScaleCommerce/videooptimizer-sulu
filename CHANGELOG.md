@@ -21,7 +21,11 @@ All notable changes to this package. Format: [Keep a Changelog](https://keepacha
 - Floating mini player option on `vo_single_video` and `vo_video_chapters`: a direct player the visitor started or took over (press in the player, then play, volume change or seek; a scene click) stays pinned bottom right when scrolled out of view, with close button, Escape, focus return and a placeholder; off below 600px, unpinned by a lightbox ([#28](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/28))
 - Permanent note next to the encoding quality field: a changed quality only applies to existing videos after a reprocess with "Re-encode all qualities" ([#31](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/31))
 
+### Security
+- Video detail verifies a uuid from the URL with the site's token (404 for videos of other organizations), optionally against a library, before rendering anything about it; positive results are cached for an hour, negative ones for five minutes, uncached lookups are limited to 30 per minute site-wide; during an outage it says "temporarily unavailable" ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))
+
 ### Fixed
+- Video list reads up to three API pages to fill a page with ready videos ([#25](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/25))
 - Reprocess answers 400 when `force` is present but not a boolean instead of silently treating it as false ([#30](https://github.com/ScaleCommerce/videooptimizer-sulu/issues/30))
 
 ## [2.1.0] - 2026-11-28

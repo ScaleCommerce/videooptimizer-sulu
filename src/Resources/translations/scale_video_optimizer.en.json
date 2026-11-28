@@ -8,5 +8,6 @@
     "pagination": "Video pages",
     "first": "First page",
     "next": "More videos",
-    "play": "Play video"
+    "play": "Play video",
+    "temporarily_unavailable": "This video is temporarily unavailable."
 }

@@ -8,5 +8,6 @@
     "pagination": "Videoseiten",
     "first": "Erste Seite",
     "next": "Weitere Videos",
-    "play": "Video abspielen"
+    "play": "Video abspielen",
+    "temporarily_unavailable": "Dieses Video ist vorübergehend nicht verfügbar."
 }

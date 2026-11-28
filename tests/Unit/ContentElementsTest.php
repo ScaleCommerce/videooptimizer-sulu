@@ -170,6 +170,34 @@ class ContentElementsTest extends TestCase
         self::assertSame('/x/videos?a=1&vo_cursor=b', VideoOptimizerExtension::cursorUrl('/x/videos?a=1&vo_cursor=a#frag', 'b'));
     }
 
+    public function testDetailNeverRendersTheDataOfAVideoThatIsNotVerified(): void
+    {
+        // The embed knows a title for it, but the ownership check says it is not ours.
+        $html = $this->render('vo_video_detail.html.twig', ['block' => ['video' => ['uuid' => self::UUID, 'title' => 'Default clip']]], '/video?vo_video=' . self::OTHER, [self::OTHER => 'Secret foreign title'], null, 120.0, [self::OTHER => 'missing']);
+
+        self::assertStringContainsString('This video was not found.', $html);
+        foreach (['Secret foreign title', 'Default clip', '<iframe', 'application/ld+json', self::OTHER] as $leak) {
+            self::assertStringNotContainsString($leak, $html, $leak);
+        }
+    }
+
+    public function testDetailDuringAnOutageSaysTemporarilyUnavailable(): void
+    {
+        $html = $this->render('vo_video_detail.html.twig', ['block' => []], '/video?vo_video=' . self::OTHER, [self::OTHER => 'Title'], null, 120.0, [self::OTHER => 'unavailable']);
+
+        self::assertStringContainsString('This video is temporarily unavailable.', $html);
+        self::assertStringNotContainsString('Title', $html);
+        self::assertStringNotContainsString('<iframe', $html);
+    }
+
+    public function testDetailDoesNotBorrowTheDefaultVideosTitleForARequestedVideo(): void
+    {
+        $html = $this->render('vo_video_detail.html.twig', ['block' => ['video' => ['uuid' => self::UUID, 'title' => 'Default clip']]], '/video?vo_video=' . self::OTHER, [self::OTHER => '']);
+
+        self::assertStringNotContainsString('Default clip', $html);
+        self::assertStringContainsString('/embed/' . self::OTHER, $html);
+    }
+
     public function testDetailRendersAVideoWithAnEmptyTitle(): void
     {
         $html = $this->render('vo_video_detail.html.twig', ['block' => []], '/video?vo_video=' . self::OTHER, [self::OTHER => '']);
@@ -270,7 +298,7 @@ class ContentElementsTest extends TestCase
                     ['uuid' => self::OTHER, 'title' => 'Busy', 'status' => 'processing'],
                     ['uuid' => 'not-a-uuid', 'title' => 'Bad', 'status' => 'ready'],
                 ],
-                'pagination' => ['next_cursor' => 'next1', 'has_more' => true],
+                'pagination' => ['next_cursor' => null, 'has_more' => false],
             ], \JSON_THROW_ON_ERROR));
         }), new ArrayAdapter());
 
@@ -278,13 +306,56 @@ class ContentElementsTest extends TestCase
         $again = $provider->page(self::OTHER, 'a,b', null, 24);
 
         self::assertSame([['uuid' => self::UUID, 'title' => 'Ready', 'poster' => 'https://cdn.example.net/p.jpg', 'duration' => 12]], $page['items']);
-        self::assertSame('next1', $page['next']);
+        self::assertNull($page['next']);
         self::assertFalse($page['error']);
         self::assertCount(1, $queries, 'The invalid cursor is dropped and the page size clamped, so both calls share one cached page.');
         self::assertStringContainsString('limit=24', $queries[0]);
         self::assertStringContainsString('library_id=' . self::OTHER, $queries[0]);
         self::assertStringNotContainsString('cursor', $queries[0]);
         self::assertSame($page['items'], $again['items']);
+    }
+
+    public function testListProviderReadsFurtherApiPagesToFindReadyVideos(): void
+    {
+        $queries = [];
+        $pages = [
+            ['data' => [['uuid' => self::OTHER, 'status' => 'processing']], 'pagination' => ['next_cursor' => 'c1', 'has_more' => true]],
+            ['data' => [['uuid' => self::OTHER, 'status' => 'failed']], 'pagination' => ['next_cursor' => 'c2', 'has_more' => true]],
+            ['data' => [['uuid' => self::UUID, 'title' => 'Ready', 'status' => 'ready']], 'pagination' => ['next_cursor' => 'c3', 'has_more' => true]],
+            ['data' => [['uuid' => self::UUID, 'status' => 'ready']], 'pagination' => ['next_cursor' => null, 'has_more' => false]],
+        ];
+        $provider = new VideoListProvider($this->client(function (string $m, string $u) use (&$queries, &$pages): MockResponse {
+            $queries[] = $u;
+
+            return new MockResponse(json_encode(array_shift($pages), \JSON_THROW_ON_ERROR));
+        }), new ArrayAdapter());
+
+        $page = $provider->page(null, null, null, 3);
+
+        self::assertCount(3, $queries, 'At most three API calls per render.');
+        self::assertSame(['Ready'], array_column($page['items'], 'title'));
+        self::assertSame('c3', $page['next'], 'The next link continues after the last page read.');
+        self::assertStringContainsString('cursor=c1', $queries[1]);
+        self::assertStringContainsString('cursor=c2', $queries[2]);
+    }
+
+    public function testListProviderStopsReadingOnceThePageIsFull(): void
+    {
+        $queries = [];
+        $provider = new VideoListProvider($this->client(function (string $m, string $u) use (&$queries): MockResponse {
+            $queries[] = $u;
+
+            return new MockResponse(json_encode([
+                'data' => [['uuid' => self::UUID, 'status' => 'ready'], ['uuid' => self::OTHER, 'status' => 'ready']],
+                'pagination' => ['next_cursor' => 'more', 'has_more' => true],
+            ], \JSON_THROW_ON_ERROR));
+        }), new ArrayAdapter());
+
+        $page = $provider->page(null, null, null, 2);
+
+        self::assertCount(1, $queries);
+        self::assertCount(2, $page['items']);
+        self::assertSame('more', $page['next']);
     }
 
     public function testListProviderShowsNothingForAnInvalidLibraryInsteadOfEveryLibrary(): void
@@ -527,12 +598,12 @@ B"]]);
      * @param array<string, string>               $titles  title per uuid; uuids without one count as unknown videos
      * @param array<string, mixed>|null           $list
      */
-    private function render(string $template, array $context, string $uri = '/', array $titles = [], ?array $list = null, float $duration = 120.0): string
+    private function render(string $template, array $context, string $uri = '/', array $titles = [], ?array $list = null, float $duration = 120.0, array $verdicts = []): string
     {
         $loader = new FilesystemLoader();
         $loader->addPath(\dirname(__DIR__, 2) . '/src/Resources/views', 'ScaleVideoOptimizer');
         $twig = new Environment($loader, ['autoescape' => 'html', 'strict_variables' => false]);
-        $twig->addExtension($this->extension($titles, $list, $duration));
+        $twig->addExtension($this->extension($titles, $list, $duration, null, $verdicts));
         // Sulu's route generator: prefixes the locale of a `{localization}` URL scheme.
         $twig->addFunction(new \Twig\TwigFunction('sulu_content_path', static fn (string $slug): string => '/de' . $slug));
 
@@ -545,7 +616,7 @@ B"]]);
      * @param array<string, string>     $titles
      * @param array<string, mixed>|null $list
      */
-    private function extension(array $titles = [], ?array $list = null, float $duration = 120.0, ?\Symfony\Contracts\Translation\TranslatorInterface $translator = null): VideoOptimizerExtension
+    private function extension(array $titles = [], ?array $list = null, float $duration = 120.0, ?\Symfony\Contracts\Translation\TranslatorInterface $translator = null, array $verdicts = []): VideoOptimizerExtension
     {
         $resolver = $this->prophesize(VideoOptimizerEmbedResolver::class);
         $resolver->getDimensions(\Prophecy\Argument::any())->willReturn(['width' => 1920, 'height' => 1080, 'orientation' => 'landscape']);
@@ -561,11 +632,15 @@ B"]]);
         $settings = $this->prophesize(SettingsManager::class);
         $settings->getDefaultPlayer()->willReturn('hosted');
 
+        $ownership = $this->prophesize(\Scale\VideoOptimizerBundle\Service\VideoOwnership::class);
+        $ownership->check(\Prophecy\Argument::cetera())->will(static fn (array $args): string => $verdicts[$args[0]]
+            ?? (\array_key_exists($args[0], $titles) || self::UUID === $args[0] ? 'ok' : 'missing'));
+
         /** @var ObjectProphecy<VideoListProvider> $provider */
         $provider = $this->prophesize(VideoListProvider::class);
         $provider->page(\Prophecy\Argument::cetera())->willReturn($list ?? ['items' => [], 'next' => null, 'error' => false]);
 
-        return new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $settings->reveal(), null, 'https://api.videooptimizer.eu/api/v1', $provider->reveal(), $translator);
+        return new VideoOptimizerExtension('https://videooptimizer.eu', $resolver->reveal(), $settings->reveal(), null, 'https://api.videooptimizer.eu/api/v1', $provider->reveal(), $translator, $ownership->reveal());
     }
 
     private function client(callable $callback): VideoOptimizerClient
